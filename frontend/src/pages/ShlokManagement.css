@@ -460,21 +460,6 @@
   align-items: start;
 }
 
-.form-row.form-row-header-selects {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 20px;
-  width: 100%;
-  margin-bottom: 20px;
-  align-items: start;
-}
-
-html[data-theme="dark"] .chapter-list-select {
-  background: #1e293b !important;
-  color: #f1f5f9 !important;
-  border-color: #334155 !important;
-}
-
 
 .form-row .form-group {
   min-width: 0;

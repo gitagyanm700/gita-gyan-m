@@ -405,97 +405,6 @@ const createWordId = () => {
 };
 
 /* =====================================================
-   CHAPTER NAMES (SHARED DICTIONARIES)
-===================================================== */
-
-const chapterNames = {
-  1: "અર્જુનવિષાદ યોગ",
-  2: "સાંખ્ય યોગ",
-  3: "કર્મ યોગ",
-  4: "જ્ઞાનકર્મસંન્યાસ યોગ",
-  5: "કર્મસંન્યાસ યોગ",
-  6: "આત્મસંયમ યોગ",
-  7: "જ્ઞાનવિજ્ઞાન યોગ",
-  8: "અક્ષરબ્રહ્મ યોગ",
-  9: "રાજવિદ્યા રાજગુહ્ય યોગ",
-  10: "વિભૂતિ યોગ",
-  11: "વિશ્વરૂપદર્શન યોગ",
-  12: "ભક્તિ યોગ",
-  13: "ક્ષેત્રક્ષેત્રજ્ઞ વિભાગ યોગ",
-  14: "ગુણત્રયવિભાગ યોગ",
-  15: "પુરુષોત્તમ યોગ",
-  16: "દૈવાસુરસંપદ્વિભાગ યોગ",
-  17: "શ્રદ્ધાત્રયવિભાગ યોગ",
-  18: "મોક્ષસંન્યાસ યોગ",
-};
-
-const chapterNamesHi = {
-  1: "अर्जुनविषाद योग",
-  2: "सांख्य योग",
-  3: "कर्म योग",
-  4: "ज्ञानकर्मसंन्यास योग",
-  5: "कर्मसंन्यास योग",
-  6: "आत्मसंयम योग",
-  7: "ज्ञानविज्ञान योग",
-  8: "अक्षरब्रह्म योग",
-  9: "राजविद्या राजगुह्य योग",
-  10: "विभूति योग",
-  11: "विश्वरूपदर्शन योग",
-  12: "भक्ति योग",
-  13: "क्षेत्र-क्षेत्रज्ञ विभाग योग",
-  14: "गुणत्रय विभाग योग",
-  15: "पुरुषोत्तम योग",
-  16: "दैवासुरसम्पद्विभाग योग",
-  17: "श्रद्धात्रयविभाग योग",
-  18: "मोक्षसंन्यास योग",
-};
-
-const chapterNamesEn = {
-  1: "Arjuna Vishada Yoga",
-  2: "Sankhya Yoga",
-  3: "Karma Yoga",
-  4: "Jnana Karma Sanyasa Yoga",
-  5: "Karma Sanyasa Yoga",
-  6: "Atma Samyama Yoga",
-  7: "Jnana Vijnana Yoga",
-  8: "Akshara Brahma Yoga",
-  9: "Raja Vidya Raja Guhya Yoga",
-  10: "Vibhuti Yoga",
-  11: "Vishwarupa Darshana Yoga",
-  12: "Bhakti Yoga",
-  13: "Kshetra Kshetrajna Vibhaga Yoga",
-  14: "Gunatraya Vibhaga Yoga",
-  15: "Purushottama Yoga",
-  16: "Daivasura Sampad Vibhaga Yoga",
-  17: "Shraddhatraya Vibhaga Yoga",
-  18: "Moksha Sanyasa Yoga",
-};
-
-/* =====================================================
-   STORAGE RESTORATION HELPERS
-===================================================== */
-
-const getInitialChapter = () => {
-  try {
-    const saved = localStorage.getItem("admin_shlok_selected_chapter");
-    if (saved && Number(saved) >= 1 && Number(saved) <= 18) {
-      return String(saved);
-    }
-  } catch (e) {}
-  return "1";
-};
-
-const getInitialShlokNumber = () => {
-  try {
-    const saved = localStorage.getItem("admin_shlok_selected_shlok_number");
-    if (saved && String(saved).trim()) {
-      return String(saved).trim();
-    }
-  } catch (e) {}
-  return "";
-};
-
-/* =====================================================
    SHLOK MANAGEMENT
 ===================================================== */
 
@@ -517,7 +426,7 @@ function ShlokManagement() {
   const [
     selectedChapter,
     setSelectedChapter,
-  ] = useState(getInitialChapter);
+  ] = useState("1");
 
   const [
     expandedShlokId,
@@ -561,21 +470,20 @@ function ShlokManagement() {
   const [autoTranslateSuccess, setAutoTranslateSuccess] =
     useState("");
 
-  const hasRestoredInitialRef = useRef(false);
-
   /* =====================================================
      FORM DATA
   ===================================================== */
 
-  const [formData, setFormData] = useState(() => {
-    const initCh = Number(getInitialChapter());
-    const initSh = getInitialShlokNumber();
-    return {
-      chapterNumber: initCh,
-      chapterName: chapterNames[initCh] || "અર્જુનવિષાદ યોગ",
-      chapterNameHi: chapterNamesHi[initCh] || "अर्जुनविषाद योग",
-      chapterNameEn: chapterNamesEn[initCh] || "Arjuna Vishada Yoga",
-      shlokNumber: initSh,
+  const [formData, setFormData] =
+    useState({
+      chapterNumber: 1,
+      chapterName:
+        "અર્જુનવિષાદ યોગ",
+      chapterNameHi:
+        "अर्जुनविषाद योग",
+      chapterNameEn:
+        "Arjuna Vishada Yoga",
+      shlokNumber: "",
       speaker: "",
       speakerHi: "",
       speakerEn: "",
@@ -586,8 +494,7 @@ function ShlokManagement() {
       message: "",
       messageHi: "",
       messageEn: "",
-    };
-  });
+    });
 
   /* =====================================================
      API URL
@@ -595,6 +502,73 @@ function ShlokManagement() {
 
   const API_URL =
     "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
+
+  /* =====================================================
+     CHAPTER NAMES
+  ===================================================== */
+
+  const chapterNames = {
+    1: "અર્જુનવિષાદ યોગ",
+    2: "સાંખ્ય યોગ",
+    3: "કર્મ યોગ",
+    4: "જ્ઞાનકર્મસંન્યાસ યોગ",
+    5: "કર્મસંન્યાસ યોગ",
+    6: "આત્મસંયમ યોગ",
+    7: "જ્ઞાનવિજ્ઞાન યોગ",
+    8: "અક્ષરબ્રહ્મ યોગ",
+    9: "રાજવિદ્યા રાજગુહ્ય યોગ",
+    10: "વિભૂતિ યોગ",
+    11: "વિશ્વરૂપદર્શન યોગ",
+    12: "ભક્તિ યોગ",
+    13: "ક્ષેત્રક્ષેત્રજ્ઞ વિભાગ યોગ",
+    14: "ગુણત્રયવિભાગ યોગ",
+    15: "પુરુષોત્તમ યોગ",
+    16: "દૈવાસુરસંપદ્વિભાગ યોગ",
+    17: "શ્રદ્ધાત્રયવિભાગ યોગ",
+    18: "મોક્ષસંન્યાસ યોગ",
+  };
+
+  const chapterNamesHi = {
+    1: "अर्जुनविषाद योग",
+    2: "सांख्य योग",
+    3: "कर्म योग",
+    4: "ज्ञानकर्मसंन्यास योग",
+    5: "कर्मसंन्यास योग",
+    6: "आत्मसंयम योग",
+    7: "ज्ञानविज्ञान योग",
+    8: "अक्षरब्रह्म योग",
+    9: "राजविद्या राजगुह्य योग",
+    10: "विभूति योग",
+    11: "विश्वरूपदर्शन योग",
+    12: "भक्ति योग",
+    13: "क्षेत्र-क्षेत्रज्ञ विभाग योग",
+    14: "गुणत्रय विभाग योग",
+    15: "पुरुषोत्तम योग",
+    16: "दैवासुरसम्पद्विभाग योग",
+    17: "श्रद्धात्रयविभाग योग",
+    18: "मोक्षसंन्यास योग",
+  };
+
+  const chapterNamesEn = {
+    1: "Arjuna Vishada Yoga",
+    2: "Sankhya Yoga",
+    3: "Karma Yoga",
+    4: "Jnana Karma Sanyasa Yoga",
+    5: "Karma Sanyasa Yoga",
+    6: "Atma Samyama Yoga",
+    7: "Jnana Vijnana Yoga",
+    8: "Akshara Brahma Yoga",
+    9: "Raja Vidya Raja Guhya Yoga",
+    10: "Vibhuti Yoga",
+    11: "Vishwarupa Darshana Yoga",
+    12: "Bhakti Yoga",
+    13: "Kshetra Kshetrajna Vibhaga Yoga",
+    14: "Gunatraya Vibhaga Yoga",
+    15: "Purushottama Yoga",
+    16: "Daivasura Sampad Vibhaga Yoga",
+    17: "Shraddhatraya Vibhaga Yoga",
+    18: "Moksha Sanyasa Yoga",
+  };
 
   /* =====================================================
      ADMIN CHECK
@@ -706,8 +680,7 @@ function ShlokManagement() {
   ===================================================== */
 
   useEffect(() => {
-    const initCh = Number(getInitialChapter());
-    fetchShlokas(initCh);
+    fetchShlokas(1);
   }, []);
 
   /* =====================================================
@@ -719,16 +692,6 @@ function ShlokManagement() {
       name,
       value,
     } = event.target;
-
-    if (name === "shlokNumber") {
-      try {
-        if (value && String(value).trim()) {
-          localStorage.setItem("admin_shlok_selected_shlok_number", String(value).trim());
-        } else {
-          localStorage.removeItem("admin_shlok_selected_shlok_number");
-        }
-      } catch (e) {}
-    }
 
     setFormData(
       (current) => {
@@ -762,15 +725,6 @@ function ShlokManagement() {
       String(chapterNumber)
     );
 
-    try {
-      localStorage.setItem("admin_shlok_selected_chapter", String(chapterNumber));
-      localStorage.removeItem("admin_shlok_selected_shlok_number");
-      localStorage.removeItem("admin_shlok_editing_id");
-      localStorage.removeItem("admin_shlok_expanded_id");
-    } catch (e) {}
-
-    hasRestoredInitialRef.current = true;
-
     setFormData(
       (current) => ({
         ...current,
@@ -787,17 +741,6 @@ function ShlokManagement() {
           chapterNamesEn[
             chapterNumber
           ] || "",
-        shlokNumber: "",
-        speaker: "",
-        speakerHi: "",
-        speakerEn: "",
-        sanskrit: "",
-        translation: "",
-        translationHi: "",
-        translationEn: "",
-        message: "",
-        messageHi: "",
-        messageEn: "",
       })
     );
 
@@ -825,13 +768,6 @@ function ShlokManagement() {
       Number(selectedChapter);
 
     setEditingId(null);
-
-    try {
-      localStorage.removeItem("admin_shlok_editing_id");
-      localStorage.removeItem("admin_shlok_selected_shlok_number");
-      localStorage.removeItem("admin_shlok_expanded_id");
-      localStorage.setItem("admin_shlok_selected_chapter", String(chapterNumber));
-    } catch (e) {}
 
     setFormData({
       chapterNumber,
@@ -1526,13 +1462,6 @@ function ShlokManagement() {
         setExpandedShlokId(null);
         setEditingId(null);
 
-        try {
-          localStorage.removeItem("admin_shlok_editing_id");
-          localStorage.removeItem("admin_shlok_selected_shlok_number");
-          localStorage.removeItem("admin_shlok_expanded_id");
-          localStorage.setItem("admin_shlok_selected_chapter", String(selectedChapter));
-        } catch (e) {}
-
         setFormData({
           chapterNumber:
             Number(
@@ -1617,13 +1546,6 @@ function ShlokManagement() {
     }
 
     setEditingId(shlok._id);
-
-    try {
-      localStorage.setItem("admin_shlok_selected_chapter", String(shlok.chapterNumber));
-      localStorage.setItem("admin_shlok_selected_shlok_number", String(shlok.shlokNumber));
-      localStorage.setItem("admin_shlok_editing_id", String(shlok._id));
-      localStorage.setItem("admin_shlok_expanded_id", String(shlok._id));
-    } catch (e) {}
 
     setFormData({
       chapterNumber:
@@ -1747,60 +1669,6 @@ function ShlokManagement() {
   };
 
   /* =====================================================
-     RESTORE SAVED EDITING / EXPANDED SHLOK ON LOAD
-  ===================================================== */
-
-  useEffect(() => {
-    if (hasRestoredInitialRef.current || loading || shlokas.length === 0) return;
-
-    try {
-      const savedEditingId = localStorage.getItem("admin_shlok_editing_id");
-      const savedShlokNum = localStorage.getItem("admin_shlok_selected_shlok_number");
-      const savedExpandedId = localStorage.getItem("admin_shlok_expanded_id");
-
-      if (savedEditingId) {
-        const toEdit = shlokas.find(
-          (s) =>
-            String(s._id) === String(savedEditingId) ||
-            (savedShlokNum && String(s.shlokNumber) === String(savedShlokNum))
-        );
-        if (toEdit) {
-          hasRestoredInitialRef.current = true;
-          handleEdit(toEdit);
-          setExpandedShlokId(toEdit._id);
-          return;
-        }
-      }
-
-      if (savedExpandedId) {
-        const toExpand = shlokas.find(
-          (s) =>
-            String(s._id) === String(savedExpandedId) ||
-            (savedShlokNum && String(s.shlokNumber) === String(savedShlokNum))
-        );
-        if (toExpand) {
-          hasRestoredInitialRef.current = true;
-          setExpandedShlokId(toExpand._id);
-          return;
-        }
-      }
-
-      if (savedShlokNum) {
-        const matching = shlokas.find(
-          (s) => String(s.shlokNumber) === String(savedShlokNum)
-        );
-        if (matching) {
-          hasRestoredInitialRef.current = true;
-          setExpandedShlokId(matching._id);
-          return;
-        }
-      }
-    } catch (e) {}
-
-    hasRestoredInitialRef.current = true;
-  }, [shlokas, loading]);
-
-  /* =====================================================
      DELETE SHLOK
   ===================================================== */
 
@@ -1871,16 +1739,6 @@ function ShlokManagement() {
           );
         }
 
-        try {
-          if (editingId === id) {
-            localStorage.removeItem("admin_shlok_editing_id");
-            localStorage.removeItem("admin_shlok_selected_shlok_number");
-          }
-          if (expandedShlokId === id) {
-            localStorage.removeItem("admin_shlok_expanded_id");
-          }
-        } catch (e) {}
-
         await fetchShlokas(
           Number(
             selectedChapter
@@ -1904,21 +1762,12 @@ function ShlokManagement() {
   ===================================================== */
 
   const toggleShlok = (id) => {
-    setExpandedShlokId((current) => {
-      const nextId = current === id ? null : id;
-      try {
-        if (nextId) {
-          localStorage.setItem("admin_shlok_expanded_id", String(nextId));
-          const target = shlokas.find((s) => s._id === nextId);
-          if (target && target.shlokNumber) {
-            localStorage.setItem("admin_shlok_selected_shlok_number", String(target.shlokNumber));
-          }
-        } else {
-          localStorage.removeItem("admin_shlok_expanded_id");
-        }
-      } catch (e) {}
-      return nextId;
-    });
+    setExpandedShlokId(
+      (current) =>
+        current === id
+          ? null
+          : id
+    );
   };
 
   /* =====================================================
@@ -2094,8 +1943,8 @@ function ShlokManagement() {
             onSubmit={handleSubmit}
           >
 
-            {/* CHAPTER + SHLOK NUMBER + QUICK SELECT */}
-            <div className="form-row form-row-header-selects">
+            {/* CHAPTER + SHLOK NUMBER */}
+            <div className="form-row">
 
               <div className="form-group">
                 <label>
@@ -2156,43 +2005,6 @@ function ShlokManagement() {
                   required
                 />
               </div>
-
-              {shlokas.length > 0 && (
-                <div className="form-group">
-                  <label>
-                    {txt(
-                      "સુધારવા માટે શ્લોક પસંદ કરો",
-                      "संपादित करने के लिए श्लोक चुनें",
-                      "Select Shlok to Edit"
-                    )}
-                  </label>
-                  <select
-                    value={editingId || ""}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      if (!id) {
-                        resetForm();
-                      } else {
-                        const target = shlokas.find((s) => s._id === id);
-                        if (target) handleEdit(target);
-                      }
-                    }}
-                  >
-                    <option value="">
-                      {txt(
-                        "-- નવો શ્લોક ઉમેરો (Add New) --",
-                        "-- नया श्लोक जोड़ें (Add New) --",
-                        "-- Add New Shlok --"
-                      )}
-                    </option>
-                    {shlokas.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        શ્લોક {s.shlokNumber} {s.speaker ? `(${s.speaker})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
             </div>
 
@@ -2925,44 +2737,19 @@ function ShlokManagement() {
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-              <select
-                className="chapter-list-select"
-                value={selectedChapter}
-                onChange={handleChapterChange}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  background: "var(--card-bg, #ffffff)",
-                  color: "inherit"
-                }}
-                aria-label="Filter by chapter"
-              >
-                {Array.from({ length: 18 }, (_, index) => index + 1).map((number) => (
-                  <option key={number} value={number}>
-                    Chapter {number} — {chapterNames[number]}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                className="refresh-btn"
-                onClick={() =>
-                  fetchShlokas(
-                    Number(
-                      selectedChapter
-                    )
+            <button
+              type="button"
+              className="refresh-btn"
+              onClick={() =>
+                fetchShlokas(
+                  Number(
+                    selectedChapter
                   )
-                }
-              >
-                <RefreshCw className="btn-icon" size={16} /> Refresh
-              </button>
-            </div>
+                )
+              }
+            >
+              <RefreshCw className="btn-icon" size={16} /> Refresh
+            </button>
 
           </div>
 
