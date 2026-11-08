@@ -182,14 +182,40 @@ function preserveSanskritSubWords(origMeaning, translatedMeaning) {
     return translatedMeaning || "";
   }
 
+  const formatRightSide = (text) => {
+    let cleaned = String(text || "").trim().replace(/[.]+$/, "");
+    if (origMeaning.includes(" / ")) {
+      cleaned = cleaned.replace(/\s*\/\s*/g, " / ");
+    }
+    return cleaned;
+  };
+
+  const origDelims = [...origMeaning.matchAll(/\s*[,;\n]+\s*/g)].map((m) => m[0]);
+
+  const joinWithOrigDelims = (parts) => {
+    if (parts.length <= 1) return parts[0] || "";
+    let result = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+      const delim = origDelims[i - 1] || (origMeaning.includes(" , ") ? " , " : ", ");
+      result += delim + parts[i];
+    }
+    return result;
+  };
+
   // If original does not contain '=', nothing to preserve
   if (!origMeaning.includes("=")) {
+    if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+      return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
+    }
     return translatedMeaning;
   }
 
   // Extract all sub-words from original: e.g. "विराटः = રાજા વિરાટ , च = અને"
   const origParts = origMeaning.split(/[,;\n]/).map((p) => p.trim()).filter(Boolean);
   if (origParts.length === 0 || !origParts.every((p) => p.includes("="))) {
+    if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+      return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
+    }
     return translatedMeaning;
   }
 
@@ -203,10 +229,10 @@ function preserveSanskritSubWords(origMeaning, translatedMeaning) {
     if (transParts.length === origLeftSides.length && transParts.every((p) => p.includes("="))) {
       const fixed = transParts.map((transPart, idx) => {
         const transSplit = transPart.split("=");
-        const transRight = transSplit.slice(1).join("=").trim().replace(/[.]+$/, "");
+        const transRight = formatRightSide(transSplit.slice(1).join("="));
         return `${origLeftSides[idx]} = ${transRight}`;
       });
-      return fixed.join(", ");
+      return joinWithOrigDelims(fixed);
     }
 
     // Fallback: match by regex "left = right"
@@ -214,11 +240,15 @@ function preserveSanskritSubWords(origMeaning, translatedMeaning) {
     const matches = [...translatedMeaning.matchAll(regex)];
     if (matches.length === origLeftSides.length) {
       const fixed = matches.map((m, idx) => {
-        const transRight = m[2].trim().replace(/[.]+$/, "");
+        const transRight = formatRightSide(m[2]);
         return `${origLeftSides[idx]} = ${transRight}`;
       });
-      return fixed.join(", ");
+      return joinWithOrigDelims(fixed);
     }
+  }
+
+  if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+    return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
   }
 
   return translatedMeaning;
@@ -959,8 +989,9 @@ CRITICAL ACCURACY RULES:
    When 'gujaratiMeaning' contains Sanskrit sub-words broken down with '=' (e.g. "विराटः = રાજા વિરાટ , च = અને"):
    - The Sanskrit words BEFORE '=' (such as "विराटः", "च", "पाण्डवाः", "एव") MUST REMAIN 100% PURE SANSKRIT IN DEVANAGARI SCRIPT. NEVER translate or alter them!
    - Translate ONLY the Gujarati explanation AFTER '=' into Hindi:
-     Example: "विराटः = રાજા વિરાટ , च = અને" -> "विराटः = राजा विराट, च = और"
-     Example: "पाण्डवाः = પાંડુપુત્રો , च = અને , एव = જ" -> "पाण्डवाः = पाण्डुपुत्र, च = और, एव = ही"
+     Example: "विराटः = રાજા વિરાટ , च = અને" -> "विराटः = राजा विराट , च = और"
+     Example: "पाण्डवाः = પાંડુપુત્રો , च = અને , एव = જ" -> "पाण्डवाः = पाण्डुपुत्र , च = और , एव = ही"
+   - SPACING & SEPARATOR PRESERVATION: If Gujarati has " , " with spaces before and after comma or " / " around slashes, keep the exact same " , " and " / " spacing in Hindi.
 4. If no '=' is present, directly translate the Gujarati meaning into accurate, sacred Hindi:
    Example: "ધર્મક્ષેત્રમાં" -> "धर्मक्षेत्र में"
 5. Return exactly one entry for EVERY 'id' from 0 to ${itemsToSend.length - 1} in the exact same sequence.

@@ -338,12 +338,38 @@ const preserveSanskritSubWords = (origMeaning, translatedMeaning) => {
     return translatedMeaning || "";
   }
 
+  const formatRightSide = (text) => {
+    let cleaned = String(text || "").trim().replace(/[.]+$/, "");
+    if (origMeaning.includes(" / ")) {
+      cleaned = cleaned.replace(/\s*\/\s*/g, " / ");
+    }
+    return cleaned;
+  };
+
+  const origDelims = [...origMeaning.matchAll(/\s*[,;\n]+\s*/g)].map((m) => m[0]);
+
+  const joinWithOrigDelims = (parts) => {
+    if (parts.length <= 1) return parts[0] || "";
+    let result = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+      const delim = origDelims[i - 1] || (origMeaning.includes(" , ") ? " , " : ", ");
+      result += delim + parts[i];
+    }
+    return result;
+  };
+
   if (!origMeaning.includes("=")) {
+    if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+      return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
+    }
     return translatedMeaning;
   }
 
   const origParts = origMeaning.split(/[,;\n]/).map((p) => p.trim()).filter(Boolean);
   if (origParts.length === 0 || !origParts.every((p) => p.includes("="))) {
+    if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+      return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
+    }
     return translatedMeaning;
   }
 
@@ -355,21 +381,25 @@ const preserveSanskritSubWords = (origMeaning, translatedMeaning) => {
     if (transParts.length === origLeftSides.length && transParts.every((p) => p.includes("="))) {
       const fixedParts = transParts.map((transPart, idx) => {
         const transSplit = transPart.split("=");
-        const transRight = transSplit.slice(1).join("=").trim().replace(/[.]+$/, "");
+        const transRight = formatRightSide(transSplit.slice(1).join("="));
         return `${origLeftSides[idx]} = ${transRight}`;
       });
-      return fixedParts.join(", ");
+      return joinWithOrigDelims(fixedParts);
     }
 
     const regex = /([^=,;]+)\s*=\s*([^=,;]+)/g;
     const matches = [...translatedMeaning.matchAll(regex)];
     if (matches.length === origLeftSides.length) {
       const fixed = matches.map((m, idx) => {
-        const transRight = m[2].trim().replace(/[.]+$/, "");
+        const transRight = formatRightSide(m[2]);
         return `${origLeftSides[idx]} = ${transRight}`;
       });
-      return fixed.join(", ");
+      return joinWithOrigDelims(fixed);
     }
+  }
+
+  if (origMeaning.includes(" , ") && !translatedMeaning.includes(" , ")) {
+    return translatedMeaning.replace(/([^\s]),\s*/g, "$1 , ");
   }
 
   return translatedMeaning;
