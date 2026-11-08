@@ -214,11 +214,18 @@ useEffect(() => {
   // API URL
   // =====================================================
 
-  const API_URL =
-    "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
 
-  const CONTINUE_READING_API_URL =
-    "https://bhagavad-gita-backend-jy1a.onrender.com/api/continue-reading";
+  const API_URL = isLocal
+    ? "http://localhost:5000/api/shloks"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
+
+  const CONTINUE_READING_API_URL = isLocal
+    ? "http://localhost:5000/api/continue-reading"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/continue-reading";
 
   // =====================================================
   // CHAPTER NAMES

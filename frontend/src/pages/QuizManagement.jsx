@@ -42,8 +42,14 @@ function QuizManagement() {
   // API
   // =====================================================
 
-  const API_URL =
-    "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz";
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
+  const API_URL = isLocal
+    ? "http://localhost:5000/api/quiz"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz";
 
   // =====================================================
   // STATE
@@ -680,23 +686,37 @@ function QuizManagement() {
         formData.option4,
       ].map((o) => (o || "").trim());
 
-      const response = await fetch(`${API_URL}/admin/auto-translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          category: formData.category,
-          chapterNumber: formData.chapterNumber,
-          question: formData.question,
-          options: rawOptions,
-          correctAnswer: formData.correctAnswer,
-          explanation: formData.explanation,
-          targetLang: targetLang,
-          field: field,
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      let response;
+      try {
+        response = await fetch(`${API_URL}/admin/auto-translate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            category: formData.category,
+            chapterNumber: formData.chapterNumber,
+            question: formData.question,
+            options: rawOptions,
+            correctAnswer: formData.correctAnswer,
+            explanation: formData.explanation,
+            targetLang: targetLang,
+            field: field,
+          }),
+        });
+      } catch (fetchErr) {
+        if (fetchErr.name === "AbortError") {
+          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       const data = await response.json();
       if (!response.ok) {
@@ -805,22 +825,36 @@ function QuizManagement() {
 
       const token = getToken();
 
-      const response = await fetch(`${API_URL}/admin/auto-translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          category: formData.category,
-          chapterNumber: formData.chapterNumber,
-          question: formData.question,
-          options: rawOptions,
-          correctAnswer: formData.correctAnswer,
-          explanation: formData.explanation,
-          targetLang: targetLang || "all",
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      let response;
+      try {
+        response = await fetch(`${API_URL}/admin/auto-translate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            category: formData.category,
+            chapterNumber: formData.chapterNumber,
+            question: formData.question,
+            options: rawOptions,
+            correctAnswer: formData.correctAnswer,
+            explanation: formData.explanation,
+            targetLang: targetLang || "all",
+          }),
+        });
+      } catch (fetchErr) {
+        if (fetchErr.name === "AbortError") {
+          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       const data = await response.json();
 

@@ -623,8 +623,14 @@ function ShlokManagement() {
      API URL
   ===================================================== */
 
-  const API_URL =
-    "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
+  const API_URL = isLocal
+    ? "http://localhost:5000/api/shloks"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
 
   /* =====================================================
      ADMIN CHECK
@@ -1258,24 +1264,38 @@ function ShlokManagement() {
         }))
         .filter((item) => item.word);
 
-      const response = await fetch(`${API_URL}/auto-translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          chapterNumber: Number(formData.chapterNumber),
-          chapterName: formData.chapterName,
-          speaker: formData.speaker,
-          sanskrit: formData.sanskrit,
-          translation: formData.translation,
-          message: formData.message,
-          wordMeanings: cleanedWords,
-          targetLang: targetLang,
-          field: field,
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      let response;
+      try {
+        response = await fetch(`${API_URL}/auto-translate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            chapterNumber: Number(formData.chapterNumber),
+            chapterName: formData.chapterName,
+            speaker: formData.speaker,
+            sanskrit: formData.sanskrit,
+            translation: formData.translation,
+            message: formData.message,
+            wordMeanings: cleanedWords,
+            targetLang: targetLang,
+            field: field,
+          }),
+        });
+      } catch (fetchErr) {
+        if (fetchErr.name === "AbortError") {
+          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       const data = await response.json();
 

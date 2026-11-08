@@ -117,9 +117,9 @@ function getGeminiApiKey() {
 
 // Current ultra-fast, live Gemini models prioritized by latency and devotional accuracy
 const TRANSLATION_MODELS = [
-  "gemini-3.1-flash-lite-preview",
   "gemini-flash-lite-latest",
-  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview",
+  "gemini-3.5-flash-lite",
 ];
 
 /**
@@ -876,7 +876,7 @@ Explanation: ${cleanHtml(explanation)}`;
 /**
  * Generic caller for Gemini models returning parsed JSON
  */
-async function callGeminiJson(prompt, timeoutMs = 12000) {
+async function callGeminiJson(prompt, timeoutMs = 7000) {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
 
@@ -974,34 +974,47 @@ Return ONLY valid JSON:
 ITEMS TO TRANSLATE:
 ${JSON.stringify(itemsToSend, null, 2)}`;
 
-    const parsed = await callGeminiJson(prompt);
-    if (!parsed || !Array.isArray(parsed.wordMeanings) || parsed.wordMeanings.length === 0) {
-      throw new Error("AI દ્વારા શબ્દાર્થનો હિન્દી અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
+    let parsed = null;
+    try {
+      parsed = await callGeminiJson(prompt);
+    } catch (err) {
+      console.warn("Gemini Hindi wordMeanings translation attempt failed:", err.message);
     }
 
     const hiMap = new Map();
-    parsed.wordMeanings.forEach((item, idx) => {
-      if (item) {
-        const key = item.id !== undefined ? Number(item.id) : idx;
-        hiMap.set(key, item.meaningHi || "");
-        if (item.sanskritWord) hiMap.set(String(item.sanskritWord).trim(), item.meaningHi || "");
-        if (item.word) hiMap.set(String(item.word).trim(), item.meaningHi || "");
-      }
-    });
+    if (parsed && Array.isArray(parsed.wordMeanings)) {
+      parsed.wordMeanings.forEach((item, idx) => {
+        if (item) {
+          const key = item.id !== undefined ? Number(item.id) : idx;
+          hiMap.set(key, item.meaningHi || "");
+          if (item.sanskritWord) hiMap.set(String(item.sanskritWord).trim(), item.meaningHi || "");
+          if (item.word) hiMap.set(String(item.word).trim(), item.meaningHi || "");
+        }
+      });
+    }
 
-    const result = {
-      wordMeanings: (wordMeanings || []).map((orig, idx) => {
-        const rawMeaning =
+    const wordMeaningsResult = await Promise.all(
+      (wordMeanings || []).map(async (orig, idx) => {
+        let rawMeaning =
           hiMap.get(idx) ||
           hiMap.get(String(orig.word).trim()) ||
           orig.meaningHi ||
           "";
+
+        if (!rawMeaning && orig.meaning) {
+          rawMeaning = (await fallbackGoogleTranslate(cleanHtml(orig.meaning), "hi")) || orig.meaning;
+        }
+
         return {
           ...orig,
           word: orig.word, // 100% Guaranteed: The user's exact small Sanskrit word is preserved untouched!
           meaningHi: preserveSanskritSubWords(orig.meaning, rawMeaning),
         };
-      }),
+      })
+    );
+
+    const result = {
+      wordMeanings: wordMeaningsResult,
     };
     setToCache("hi", "words", wordMeanings, result);
     return result;
