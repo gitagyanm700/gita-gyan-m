@@ -491,6 +491,19 @@ const getSavedShlokNumber = () => {
   return "";
 };
 
+const getSavedDraft = () => {
+  try {
+    const raw = localStorage.getItem("admin_shlok_draft");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return null;
+};
+
 /* =====================================================
    SHLOK MANAGEMENT
 ===================================================== */
@@ -513,7 +526,17 @@ function ShlokManagement() {
   const [
     selectedChapter,
     setSelectedChapter,
-  ] = useState(getSavedChapter);
+  ] = useState(() => {
+    const draft = getSavedDraft();
+    if (
+      draft?.formData?.chapterNumber &&
+      Number(draft.formData.chapterNumber) >= 1 &&
+      Number(draft.formData.chapterNumber) <= 18
+    ) {
+      return String(draft.formData.chapterNumber);
+    }
+    return getSavedChapter();
+  });
 
   const [
     expandedShlokId,
@@ -527,7 +550,10 @@ function ShlokManagement() {
     useState(false);
 
   const [editingId, setEditingId] =
-    useState(null);
+    useState(() => {
+      const draft = getSavedDraft();
+      return draft?.editingId || null;
+    });
 
   const [message, setMessage] =
     useState("");
@@ -543,10 +569,16 @@ function ShlokManagement() {
   const [
     wordMeanings,
     setWordMeanings,
-  ] = useState([]);
+  ] = useState(() => {
+    const draft = getSavedDraft();
+    if (Array.isArray(draft?.wordMeanings) && draft.wordMeanings.length > 0) {
+      return draft.wordMeanings;
+    }
+    return [];
+  });
 
   const previousSanskritRef =
-    useRef("");
+    useRef(getSavedDraft()?.formData?.sanskrit || "");
 
   const [activeLangTab, setActiveLangTab] =
     useState("gu");
@@ -562,6 +594,10 @@ function ShlokManagement() {
   ===================================================== */
 
   const [formData, setFormData] = useState(() => {
+    const draft = getSavedDraft();
+    if (draft?.formData) {
+      return draft.formData;
+    }
     const initCh = Number(getSavedChapter());
     const initSh = getSavedShlokNumber();
     return {
@@ -700,8 +736,55 @@ function ShlokManagement() {
   ===================================================== */
 
   useEffect(() => {
-    fetchShlokas(Number(getSavedChapter()));
+    const draft = getSavedDraft();
+    const ch = draft?.formData?.chapterNumber
+      ? Number(draft.formData.chapterNumber)
+      : Number(getSavedChapter());
+    fetchShlokas(ch);
   }, []);
+
+  /* =====================================================
+     PERSIST FORM DRAFT ACROSS PAGE REFRESHES
+  ===================================================== */
+
+  useEffect(() => {
+    const hasMeaning = wordMeanings.some(
+      (w) =>
+        (w.meaning && w.meaning.trim()) ||
+        (w.meaningHi && w.meaningHi.trim()) ||
+        (w.meaningEn && w.meaningEn.trim())
+    );
+    const hasSanskrit = formData.sanskrit && formData.sanskrit.trim();
+    const hasTranslation = formData.translation && formData.translation.trim();
+    const hasMessage = formData.message && formData.message.trim();
+    const hasShlokNumber = formData.shlokNumber && String(formData.shlokNumber).trim();
+    const hasSpeaker = formData.speaker && formData.speaker.trim();
+
+    if (hasSanskrit || hasMeaning || hasTranslation || hasMessage || hasShlokNumber || hasSpeaker) {
+      try {
+        localStorage.setItem(
+          "admin_shlok_draft",
+          JSON.stringify({
+            formData,
+            wordMeanings,
+            editingId,
+          })
+        );
+        if (formData.chapterNumber) {
+          localStorage.setItem("admin_shlok_chapter", String(formData.chapterNumber));
+        }
+        if (formData.shlokNumber) {
+          localStorage.setItem("admin_shlok_number", String(formData.shlokNumber));
+        }
+      } catch (e) {
+        console.warn("Could not save shlok draft to localStorage:", e);
+      }
+    } else if (!editingId) {
+      try {
+        localStorage.removeItem("admin_shlok_draft");
+      } catch (e) {}
+    }
+  }, [formData, wordMeanings, editingId]);
 
   /* =====================================================
      NORMAL INPUT CHANGE
@@ -777,12 +860,12 @@ function ShlokManagement() {
     setExpandedShlokId(null);
     setEditingId(null);
 
-    setWordMeanings([]);
+    if (!formData.sanskrit || !formData.sanskrit.trim()) {
+      setWordMeanings([]);
+      previousSanskritRef.current = "";
+    }
     setWordDetectionMessage("");
     setAutoTranslateSuccess("");
-
-    previousSanskritRef.current =
-      "";
 
     fetchShlokas(
       chapterNumber
@@ -800,6 +883,7 @@ function ShlokManagement() {
     setEditingId(null);
 
     try {
+      localStorage.removeItem("admin_shlok_draft");
       localStorage.removeItem("admin_shlok_number");
     } catch (e) {}
 
@@ -1497,6 +1581,8 @@ function ShlokManagement() {
         setEditingId(null);
 
         try {
+          localStorage.removeItem("admin_shlok_draft");
+          localStorage.removeItem("admin_shlok_number");
           localStorage.setItem("admin_shlok_chapter", String(selectedChapter));
         } catch (e) {}
 
@@ -2740,15 +2826,16 @@ function ShlokManagement() {
                   : (<span><Plus className="btn-icon" size={16}/> Add Shlok</span>)}
               </button>
 
-              {editingId && (
+              {(editingId || formData.sanskrit || formData.translation || formData.shlokNumber || wordMeanings.length > 0) && (
                 <button
                   type="button"
                   className="cancel-edit-btn"
                   onClick={
                     resetForm
                   }
+                  title="ફોર્મ ખાલી કરો / Reset Form"
                 >
-                  ✖ Cancel Edit
+                  ✖ {editingId ? "Cancel Edit" : "Reset Form"}
                 </button>
               )}
 
