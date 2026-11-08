@@ -1,7 +1,37 @@
 /* =========================================================
-   BHAGAVAD GITA - AUTO TRANSLATION SERVICE (GUJARATI -> HINDI)
+   BHAGAVAD GITA - AUTO TRANSLATION SERVICE (GUJARATI -> HINDI & ENGLISH)
    Powered by Google Gemini AI with Devotional Spiritual Accuracy
    ========================================================= */
+
+const crypto = require("crypto");
+
+// Deterministic in-memory cache for repeated translations
+// Ensures clicking 2-3 times returns the exact same perfect result in 0ms
+const translationCache = new Map();
+
+function computeHash(data) {
+  const str = typeof data === "string" ? data.trim() : JSON.stringify(data);
+  return crypto.createHash("md5").update(str).digest("hex");
+}
+
+function getFromCache(lang, field, content) {
+  if (!content) return null;
+  const key = `${lang}:${field}:${computeHash(content)}`;
+  if (translationCache.has(key)) {
+    return translationCache.get(key);
+  }
+  return null;
+}
+
+function setToCache(lang, field, content, result) {
+  if (!result || !content) return;
+  const key = `${lang}:${field}:${computeHash(content)}`;
+  if (translationCache.size > 10000) {
+    const firstKey = translationCache.keys().next().value;
+    translationCache.delete(firstKey);
+  }
+  translationCache.set(key, result);
+}
 
 const SPEAKER_MAP_HI = {
   "શ્રીભગવાનુવાચ": "श्रीभगवानुवाच",
@@ -85,12 +115,11 @@ function getGeminiApiKey() {
   }
 }
 
-// Current ultra-fast, live Gemini models prioritized by latency and reliability
+// Current ultra-fast, live Gemini models prioritized by latency and devotional accuracy
 const TRANSLATION_MODELS = [
+  "gemini-3.1-flash-lite-preview",
   "gemini-flash-lite-latest",
   "gemini-3-flash-preview",
-  "gemini-3.5-flash",
-  "gemini-3.1-flash-lite-preview",
 ];
 
 /**
@@ -207,6 +236,10 @@ async function translateShlokToHindi({
   message,
   wordMeanings = [],
 }) {
+  const cachePayload = { chapterNumber, chapterName, speaker, sanskrit, translation, message, wordMeanings };
+  const cached = getFromCache("hi", "shlok_full", cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
 
   // Fallback defaults if Gemini is offline
@@ -294,12 +327,13 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
             generationConfig: {
               temperature: 0.0,
               topK: 1,
-              topP: 0.95,
+              topP: 1.0,
+              seed: 42,
               response_mime_type: "application/json",
             },
           }),
         },
-        7000
+        15000
       );
 
       if (response.ok) {
@@ -341,13 +375,15 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
             };
           });
 
-          return {
+          const finalResult = {
             chapterNameHi: parsed.chapterNameHi || fallbackChapterNameHi,
             speakerHi: parsed.speakerHi || fallbackSpeakerHi,
             translationHi: parsed.translationHi || cleanHtml(translation),
             messageHi: parsed.messageHi || cleanHtml(message),
             wordMeanings: mergedWordMeanings,
           };
+          setToCache("hi", "shlok_full", cachePayload, finalResult);
+          return finalResult;
         }
       } else {
         const err = await response.text();
@@ -398,6 +434,10 @@ async function translateQuizToHindi({
   category = "all",
   chapterNumber = null,
 }) {
+  const cachePayload = { question, options, correctAnswer, explanation, category, chapterNumber };
+  const cached = getFromCache("hi", "quiz_full", cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
   const cleanKey = String(apiKey || "").trim();
 
@@ -456,7 +496,8 @@ Gujarati Explanation: ${cleanHtml(explanation)}`;
             generationConfig: {
               temperature: 0.0,
               topK: 1,
-              topP: 0.95,
+              topP: 1.0,
+              seed: 42,
               response_mime_type: "application/json",
             },
           }),
@@ -493,7 +534,7 @@ Gujarati Explanation: ${cleanHtml(explanation)}`;
             finalCorrectAnswerHi = finalOptionsHi[origIdx];
           }
 
-          return {
+          const finalResult = {
             questionHi: parsed.questionHi || cleanHtml(question),
             optionsHi:
               finalOptionsHi.length === 4
@@ -504,6 +545,8 @@ Gujarati Explanation: ${cleanHtml(explanation)}`;
             explanationHi:
               parsed.explanationHi || cleanHtml(explanation),
           };
+          setToCache("hi", "quiz_full", cachePayload, finalResult);
+          return finalResult;
         }
       } else {
         const err = await response.text();
@@ -529,6 +572,10 @@ async function translateShlokToEnglish({
   message,
   wordMeanings = [],
 }) {
+  const cachePayload = { chapterNumber, chapterName, speaker, sanskrit, translation, message, wordMeanings };
+  const cached = getFromCache("en", "shlok_full", cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
 
   const fallbackSpeakerEn =
@@ -605,12 +652,13 @@ Word Meanings: ${JSON.stringify(
             generationConfig: {
               temperature: 0.0,
               topK: 1,
-              topP: 0.95,
+              topP: 1.0,
+              seed: 42,
               response_mime_type: "application/json",
             },
           }),
         },
-        7000
+        15000
       );
 
       if (response.ok) {
@@ -652,13 +700,15 @@ Word Meanings: ${JSON.stringify(
             };
           });
 
-          return {
+          const finalResult = {
             chapterNameEn: parsed.chapterNameEn || fallbackChapterNameEn,
             speakerEn: parsed.speakerEn || fallbackSpeakerEn,
             translationEn: parsed.translationEn || cleanHtml(translation),
             messageEn: parsed.messageEn || cleanHtml(message),
             wordMeanings: mergedWordMeanings,
           };
+          setToCache("en", "shlok_full", cachePayload, finalResult);
+          return finalResult;
         }
       }
     } catch (err) {
@@ -707,6 +757,10 @@ async function translateQuizToEnglish({
   category = "all",
   chapterNumber = null,
 }) {
+  const cachePayload = { question, options, correctAnswer, explanation, category, chapterNumber };
+  const cached = getFromCache("en", "quiz_full", cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
   const cleanKey = String(apiKey || "").trim();
 
@@ -761,7 +815,8 @@ Explanation: ${cleanHtml(explanation)}`;
             generationConfig: {
               temperature: 0.0,
               topK: 1,
-              topP: 0.95,
+              topP: 1.0,
+              seed: 42,
               response_mime_type: "application/json",
             },
           }),
@@ -795,7 +850,7 @@ Explanation: ${cleanHtml(explanation)}`;
             finalCorrectAnswerEn = finalOptionsEn[origIdx];
           }
 
-          return {
+          const finalResult = {
             questionEn: parsed.questionEn || cleanHtml(question),
             optionsEn:
               finalOptionsEn.length === 4
@@ -806,6 +861,8 @@ Explanation: ${cleanHtml(explanation)}`;
             explanationEn:
               parsed.explanationEn || cleanHtml(explanation),
           };
+          setToCache("en", "quiz_full", cachePayload, finalResult);
+          return finalResult;
         }
       }
     } catch (err) {
@@ -819,7 +876,7 @@ Explanation: ${cleanHtml(explanation)}`;
 /**
  * Generic caller for Gemini models returning parsed JSON
  */
-async function callGeminiJson(prompt) {
+async function callGeminiJson(prompt, timeoutMs = 12000) {
   const apiKey = getGeminiApiKey();
   if (!apiKey) return null;
 
@@ -838,14 +895,15 @@ async function callGeminiJson(prompt) {
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0.1,
+              temperature: 0.0,
               topK: 1,
-              topP: 0.95,
+              topP: 1.0,
+              seed: 42,
               response_mime_type: "application/json",
             },
           }),
         },
-        7000
+        timeoutMs
       );
 
       if (response.ok) {
@@ -881,26 +939,29 @@ async function translateSingleFieldToHindi({
   wordMeanings = [],
 }) {
   if (field === "words") {
+    const cached = getFromCache("hi", "words", wordMeanings);
+    if (cached) return cached;
+
     const itemsToSend = (wordMeanings || []).map((w, idx) => ({
       id: idx,
       sanskritWord: String(w.word || "").trim(),
       gujaratiMeaning: cleanHtml(w.meaning || ""),
     }));
 
-    const prompt = `You are a professional, accurate translator.
-Translate the following Sanskrit word meanings (શબ્દાર્થ) strictly and faithfully from Gujarati into Hindi (Devanagari script).
+    const prompt = `You are a revered Sanskrit and Vedic scholar of Srimad Bhagavad Gita.
+Translate the following Sanskrit word meanings (શબ્દાર્થ) strictly and faithfully from Gujarati into pure, authentic Hindi (Devanagari script).
 
 CRITICAL ACCURACY RULES:
-1. TRANSLATE ONLY THE GIVEN GUJARATI MEANING: Translate strictly and faithfully what is written in the user's Gujarati meaning. Do NOT add outside interpretations, commentary, or extraneous text.
+1. TRANSLATE WITH 100% FAITHFULNESS: Translate strictly and faithfully what is in the Gujarati meaning into clear, standard, authentic Hindi. Do NOT add outside interpretations, commentary, or extraneous text.
 2. SANSKRIT WORD PRESERVATION:
    The Sanskrit words in 'sanskritWord' must never be changed.
-3. CRITICAL RULE FOR EQUAL SIGN ('='):
+3. EQUAL SIGN BREAKDOWN RULE:
    When 'gujaratiMeaning' contains Sanskrit sub-words broken down with '=' (e.g. "विराटः = રાજા વિરાટ , च = અને"):
    - The Sanskrit words BEFORE '=' (such as "विराटः", "च", "पाण्डवाः", "एव") MUST REMAIN 100% PURE SANSKRIT IN DEVANAGARI SCRIPT. NEVER translate or alter them!
    - Translate ONLY the Gujarati explanation AFTER '=' into Hindi:
      Example: "विराटः = રાજા વિરાટ , च = અને" -> "विराटः = राजा विराट, च = और"
      Example: "पाण्डवाः = પાંડુપુત્રો , च = અને , एव = જ" -> "पाण्डवाः = पाण्डुपुत्र, च = और, एव = ही"
-4. If no '=' is present, directly translate the Gujarati meaning into accurate Hindi:
+4. If no '=' is present, directly translate the Gujarati meaning into accurate, sacred Hindi:
    Example: "ધર્મક્ષેત્રમાં" -> "धर्मक्षेत्र में"
 5. Return exactly one entry for EVERY 'id' from 0 to ${itemsToSend.length - 1} in the exact same sequence.
 Return ONLY valid JSON:
@@ -928,7 +989,7 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
       }
     });
 
-    return {
+    const result = {
       wordMeanings: (wordMeanings || []).map((orig, idx) => {
         const rawMeaning =
           hiMap.get(idx) ||
@@ -942,20 +1003,27 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
         };
       }),
     };
+    setToCache("hi", "words", wordMeanings, result);
+    return result;
   }
 
   if (field === "translation") {
+    const cached = getFromCache("hi", "translation", translation);
+    if (cached) return cached;
+
     let resultHi = null;
     try {
-      const prompt = `You are a professional, accurate translator.
-Translate the following Bhagavad Gita verse translation strictly and faithfully from Gujarati into Hindi.
+      const prompt = `You are a revered Vedic and Sanskrit scholar of Srimad Bhagavad Gita.
+Translate the following Bhagavad Gita verse translation strictly and faithfully from Gujarati into pure, sacred, and authentic Hindi (Devanagari script).
 
-CRITICAL RULES:
-1. TRANSLATE ONLY WHAT IS WRITTEN IN THE GUJARATI TEXT:
-   Translate strictly what is written in the Gujarati Translation below.
-   Do NOT add, invent, or assume any extra words, names, or addresses (for example, do NOT add "हे संजय", "हे राजन", or any name/address) that are NOT present in the provided Gujarati text.
-   Do NOT replace the user's words with external translations. Translate ONLY the user's Gujarati words into Hindi with 100% fidelity.
-2. ACCURATE & FAITHFUL: Maintain exact meaning, tone, and grammar in natural Hindi.
+CRITICAL ACCURACY RULES:
+1. TRANSLATE WITH 100% FAITHFULNESS:
+   - Translate strictly what is stated in the Gujarati text into natural, reverent, devotional Hindi.
+   - Do NOT add, invent, or assume any extra words, names, or addresses (e.g. do NOT add "हे संजय" or "हे राजन") that are NOT present in the provided Gujarati text.
+   - Do NOT omit any word, clause, or nuance from the Gujarati text.
+2. SACRED ACCURACY:
+   - Preserve holy scriptural names and divine vocabulary with sacred dignity (e.g. धृतराष्ट्र, संजय, अर्जुन, श्रीकृष्ण, धर्मक्षेत्र, कुरुक्षेत्र).
+   - Use standard Devanagari grammar and punctuation.
 3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
 
 Return ONLY valid JSON:
@@ -982,21 +1050,26 @@ ${translation}`;
       throw new Error("અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
     }
 
-    return {
+    const result = {
       translationHi: resultHi,
     };
+    setToCache("hi", "translation", translation, result);
+    return result;
   }
 
   if (field === "message") {
+    const cached = getFromCache("hi", "message", message);
+    if (cached) return cached;
+
     let resultHi = null;
     try {
-      const prompt = `You are a professional, accurate translator.
-Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into Hindi.
+      const prompt = `You are a revered Vedic and Bhagavad Gita scholar.
+Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into profound, inspiring Hindi (Devanagari script).
 
-CRITICAL RULES:
-1. TRANSLATE ONLY THE GIVEN GUJARATI TEXT:
-   Translate strictly and faithfully what is written in the Gujarati Message below into clear Hindi.
-   Do NOT add outside verses, commentaries, or extra ideas not present in the user's Gujarati source.
+CRITICAL ACCURACY RULES:
+1. TRANSLATE WITH 100% FAITHFULNESS:
+   - Translate strictly what is written in the Gujarati message without adding external commentaries or omitting any teaching.
+   - Convey the philosophical depth, devotion, and moral message with clarity, inspiration, and elegance.
 2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
 
 Return ONLY valid JSON:
@@ -1023,9 +1096,11 @@ ${message}`;
       throw new Error("સંદેશનો હિન્દી અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
     }
 
-    return {
+    const result = {
       messageHi: resultHi,
     };
+    setToCache("hi", "message", message, result);
+    return result;
   }
 
   return {};
@@ -1042,26 +1117,29 @@ async function translateSingleFieldToEnglish({
   wordMeanings = [],
 }) {
   if (field === "words") {
+    const cached = getFromCache("en", "words", wordMeanings);
+    if (cached) return cached;
+
     const itemsToSend = (wordMeanings || []).map((w, idx) => ({
       id: idx,
       sanskritWord: String(w.word || "").trim(),
       gujaratiMeaning: cleanHtml(w.meaning || ""),
     }));
 
-    const prompt = `You are a professional, accurate translator.
-Translate the following Sanskrit word meanings (શબ્દાર્થ) strictly and faithfully from Gujarati into English.
+    const prompt = `You are a revered Sanskrit and Vedic scholar of Srimad Bhagavad Gita.
+Translate the following Sanskrit word meanings (શબ્દાર્થ) strictly and faithfully from Gujarati into clear, accurate English.
 
 CRITICAL ACCURACY RULES:
-1. TRANSLATE ONLY THE GIVEN GUJARATI MEANING: Translate strictly and faithfully what is written in the user's Gujarati meaning. Do NOT add outside interpretations, commentary, or extraneous words.
+1. TRANSLATE WITH 100% FAITHFULNESS: Translate strictly and faithfully what is in the Gujarati meaning into clear, standard English. Do NOT add outside interpretations, commentary, or extraneous words.
 2. SANSKRIT WORD PRESERVATION:
    The Sanskrit words in 'sanskritWord' must never be changed.
-3. CRITICAL RULE FOR EQUAL SIGN ('='):
+3. EQUAL SIGN BREAKDOWN RULE:
    When 'gujaratiMeaning' contains Sanskrit sub-words broken down with '=' (e.g. "विराटः = રાજા વિરાટ , च = અને"):
    - The Sanskrit words before '=' (like "विराटः", "च", "पाण्डवाः", "एव") MUST REMAIN EXACTLY IN SANSKRIT (Devanagari script). NEVER translate or transliterate them into English! (DO NOT write "Virata = King Virata, and = and", IT MUST BE "विराटः = King Virata, च = and").
    - Translate ONLY the Gujarati explanation after '=' into English:
      Example: "विराटः = રાજા વિરાટ , च = અને" -> "विराटः = King Virata, च = and"
-     Example: "पाण्डवाः = પાંડુપુત્રો , च = અને , एव = જ" -> "पाण्डवाः = sons of Pandu, च = and, एव = only/indeed"
-4. If no '=' is present, directly translate the Gujarati meaning into accurate English.
+     Example: "पाण्डवाः = પાંડુપુત્રો , च = અને , एव = જ" -> "पाण्डवाः = sons of Pandu, च = and, एव = indeed/only"
+4. If no '=' is present, directly translate the Gujarati meaning into accurate, standard English.
 5. Return exactly one entry for EVERY 'id' from 0 to ${itemsToSend.length - 1} in the exact same sequence.
 Return ONLY valid JSON:
 {
@@ -1073,62 +1151,69 @@ Return ONLY valid JSON:
 ITEMS TO TRANSLATE:
 ${JSON.stringify(itemsToSend, null, 2)}`;
 
-      let parsed = null;
-      try {
-        parsed = await callGeminiJson(prompt);
-      } catch (err) {
-        console.warn("Gemini English wordMeanings translation attempt failed:", err.message);
-      }
-
-      const enMap = new Map();
-      if (parsed && Array.isArray(parsed.wordMeanings)) {
-        parsed.wordMeanings.forEach((item, idx) => {
-          if (item) {
-            const key = item.id !== undefined ? Number(item.id) : idx;
-            enMap.set(key, item.meaningEn || "");
-            if (item.sanskritWord) enMap.set(String(item.sanskritWord).trim(), item.meaningEn || "");
-            if (item.word) enMap.set(String(item.word).trim(), item.meaningEn || "");
-          }
-        });
-      }
-
-      const wordMeaningsResult = await Promise.all(
-        (wordMeanings || []).map(async (orig, idx) => {
-          let rawMeaning =
-            enMap.get(idx) ||
-            enMap.get(String(orig.word).trim()) ||
-            orig.meaningEn ||
-            "";
-
-          if (!rawMeaning && orig.meaning) {
-            rawMeaning = (await fallbackGoogleTranslate(cleanHtml(orig.meaning), "en")) || orig.meaning;
-          }
-
-          return {
-            ...orig,
-            word: orig.word, // 100% Guaranteed: The user's exact small Sanskrit word is preserved untouched!
-            meaningEn: preserveSanskritSubWords(orig.meaning, rawMeaning),
-          };
-        })
-      );
-
-      return {
-        wordMeanings: wordMeaningsResult,
-      };
+    let parsed = null;
+    try {
+      parsed = await callGeminiJson(prompt);
+    } catch (err) {
+      console.warn("Gemini English wordMeanings translation attempt failed:", err.message);
     }
 
-    if (field === "translation") {
-      let resultEn = null;
-      try {
-        const prompt = `You are a professional, accurate translator.
-Translate the following Bhagavad Gita verse translation strictly and faithfully from Gujarati into English.
+    const enMap = new Map();
+    if (parsed && Array.isArray(parsed.wordMeanings)) {
+      parsed.wordMeanings.forEach((item, idx) => {
+        if (item) {
+          const key = item.id !== undefined ? Number(item.id) : idx;
+          enMap.set(key, item.meaningEn || "");
+          if (item.sanskritWord) enMap.set(String(item.sanskritWord).trim(), item.meaningEn || "");
+          if (item.word) enMap.set(String(item.word).trim(), item.meaningEn || "");
+        }
+      });
+    }
 
-CRITICAL RULES:
-1. TRANSLATE ONLY WHAT IS WRITTEN IN THE GUJARATI TEXT:
-   Translate strictly and accurately what is written in the Gujarati Translation below.
-   Do NOT add, invent, or assume any extra words, names, or addresses (for example, do NOT add "O Sanjaya", "O King", or any address) that are NOT present in the provided Gujarati text.
-   Do NOT replace the user's words with external verses. Translate ONLY the user's Gujarati words into English with 100% fidelity.
-2. ACCURATE & FAITHFUL: Maintain exact meaning and tone in natural, grammatically correct English.
+    const wordMeaningsResult = await Promise.all(
+      (wordMeanings || []).map(async (orig, idx) => {
+        let rawMeaning =
+          enMap.get(idx) ||
+          enMap.get(String(orig.word).trim()) ||
+          orig.meaningEn ||
+          "";
+
+        if (!rawMeaning && orig.meaning) {
+          rawMeaning = (await fallbackGoogleTranslate(cleanHtml(orig.meaning), "en")) || orig.meaning;
+        }
+
+        return {
+          ...orig,
+          word: orig.word, // 100% Guaranteed: The user's exact small Sanskrit word is preserved untouched!
+          meaningEn: preserveSanskritSubWords(orig.meaning, rawMeaning),
+        };
+      })
+    );
+
+    const result = {
+      wordMeanings: wordMeaningsResult,
+    };
+    setToCache("en", "words", wordMeanings, result);
+    return result;
+  }
+
+  if (field === "translation") {
+    const cached = getFromCache("en", "translation", translation);
+    if (cached) return cached;
+
+    let resultEn = null;
+    try {
+      const prompt = `You are a revered Vedic and Sanskrit scholar of Srimad Bhagavad Gita.
+Translate the following Bhagavad Gita verse translation strictly and faithfully from Gujarati into elegant, sacred, and grammatically perfect English.
+
+CRITICAL ACCURACY RULES:
+1. TRANSLATE WITH 100% FAITHFULNESS:
+   - Translate strictly and accurately what is written in the Gujarati Translation below.
+   - Do NOT add, invent, or assume any extra words, names, or addresses (e.g. do NOT add "O Sanjaya" or "O King") that are NOT present in the provided Gujarati text.
+   - Do NOT omit any word, clause, or nuance from the Gujarati text.
+2. SACRED DIGNITY & GRAMMAR:
+   - Maintain classic, revered scriptural English (appropriate for the holy Gita).
+   - Transliterate holy names accurately (e.g., Dhritarashtra, Sanjaya, Arjuna, Lord Krishna / The Blessed Lord, Kurukshetra, Dharma).
 3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
 
 Return ONLY valid JSON:
@@ -1139,37 +1224,42 @@ Return ONLY valid JSON:
 GUJARATI TEXT TO TRANSLATE:
 ${translation}`;
 
-        const parsed = await callGeminiJson(prompt);
-        if (parsed && parsed.translationEn && parsed.translationEn.trim()) {
-          resultEn = parsed.translationEn.trim();
-        }
-      } catch (err) {
-        console.warn("Gemini English verse translation attempt failed:", err.message);
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && parsed.translationEn && parsed.translationEn.trim()) {
+        resultEn = parsed.translationEn.trim();
       }
-
-      if (!resultEn) {
-        resultEn = await fallbackGoogleTranslate(cleanHtml(translation), "en");
-      }
-
-      if (!resultEn) {
-        throw new Error("અંગ્રેજી અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
-      }
-
-      return {
-        translationEn: resultEn,
-      };
+    } catch (err) {
+      console.warn("Gemini English verse translation attempt failed:", err.message);
     }
 
-    if (field === "message") {
-      let resultEn = null;
-      try {
-        const prompt = `You are a professional, accurate translator.
-Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into English.
+    if (!resultEn) {
+      resultEn = await fallbackGoogleTranslate(cleanHtml(translation), "en");
+    }
 
-CRITICAL RULES:
-1. TRANSLATE ONLY THE GIVEN GUJARATI TEXT:
-   Translate strictly and faithfully what is written in the Gujarati Message below into clear, inspiring English.
-   Do NOT add outside verses, commentaries, or extra ideas not present in the user's Gujarati source.
+    if (!resultEn) {
+      throw new Error("અંગ્રેજી અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
+    }
+
+    const result = {
+      translationEn: resultEn,
+    };
+    setToCache("en", "translation", translation, result);
+    return result;
+  }
+
+  if (field === "message") {
+    const cached = getFromCache("en", "message", message);
+    if (cached) return cached;
+
+    let resultEn = null;
+    try {
+      const prompt = `You are a revered Vedic and Bhagavad Gita scholar.
+Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into inspiring, dignified, and grammatically perfect English.
+
+CRITICAL ACCURACY RULES:
+1. TRANSLATE WITH 100% FAITHFULNESS:
+   - Translate strictly and faithfully what is written in the Gujarati Message below into clear, inspiring English without adding external ideas.
+   - Convey the practical spiritual wisdom clearly, eloquently, and respectfully.
 2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
 
 Return ONLY valid JSON:
@@ -1180,26 +1270,28 @@ Return ONLY valid JSON:
 GUJARATI TEXT TO TRANSLATE:
 ${message}`;
 
-        const parsed = await callGeminiJson(prompt);
-        if (parsed && parsed.messageEn && parsed.messageEn.trim()) {
-          resultEn = parsed.messageEn.trim();
-        }
-      } catch (err) {
-        console.warn("Gemini English message translation attempt failed:", err.message);
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && parsed.messageEn && parsed.messageEn.trim()) {
+        resultEn = parsed.messageEn.trim();
       }
-
-      if (!resultEn) {
-        resultEn = await fallbackGoogleTranslate(cleanHtml(message), "en");
-      }
-
-      if (!resultEn) {
-        throw new Error("સંદેશનો અંગ્રેજી અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
-      }
-
-      return {
-        messageEn: resultEn,
-      };
+    } catch (err) {
+      console.warn("Gemini English message translation attempt failed:", err.message);
     }
+
+    if (!resultEn) {
+      resultEn = await fallbackGoogleTranslate(cleanHtml(message), "en");
+    }
+
+    if (!resultEn) {
+      throw new Error("સંદેશનો અંગ્રેજી અનુવાદ થઈ શક્યો નથી. કૃપા કરીને થોડી વાર પછી ફરી પ્રયાસ કરો.");
+    }
+
+    const result = {
+      messageEn: resultEn,
+    };
+    setToCache("en", "message", message, result);
+    return result;
+  }
 
   return {};
 }
@@ -1217,6 +1309,10 @@ async function translateQuizFieldToHindi({
   category = "all",
   chapterNumber = null,
 }) {
+  const cachePayload = { field, question, options, correctAnswer, explanation, category, chapterNumber };
+  const cached = getFromCache("hi", `quiz_field_${field}`, cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
   const cleanKey = String(apiKey || "").trim();
 
@@ -1262,7 +1358,9 @@ ${cleanHtml(question)}`;
     if (!questionHi) {
       throw new Error("AI દ્વારા પ્રશ્નનો હિન્દી અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.");
     }
-    return { questionHi };
+    const result = { questionHi };
+    setToCache("hi", "quiz_field_question", cachePayload, result);
+    return result;
   }
 
   if (field === "options") {
@@ -1308,10 +1406,12 @@ Correct Answer: ${cleanHtml(correctAnswer)}`;
           : (await fallbackGoogleTranslate(cleanHtml(correctAnswer), "hi")) || "";
     }
 
-    return {
+    const result = {
       optionsHi,
       correctAnswerHi,
     };
+    setToCache("hi", "quiz_field_options", cachePayload, result);
+    return result;
   }
 
   if (field === "explanation") {
@@ -1345,7 +1445,9 @@ ${cleanHtml(explanation)}`;
     if (!explanationHi) {
       throw new Error("AI દ્વારા સમજૂતીનો હિન્દી અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.");
     }
-    return { explanationHi };
+    const result = { explanationHi };
+    setToCache("hi", "quiz_field_explanation", cachePayload, result);
+    return result;
   }
 
   return {};
@@ -1363,6 +1465,10 @@ async function translateQuizFieldToEnglish({
   category = "all",
   chapterNumber = null,
 }) {
+  const cachePayload = { field, question, options, correctAnswer, explanation, category, chapterNumber };
+  const cached = getFromCache("en", `quiz_field_${field}`, cachePayload);
+  if (cached) return cached;
+
   const apiKey = getGeminiApiKey();
   const cleanKey = String(apiKey || "").trim();
 
@@ -1408,7 +1514,9 @@ ${cleanHtml(question)}`;
     if (!questionEn) {
       throw new Error("AI દ્વારા પ્રશ્નનો અંગ્રેજી અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.");
     }
-    return { questionEn };
+    const result = { questionEn };
+    setToCache("en", "quiz_field_question", cachePayload, result);
+    return result;
   }
 
   if (field === "options") {
@@ -1454,10 +1562,12 @@ Correct Answer: ${cleanHtml(correctAnswer)}`;
           : (await fallbackGoogleTranslate(cleanHtml(correctAnswer), "en")) || "";
     }
 
-    return {
+    const result = {
       optionsEn,
       correctAnswerEn,
     };
+    setToCache("en", "quiz_field_options", cachePayload, result);
+    return result;
   }
 
   if (field === "explanation") {
@@ -1491,7 +1601,9 @@ ${cleanHtml(explanation)}`;
     if (!explanationEn) {
       throw new Error("AI દ્વારા સમજૂતીનો અંગ્રેજી અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.");
     }
-    return { explanationEn };
+    const result = { explanationEn };
+    setToCache("en", "quiz_field_explanation", cachePayload, result);
+    return result;
   }
 
   return {};
