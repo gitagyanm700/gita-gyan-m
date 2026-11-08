@@ -438,91 +438,85 @@ useEffect(() => {
 
   const fetchChapterShlokas = async () => {
     try {
-      setLoading(true);
-      setError("");
       setActiveWordIndex(null);
+      setError("");
 
-      // 1. If device is explicitly offline, check offline storage first
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        const offlineData = getChapterOffline(currentChapterNumber);
-        if (offlineData && Array.isArray(offlineData.shlokas) && offlineData.shlokas.length > 0) {
-          applyLoadedShlokas(offlineData.shlokas, offlineData.chapterName, true);
-          setLoading(false);
-          return;
-        }
+      // STEP 1: INSTANT DISPLAY (0ms) from Offline Storage or Bundled Data
+      let hasImmediateData = false;
+      const offlineData = getChapterOffline(currentChapterNumber);
+      if (offlineData && Array.isArray(offlineData.shlokas) && offlineData.shlokas.length > 0) {
+        applyLoadedShlokas(offlineData.shlokas, offlineData.chapterName, !navigator.onLine);
+        setLoading(false);
+        hasImmediateData = true;
+      } else {
+        try {
+          const fallbackMod = await import("../data/fallbackShlokas.json");
+          const fallbackMap = fallbackMod.default || fallbackMod;
+          const chShlokas = fallbackMap[String(currentChapterNumber)];
+          if (Array.isArray(chShlokas) && chShlokas.length > 0) {
+            const resolvedName =
+              chShlokas[0]?.chapterName ||
+              chapterNames[currentChapterNumber] ||
+              (isHindi ? `अध्याय ${currentChapterNumber}` : `અધ્યાય ${currentChapterNumber}`);
+            saveChapterOffline(currentChapterNumber, chShlokas, resolvedName);
+            applyLoadedShlokas(chShlokas, resolvedName, false);
+            setLoading(false);
+            hasImmediateData = true;
+          }
+        } catch (e) {}
       }
 
-      const token = getValidToken();
+      // If no immediate data available (e.g. newly added chapter), show spinner
+      if (!hasImmediateData) {
+        setLoading(true);
+      }
 
+      // If user is offline, we're done (already loaded above)
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setLoading(false);
+        return;
+      }
+
+      // STEP 2: BACKGROUND REVALIDATION (sync any fresh edits from live backend)
+      const token = getValidToken();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const response = await fetch(
         `${API_URL}/chapter/${currentChapterNumber}`,
         {
           signal: controller.signal,
-          headers: token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {},
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
       clearTimeout(timeoutId);
 
-      const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedShlokas = data.shlokas || [];
 
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            (isHindi ? "श्लोक लोड नहीं हो सके।" : "Shlokas load થઈ શક્યા નથી.")
-        );
-      }
+        if (fetchedShlokas.length > 0) {
+          fetchedShlokas.sort(
+            (a, b) => Number(a.shlokNumber) - Number(b.shlokNumber)
+          );
 
-      const fetchedShlokas = data.shlokas || [];
-
-      fetchedShlokas.sort(
-        (a, b) =>
-          Number(a.shlokNumber) -
-          Number(b.shlokNumber)
-      );
-
-      const resolvedChapterName =
-        fetchedShlokas[0]?.chapterName ||
-        chapterNames[currentChapterNumber] ||
-        (isHindi ? `अध्याय ${currentChapterNumber}` : `અધ્યાય ${currentChapterNumber}`);
-
-      // Cache immediately for future 100% offline access
-      saveChapterOffline(currentChapterNumber, fetchedShlokas, resolvedChapterName);
-
-      applyLoadedShlokas(fetchedShlokas, resolvedChapterName, false);
-
-    } catch (err) {
-      console.error("Fetch Chapter Shlokas Error:", err);
-
-      // 2. Offline storage fallback
-      const offlineData = getChapterOffline(currentChapterNumber);
-      if (offlineData && Array.isArray(offlineData.shlokas) && offlineData.shlokas.length > 0) {
-        applyLoadedShlokas(offlineData.shlokas, offlineData.chapterName, true);
-        return;
-      }
-
-      // 3. Bundled Fallback (100% Guaranteed instant load even when backend is sleeping or down)
-      try {
-        const fallbackMod = await import("../data/fallbackShlokas.json");
-        const fallbackMap = fallbackMod.default || fallbackMod;
-        const chShlokas = fallbackMap[String(currentChapterNumber)];
-        if (Array.isArray(chShlokas) && chShlokas.length > 0) {
-          const resolvedName =
-            chShlokas[0]?.chapterName ||
+          const resolvedChapterName =
+            fetchedShlokas[0]?.chapterName ||
             chapterNames[currentChapterNumber] ||
             (isHindi ? `अध्याय ${currentChapterNumber}` : `અધ્યાય ${currentChapterNumber}`);
-          saveChapterOffline(currentChapterNumber, chShlokas, resolvedName);
-          applyLoadedShlokas(chShlokas, resolvedName, false);
-          return;
+
+          // Update cache with fresh data
+          saveChapterOffline(currentChapterNumber, fetchedShlokas, resolvedChapterName);
+          applyLoadedShlokas(fetchedShlokas, resolvedChapterName, false);
         }
-      } catch (fallbackErr) {
-        console.warn("Bundled fallback shlokas load error:", fallbackErr);
+      }
+    } catch (err) {
+      console.warn("Chapter fetch background revalidation note:", err.message);
+
+      // If we already displayed shlokas from cache or bundle, NEVER show an error!
+      if (shlokasRef.current && shlokasRef.current.length > 0) {
+        setLoading(false);
+        return;
       }
 
       const isNetworkErr =
@@ -533,13 +527,12 @@ useEffect(() => {
       setError(
         isNetworkErr
           ? (isHindi
-              ? "सर्वर अभी धीमा है या उत्तर नहीं दे रहा है। कृपया कुछ क्षणों बाद पुनः प्रयास करें।"
-              : "સર્વર હાલમાં ધીમું છે અથવા પ્રતિક્રિયા આપી રહ્યું નથી. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.")
+              ? "सर्वर अभी धीमा है। कृपया कुछ क्षणों बाद पुनः प्रयास करें।"
+              : "સર્વર હાલમાં ધીમું છે. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.")
           : (err.message || (isHindi ? "श्लोक लोड करने में त्रुटि आई।" : "Shlokas load કરવામાં error આવ્યો."))
       );
 
       setShlokas([]);
-
     } finally {
       setLoading(false);
     }
