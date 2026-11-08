@@ -1,4 +1,5 @@
 import { getValidToken } from "../utils/authHelper.js";
+import { executeResilientQuizTranslation } from "../utils/aiTranslator.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ShareQuizQuestionModal from "../components/ShareQuizQuestionModal.jsx";
@@ -686,44 +687,19 @@ function QuizManagement() {
         formData.option4,
       ].map((o) => (o || "").trim());
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const translated = await executeResilientQuizTranslation({
+        field,
+        targetLang,
+        category: formData.category,
+        chapterNumber: formData.chapterNumber,
+        question: formData.question,
+        options: rawOptions,
+        correctAnswer: formData.correctAnswer,
+        explanation: formData.explanation,
+        apiUrl: API_URL,
+        token,
+      });
 
-      let response;
-      try {
-        response = await fetch(`${API_URL}/admin/auto-translate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            category: formData.category,
-            chapterNumber: formData.chapterNumber,
-            question: formData.question,
-            options: rawOptions,
-            correctAnswer: formData.correctAnswer,
-            explanation: formData.explanation,
-            targetLang: targetLang,
-            field: field,
-          }),
-        });
-      } catch (fetchErr) {
-        if (fetchErr.name === "AbortError") {
-          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
-        }
-        throw fetchErr;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "ઓટો-અનુવાદ થઈ શક્યો નથી.");
-      }
-
-      const translated = data?.data || data?.translated;
       if (!translated) {
         throw new Error("ઓટો-અનુવાદ માહિતી પ્રાપ્ત થઈ શકી નથી.");
       }
@@ -825,50 +801,22 @@ function QuizManagement() {
 
       const token = getToken();
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-      let response;
-      try {
-        response = await fetch(`${API_URL}/admin/auto-translate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            category: formData.category,
-            chapterNumber: formData.chapterNumber,
-            question: formData.question,
-            options: rawOptions,
-            correctAnswer: formData.correctAnswer,
-            explanation: formData.explanation,
-            targetLang: targetLang || "all",
-          }),
-        });
-      } catch (fetchErr) {
-        if (fetchErr.name === "AbortError") {
-          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
-        }
-        throw fetchErr;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "ઓટો-અનુવાદ થઈ શક્યો નથી."
-        );
-      }
-
-      const translated = data?.data || data?.translated;
+      const translated = await executeResilientQuizTranslation({
+        field: "all",
+        targetLang: targetLang || "all",
+        category: formData.category,
+        chapterNumber: formData.chapterNumber,
+        question: formData.question,
+        options: rawOptions,
+        correctAnswer: formData.correctAnswer,
+        explanation: formData.explanation,
+        apiUrl: API_URL,
+        token,
+      });
 
       if (!translated) {
         throw new Error(
-          data?.message || "ઓટો-અનુવાદ માહિતી પ્રાપ્ત થઈ શકી નથી."
+          "ઓટો-અનુવાદ માહિતી પ્રાપ્ત થઈ શકી નથી."
         );
       }
 

@@ -1,4 +1,5 @@
 import { getValidToken, handleAuth401 } from "../utils/authHelper.js";
+import { executeResilientFieldTranslation } from "../utils/aiTranslator.js";
 import {
   useEffect,
   useLayoutEffect,
@@ -426,9 +427,18 @@ const alignSpecialCharacterSpacing = (origText, translatedText) => {
   }
 
   // Detect which punctuation spacing patterns exist in the original Gujarati text
-  const hasSpaceBeforeComma = /\s+,/.test(origText);
-  const hasSpaceBeforeColon = /\s+:/.test(origText);
-  const hasSpaceBeforeSemicolon = /\s+;/.test(origText);
+  const hasSpaceAroundComma = /\s+,\s+/.test(origText);
+  const hasSpaceBeforeCommaOnly = /\s+,[^\s]/.test(origText);
+  const hasSpaceAfterCommaOnly = /[^\s],\s+/.test(origText);
+
+  const hasSpaceAroundColon = /\s+:\s+/.test(origText);
+  const hasSpaceBeforeColonOnly = /\s+:[^\s]/.test(origText);
+  const hasSpaceAfterColonOnly = /[^\s]:\s+/.test(origText);
+
+  const hasSpaceAroundSemicolon = /\s+;\s+/.test(origText);
+  const hasSpaceBeforeSemicolonOnly = /\s+;[^\s]/.test(origText);
+  const hasSpaceAfterSemicolonOnly = /[^\s];\s+/.test(origText);
+
   const hasSpaceAroundSlash = /\s+\/\s+/.test(origText);
   const hasSpaceBeforeSlashOnly = /\s+\/[^\s]/.test(origText);
   const hasSpaceAfterSlashOnly = /[^\s]\/\s+/.test(origText);
@@ -445,19 +455,31 @@ const alignSpecialCharacterSpacing = (origText, translatedText) => {
   const applyReplacements = (text) => {
     let t = text;
 
-    // 1. Comma: ' ,'
-    if (hasSpaceBeforeComma) {
+    // 1. Comma: ' , ' or ' ,' or ', '
+    if (hasSpaceAroundComma) {
+      t = t.replace(/\s*,\s*/g, " , ");
+    } else if (hasSpaceBeforeCommaOnly) {
       t = t.replace(/\s*,/g, " ,");
+    } else if (hasSpaceAfterCommaOnly) {
+      t = t.replace(/,\s*/g, ", ");
     }
 
-    // 2. Colon: ' :'
-    if (hasSpaceBeforeColon) {
+    // 2. Colon: ' : ' or ' :' or ': '
+    if (hasSpaceAroundColon) {
+      t = t.replace(/\s*:\s*/g, " : ");
+    } else if (hasSpaceBeforeColonOnly) {
       t = t.replace(/\s*:/g, " :");
+    } else if (hasSpaceAfterColonOnly) {
+      t = t.replace(/:\s*/g, ": ");
     }
 
-    // 3. Semicolon: ' ;'
-    if (hasSpaceBeforeSemicolon) {
+    // 3. Semicolon: ' ; ' or ' ;' or '; '
+    if (hasSpaceAroundSemicolon) {
+      t = t.replace(/\s*;\s*/g, " ; ");
+    } else if (hasSpaceBeforeSemicolonOnly) {
       t = t.replace(/\s*;/g, " ;");
+    } else if (hasSpaceAfterSemicolonOnly) {
+      t = t.replace(/;\s*/g, "; ");
     }
 
     // 4. Slash: ' / '
@@ -1401,58 +1423,22 @@ function ShlokManagement() {
 
       const token = getValidToken();
 
-      const cleanedWords = wordMeanings
-        .map((item) => ({
-          word: item.word?.trim() || "",
-          meaning: item.meaning?.trim() || "",
-          meaningHi: item.meaningHi?.trim() || "",
-          meaningEn: item.meaningEn?.trim() || "",
-        }))
-        .filter((item) => item.word);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-      let response;
-      try {
-        response = await fetch(`${API_URL}/auto-translate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            chapterNumber: Number(formData.chapterNumber),
-            chapterName: formData.chapterName,
-            speaker: formData.speaker,
-            sanskrit: formData.sanskrit,
-            translation: formData.translation,
-            message: formData.message,
-            wordMeanings: cleanedWords,
-            targetLang: targetLang,
-            field: field,
-          }),
-        });
-      } catch (fetchErr) {
-        if (fetchErr.name === "AbortError") {
-          throw new Error("સર્વર પ્રતિસાદ આપવામાં વધુ સમય લઈ રહ્યું છે અથવા નેટવર્ક ધીમું છે. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
-        }
-        throw fetchErr;
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "ઓટો-અનુવાદ થઈ શક્યો નથી.");
-      }
-
-      const translated = data?.data || data?.translated;
+      const translated = await executeResilientFieldTranslation({
+        field,
+        targetLang,
+        sanskrit: formData.sanskrit,
+        translation: formData.translation,
+        message: formData.message,
+        wordMeanings,
+        chapterNumber: formData.chapterNumber,
+        chapterName: formData.chapterName,
+        speaker: formData.speaker,
+        apiUrl: API_URL,
+        token,
+      });
 
       if (!translated) {
-        throw new Error(data?.message || "અનુવાદ પ્રાપ્ત થઈ શક્યો નથી.");
+        throw new Error("અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
       }
 
       if (field === "words" && Array.isArray(translated.wordMeanings)) {

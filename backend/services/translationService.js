@@ -118,8 +118,8 @@ function getGeminiApiKey() {
 // Current ultra-fast, live Gemini models prioritized by latency and devotional accuracy
 const TRANSLATION_MODELS = [
   "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite-preview",
-  "gemini-3.5-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-flash-latest",
 ];
 
 /**
@@ -275,9 +275,18 @@ function alignSpecialCharacterSpacing(origText, translatedText) {
   }
 
   // Detect which punctuation spacing patterns exist in the original Gujarati text
-  const hasSpaceBeforeComma = /\s+,/.test(origText);
-  const hasSpaceBeforeColon = /\s+:/.test(origText);
-  const hasSpaceBeforeSemicolon = /\s+;/.test(origText);
+  const hasSpaceAroundComma = /\s+,\s+/.test(origText);
+  const hasSpaceBeforeCommaOnly = /\s+,[^\s]/.test(origText);
+  const hasSpaceAfterCommaOnly = /[^\s],\s+/.test(origText);
+
+  const hasSpaceAroundColon = /\s+:\s+/.test(origText);
+  const hasSpaceBeforeColonOnly = /\s+:[^\s]/.test(origText);
+  const hasSpaceAfterColonOnly = /[^\s]:\s+/.test(origText);
+
+  const hasSpaceAroundSemicolon = /\s+;\s+/.test(origText);
+  const hasSpaceBeforeSemicolonOnly = /\s+;[^\s]/.test(origText);
+  const hasSpaceAfterSemicolonOnly = /[^\s];\s+/.test(origText);
+
   const hasSpaceAroundSlash = /\s+\/\s+/.test(origText);
   const hasSpaceBeforeSlashOnly = /\s+\/[^\s]/.test(origText);
   const hasSpaceAfterSlashOnly = /[^\s]\/\s+/.test(origText);
@@ -294,19 +303,31 @@ function alignSpecialCharacterSpacing(origText, translatedText) {
   const applyReplacements = (text) => {
     let t = text;
 
-    // 1. Comma: ' ,'
-    if (hasSpaceBeforeComma) {
+    // 1. Comma: ' , ' or ' ,' or ', '
+    if (hasSpaceAroundComma) {
+      t = t.replace(/\s*,\s*/g, " , ");
+    } else if (hasSpaceBeforeCommaOnly) {
       t = t.replace(/\s*,/g, " ,");
+    } else if (hasSpaceAfterCommaOnly) {
+      t = t.replace(/,\s*/g, ", ");
     }
 
-    // 2. Colon: ' :'
-    if (hasSpaceBeforeColon) {
+    // 2. Colon: ' : ' or ' :' or ': '
+    if (hasSpaceAroundColon) {
+      t = t.replace(/\s*:\s*/g, " : ");
+    } else if (hasSpaceBeforeColonOnly) {
       t = t.replace(/\s*:/g, " :");
+    } else if (hasSpaceAfterColonOnly) {
+      t = t.replace(/:\s*/g, ": ");
     }
 
-    // 3. Semicolon: ' ;'
-    if (hasSpaceBeforeSemicolon) {
+    // 3. Semicolon: ' ; ' or ' ;' or '; '
+    if (hasSpaceAroundSemicolon) {
+      t = t.replace(/\s*;\s*/g, " ; ");
+    } else if (hasSpaceBeforeSemicolonOnly) {
       t = t.replace(/\s*;/g, " ;");
+    } else if (hasSpaceAfterSemicolonOnly) {
+      t = t.replace(/;\s*/g, "; ");
     }
 
     // 4. Slash: ' / '
