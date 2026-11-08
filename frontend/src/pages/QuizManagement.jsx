@@ -548,11 +548,6 @@ function QuizManagement() {
   };
 
   // =====================================================
-  // AI AUTO-TRANSLATE (GUJARATI -> HINDI & ENGLISH)
-  // =====================================================
-
-  
-  // =====================================================
   // SCROLL PRESERVATION & SECTION LANGUAGE SWITCHER
   // =====================================================
   const targetScrollInfoRef = useRef(null);
