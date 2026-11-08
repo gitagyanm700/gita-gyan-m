@@ -1201,23 +1201,33 @@ function ShlokManagement() {
 
       const token = getValidToken();
 
-      const translated = await executeResilientFieldTranslation({
-        field,
-        targetLang,
-        sanskrit: formData.sanskrit,
-        translation: formData.translation,
-        message: formData.message,
-        wordMeanings,
-        chapterNumber: formData.chapterNumber,
-        chapterName: formData.chapterName,
-        speaker: formData.speaker,
-        apiUrl: API_URL,
-        token,
-      });
+      // Ensure at least 400ms spinner animation for tactile user feedback on every click
+      const [translated] = await Promise.all([
+        executeResilientFieldTranslation({
+          field,
+          targetLang,
+          sanskrit: formData.sanskrit,
+          translation: formData.translation,
+          message: formData.message,
+          wordMeanings,
+          chapterNumber: formData.chapterNumber,
+          chapterName: formData.chapterName,
+          speaker: formData.speaker,
+          apiUrl: API_URL,
+          token,
+        }),
+        new Promise((resolve) => setTimeout(resolve, 400)),
+      ]);
 
       if (!translated) {
         throw new Error("અનુવાદ પ્રાપ્ત થઈ શક્યો નથી. કૃપા કરીને થોડી સેકન્ડ પછી ફરી પ્રયાસ કરો.");
       }
+
+      const timeStr = new Date().toLocaleTimeString("gu-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
 
       if (field === "words" && Array.isArray(translated.wordMeanings)) {
         setWordMeanings((prev) =>
@@ -1256,8 +1266,8 @@ function ShlokManagement() {
 
         setAutoTranslateSuccess(
           targetLang === "hi"
-            ? "✨ સંસ્કૃત-હિન્દી શબ્દાર્થ સફળતાપૂર્વક AI દ્વારા અનુવાદિત થયા!"
-            : "✨ સંસ્કૃત-અંગ્રેજી શબ્દાર્થ (Word Meanings) સફળતાપૂર્વક AI દ્વારા અનુવાદિત થયા!"
+            ? `✨ સંસ્કૃત-હિન્દી શબ્દાર્થ સફળતાપૂર્વક AI દ્વારા અનુવાદિત થયા! (${timeStr})`
+            : `✨ સંસ્કૃત-અંગ્રેજી શબ્દાર્થ (Word Meanings) સફળતાપૂર્વક AI દ્વારા અનુવાદિત થયા! (${timeStr})`
         );
       } else if (field === "translation") {
         if (targetLang === "hi") {
@@ -1268,7 +1278,7 @@ function ShlokManagement() {
               translated.translationHi || prev.translationHi
             ),
           }));
-          setAutoTranslateSuccess("✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થયો!");
+          setAutoTranslateSuccess(`✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`);
         } else {
           setFormData((prev) => ({
             ...prev,
@@ -1277,7 +1287,7 @@ function ShlokManagement() {
               translated.translationEn || prev.translationEn
             ),
           }));
-          setAutoTranslateSuccess("✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થયો!");
+          setAutoTranslateSuccess(`✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`);
         }
       } else if (field === "message") {
         if (targetLang === "hi") {
@@ -1288,7 +1298,7 @@ function ShlokManagement() {
               translated.messageHi || prev.messageHi
             ),
           }));
-          setAutoTranslateSuccess("✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થઈ!");
+          setAutoTranslateSuccess(`✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`);
         } else {
           setFormData((prev) => ({
             ...prev,
@@ -1297,7 +1307,7 @@ function ShlokManagement() {
               translated.messageEn || prev.messageEn
             ),
           }));
-          setAutoTranslateSuccess("✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થઈ!");
+          setAutoTranslateSuccess(`✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`);
         }
       }
     } catch (err) {

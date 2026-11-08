@@ -469,8 +469,8 @@ Chapter Number: ${chapterNumber || 1}
 Chapter Name (Gujarati): ${chapterName || ""}
 Speaker (Gujarati): ${speaker || ""}
 Sanskrit Shloka: ${cleanHtml(sanskrit)}
-Gujarati Translation: ${cleanHtml(translation)}
-Gujarati Message: ${cleanHtml(message)}
+Gujarati Translation: ${translation}
+Gujarati Message: ${message}
 Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringify(
     (wordMeanings || []).map((w, idx) => ({ id: idx, sanskritWord: String(w.word || '').trim(), gujaratiMeaning: cleanHtml(w.meaning || '') }))
   )}`;
@@ -566,8 +566,8 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
 
   // Fallback via high-speed translation engine
   const [fbTranslationHi, fbMessageHi] = await Promise.all([
-    fallbackGoogleTranslate(cleanHtml(translation), "hi"),
-    fallbackGoogleTranslate(cleanHtml(message), "hi"),
+    fallbackGoogleTranslate(translation, "hi"),
+    fallbackGoogleTranslate(message, "hi"),
   ]);
 
   const fbWordMeanings = await Promise.all(
@@ -800,8 +800,8 @@ Chapter Number: ${chapterNumber || 1}
 Chapter Name: ${chapterName || ""}
 Speaker: ${speaker || ""}
 Sanskrit Shloka: ${cleanHtml(sanskrit)}
-Gujarati Translation: ${cleanHtml(translation)}
-Gujarati Message: ${cleanHtml(message)}
+Gujarati Translation: ${translation}
+Gujarati Message: ${message}
 Word Meanings: ${JSON.stringify(
     (wordMeanings || []).map((w) => ({ word: w.word, meaning: cleanHtml(w.meaning) }))
   )}`;
@@ -894,8 +894,8 @@ Word Meanings: ${JSON.stringify(
 
   // Fallback via high-speed translation engine
   const [fbTranslationEn, fbMessageEn] = await Promise.all([
-    fallbackGoogleTranslate(cleanHtml(translation), "en"),
-    fallbackGoogleTranslate(cleanHtml(message), "en"),
+    fallbackGoogleTranslate(translation, "en"),
+    fallbackGoogleTranslate(message, "en"),
   ]);
 
   const fbWordMeanings = await Promise.all(
@@ -1204,9 +1204,6 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
   }
 
   if (field === "translation") {
-    const cached = getFromCache("hi", "translation", translation);
-    if (cached) return cached;
-
     let resultHi = null;
     try {
       const prompt = `You are a revered Vedic and Sanskrit scholar of Srimad Bhagavad Gita.
@@ -1220,7 +1217,9 @@ CRITICAL ACCURACY RULES:
 2. SACRED ACCURACY:
    - Preserve holy scriptural names and divine vocabulary with sacred dignity (e.g. धृतराष्ट्र, संजय, अर्जुन, श्रीकृष्ण, धर्मक्षेत्र, कुरुक्षेत्र).
    - Use standard Devanagari grammar and punctuation.
-3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
+3. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   - Strictly preserve every HTML tag (<b>, <strong>, <u>, <i>, <ul>, <ol>, <li>, <p>, <br>) in corresponding locations in the translated Hindi.
+   - Never strip, remove, or flatten HTML formatting into plain text!
 4. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in Hindi.
 
 Return ONLY valid JSON:
@@ -1240,7 +1239,7 @@ ${translation}`;
     }
 
     if (!resultHi) {
-      resultHi = await fallbackGoogleTranslate(cleanHtml(translation), "hi");
+      resultHi = await fallbackGoogleTranslate(translation, "hi");
     }
 
     if (!resultHi) {
@@ -1250,14 +1249,10 @@ ${translation}`;
     const result = {
       translationHi: alignSpecialCharacterSpacing(translation, resultHi),
     };
-    setToCache("hi", "translation", translation, result);
     return result;
   }
 
   if (field === "message") {
-    const cached = getFromCache("hi", "message", message);
-    if (cached) return cached;
-
     let resultHi = null;
     try {
       const prompt = `You are a revered Vedic and Bhagavad Gita scholar.
@@ -1267,7 +1262,9 @@ CRITICAL ACCURACY RULES:
 1. TRANSLATE WITH 100% FAITHFULNESS:
    - Translate strictly what is written in the Gujarati message without adding external commentaries or omitting any teaching.
    - Convey the philosophical depth, devotion, and moral message with clarity, inspiration, and elegance.
-2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
+2. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   - Strictly preserve every HTML tag (<b>, <strong>, <u>, <i>, <ul>, <ol>, <li>, <p>, <br>) in corresponding locations in the translated Hindi.
+   - Never strip, remove, or flatten HTML formatting into plain text!
 3. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in Hindi.
 
 Return ONLY valid JSON:
@@ -1287,7 +1284,7 @@ ${message}`;
     }
 
     if (!resultHi) {
-      resultHi = await fallbackGoogleTranslate(cleanHtml(message), "hi");
+      resultHi = await fallbackGoogleTranslate(message, "hi");
     }
 
     if (!resultHi) {
@@ -1297,7 +1294,6 @@ ${message}`;
     const result = {
       messageHi: alignSpecialCharacterSpacing(message, resultHi),
     };
-    setToCache("hi", "message", message, result);
     return result;
   }
 
@@ -1399,9 +1395,6 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
   }
 
   if (field === "translation") {
-    const cached = getFromCache("en", "translation", translation);
-    if (cached) return cached;
-
     let resultEn = null;
     try {
       const prompt = `You are a revered Vedic and Sanskrit scholar of Srimad Bhagavad Gita.
@@ -1415,7 +1408,9 @@ CRITICAL ACCURACY RULES:
 2. SACRED DIGNITY & GRAMMAR:
    - Maintain classic, revered scriptural English (appropriate for the holy Gita).
    - Transliterate holy names accurately (e.g., Dhritarashtra, Sanjaya, Arjuna, Lord Krishna / The Blessed Lord, Kurukshetra, Dharma).
-3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
+3. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   - Strictly preserve every HTML tag (<b>, <strong>, <u>, <i>, <ul>, <ol>, <li>, <p>, <br>) in corresponding locations in the translated English.
+   - Never strip, remove, or flatten HTML formatting into plain text!
 4. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in English.
 
 Return ONLY valid JSON:
@@ -1435,7 +1430,7 @@ ${translation}`;
     }
 
     if (!resultEn) {
-      resultEn = await fallbackGoogleTranslate(cleanHtml(translation), "en");
+      resultEn = await fallbackGoogleTranslate(translation, "en");
     }
 
     if (!resultEn) {
@@ -1445,14 +1440,10 @@ ${translation}`;
     const result = {
       translationEn: alignSpecialCharacterSpacing(translation, resultEn),
     };
-    setToCache("en", "translation", translation, result);
     return result;
   }
 
   if (field === "message") {
-    const cached = getFromCache("en", "message", message);
-    if (cached) return cached;
-
     let resultEn = null;
     try {
       const prompt = `You are a revered Vedic and Bhagavad Gita scholar.
@@ -1462,7 +1453,9 @@ CRITICAL ACCURACY RULES:
 1. TRANSLATE WITH 100% FAITHFULNESS:
    - Translate strictly and faithfully what is written in the Gujarati Message below into clear, inspiring English without adding external ideas.
    - Convey the practical spiritual wisdom clearly, eloquently, and respectfully.
-2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
+2. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   - Strictly preserve every HTML tag (<b>, <strong>, <u>, <i>, <ul>, <ol>, <li>, <p>, <br>) in corresponding locations in the translated English.
+   - Never strip, remove, or flatten HTML formatting into plain text!
 3. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in English.
 
 Return ONLY valid JSON:
@@ -1482,7 +1475,7 @@ ${message}`;
     }
 
     if (!resultEn) {
-      resultEn = await fallbackGoogleTranslate(cleanHtml(message), "en");
+      resultEn = await fallbackGoogleTranslate(message, "en");
     }
 
     if (!resultEn) {
@@ -1492,7 +1485,6 @@ ${message}`;
     const result = {
       messageEn: alignSpecialCharacterSpacing(message, resultEn),
     };
-    setToCache("en", "message", message, result);
     return result;
   }
 

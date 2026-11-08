@@ -34,54 +34,19 @@ const CLIENT_MODELS = [
   "gemini-flash-latest",
 ];
 
-// In-memory cache
-const memoryCache = new Map();
-
-/**
- * Fast deterministic string hash for cache keys
- */
-function fastHash(str) {
-  let hash = 0;
-  if (!str || str.length === 0) return "0";
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  return hash.toString(36);
-}
-
-/**
- * Get from cache (Memory -> LocalStorage)
- */
-function getFromCache(lang, field, content) {
-  if (!content) return null;
-  const hash = fastHash(typeof content === "string" ? content : JSON.stringify(content));
-  const key = `gita_tr_${lang}_${field}_${hash}`;
-  if (memoryCache.has(key)) return memoryCache.get(key);
-  try {
-    const local = localStorage.getItem(key);
-    if (local) {
-      const parsed = JSON.parse(local);
-      memoryCache.set(key, parsed);
-      return parsed;
+// Purge any legacy stale plain-text translation cache from localStorage
+try {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const keysToRemove = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith("gita_tr_")) {
+        keysToRemove.push(k);
+      }
     }
-  } catch (e) {}
-  return null;
-}
-
-/**
- * Save to cache (Memory + LocalStorage)
- */
-function saveToCache(lang, field, content, result) {
-  if (!content || !result) return;
-  const hash = fastHash(typeof content === "string" ? content : JSON.stringify(content));
-  const key = `gita_tr_${lang}_${field}_${hash}`;
-  memoryCache.set(key, result);
-  try {
-    localStorage.setItem(key, JSON.stringify(result));
-  } catch (e) {}
-}
+    keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+  }
+} catch (e) {}
 
 /**
  * HTML to plain text conversion
@@ -391,20 +356,30 @@ CRITICAL RULES:
 
   // 2. VERSE TRANSLATION
   if (field === "translation") {
-    const cleanText = htmlToPlainText(translation);
+    if (!translation || !translation.trim()) return {};
+    const hasHtml = /<[a-z][\s\S]*>/i.test(translation);
     try {
-      const prompt = `You are an expert Vedic and Bhagavad Gita translator.
+      const prompt = `You are an expert Vedic and Bhagavad Gita scholar and translator.
 Translate the following Bhagavad Gita verse translation (શ્લોકાર્થ) strictly and faithfully from Gujarati into ${langName}.
 Sanskrit verse:
 "${sanskrit || ""}"
 
-Gujarati Verse Translation:
-"${cleanText}"
+Gujarati Verse ${hasHtml ? "HTML" : "Text"}:
+${translation}
 
 CRITICAL RULES:
-1. Translate faithfully and accurately without adding or omitting anything.
-2. If Gujarati has spaces before/after punctuation (' , ', ' / ', ' : ', ' - '), preserve exact spacing.
-3. Output strict JSON: { "translation": "translated text in ${langName}" }`;
+1. TRANSLATE WITH 100% FAITHFULNESS: Translate strictly and faithfully what is in the Gujarati text into dignified, grammatically correct ${langName} without adding or omitting anything.
+2. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   ${
+     hasHtml
+       ? `- Preserve every HTML formatting tag (<b>, <strong>, <u>, <i>, <em>, <ul>, <ol>, <li>, <p>, <br>) in the exact corresponding locations around the translated words in ${langName}.
+   - Do NOT strip, remove, or flatten HTML tags into plain text!
+   - Ensure list items (<li>) and bullet points remain formatted as valid HTML tags.`
+       : "- If text is plain text, keep it clean."
+   }
+3. PUNCTUATION & SPECIAL CHARACTER SPACING: If original Gujarati has spaces before or after any special characters (' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in ${langName}.
+4. Output strict JSON with key "translation":
+{ "translation": "${hasHtml ? "<translated HTML in " + langName + ">" : "<translated text in " + langName + ">"}" }`;
 
       const responseText = await callClientGemini(prompt, "application/json");
       const parsed = JSON.parse(responseText);
@@ -415,8 +390,8 @@ CRITICAL RULES:
         : { translationEn: alignSpecialCharacterSpacing(translation, resultText) };
     } catch (geminiErr) {
       console.warn("Client Gemini translation failed, fallback to GT:", geminiErr);
-      const gt = await clientGoogleTranslate(cleanText, targetLang);
-      const resultText = gt || cleanText;
+      const gt = await clientGoogleTranslate(translation, targetLang);
+      const resultText = gt || translation;
       return targetLang === "hi"
         ? { translationHi: alignSpecialCharacterSpacing(translation, resultText) }
         : { translationEn: alignSpecialCharacterSpacing(translation, resultText) };
@@ -425,20 +400,30 @@ CRITICAL RULES:
 
   // 3. MESSAGE
   if (field === "message") {
-    const cleanText = htmlToPlainText(message);
+    if (!message || !message.trim()) return {};
+    const hasHtml = /<[a-z][\s\S]*>/i.test(message);
     try {
       const prompt = `You are a revered Vedic and Bhagavad Gita scholar.
-Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into inspiring, dignified ${langName}.
+Translate the following Bhagavad Gita spiritual commentary / message (ગીતા સંદેશ) strictly and faithfully from Gujarati into inspiring, profound ${langName}.
 Sanskrit verse:
 "${sanskrit || ""}"
 
-Gujarati Spiritual Message:
-"${cleanText}"
+Gujarati Spiritual Message ${hasHtml ? "HTML" : "Text"}:
+${message}
 
 CRITICAL RULES:
-1. Translate faithfully, eloquently, and reverently.
-2. If original Gujarati has spaces before/after punctuation (' , ', ' / ', ' : ', ' - '), preserve exact spacing.
-3. Output strict JSON: { "message": "translated message in ${langName}" }`;
+1. TRANSLATE WITH 100% FAITHFULNESS: Translate strictly, eloquently, and reverently into inspiring ${langName}.
+2. STRICTLY PRESERVE ALL HTML FORMATTING TAGS:
+   ${
+     hasHtml
+       ? `- Preserve every HTML formatting tag (<b>, <strong>, <u>, <i>, <em>, <ul>, <ol>, <li>, <p>, <br>) in the exact corresponding locations around the translated words in ${langName}.
+   - Do NOT strip, remove, or flatten HTML tags into plain text!
+   - Ensure bullet points (<ul>, <li>), bold words (<b>, <strong>), and underlined words (<u>) remain wrapped in the exact same HTML tags.`
+       : "- If text is plain text, keep it clean."
+   }
+3. PUNCTUATION & SPECIAL CHARACTER SPACING: If original Gujarati has spaces before or after any special characters (' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in ${langName}.
+4. Output strict JSON with key "message":
+{ "message": "${hasHtml ? "<translated HTML in " + langName + ">" : "<translated message in " + langName + ">"}" }`;
 
       const responseText = await callClientGemini(prompt, "application/json");
       const parsed = JSON.parse(responseText);
@@ -449,8 +434,8 @@ CRITICAL RULES:
         : { messageEn: alignSpecialCharacterSpacing(message, resultText) };
     } catch (geminiErr) {
       console.warn("Client Gemini message failed, fallback to GT:", geminiErr);
-      const gt = await clientGoogleTranslate(cleanText, targetLang);
-      const resultText = gt || cleanText;
+      const gt = await clientGoogleTranslate(message, targetLang);
+      const resultText = gt || message;
       return targetLang === "hi"
         ? { messageHi: alignSpecialCharacterSpacing(message, resultText) }
         : { messageEn: alignSpecialCharacterSpacing(message, resultText) };
@@ -476,14 +461,6 @@ export async function executeResilientFieldTranslation({
   apiUrl = "",
   token = "",
 }) {
-  // Check cache first
-  const cachePayload = { field, targetLang, sanskrit, translation, message, wordMeanings };
-  const cached = getFromCache(targetLang, field, cachePayload);
-  if (cached) {
-    console.log(`⚡ [Cache Hit] Instant translation for ${targetLang}-${field}`);
-    return cached;
-  }
-
   // Tier 1: Try backend API with a snappy 3.5s timeout
   if (apiUrl) {
     try {
@@ -525,7 +502,6 @@ export async function executeResilientFieldTranslation({
         const data = await response.json();
         const translated = data?.data || data?.translated;
         if (translated) {
-          saveToCache(targetLang, field, cachePayload, translated);
           return translated;
         }
       }
@@ -544,7 +520,6 @@ export async function executeResilientFieldTranslation({
     wordMeanings,
   });
 
-  saveToCache(targetLang, field, cachePayload, result);
   return result;
 }
 
@@ -639,10 +614,6 @@ export async function executeResilientQuizTranslation({
   apiUrl = "",
   token = "",
 }) {
-  const cachePayload = { field, targetLang, question, options, correctAnswer, explanation };
-  const cached = getFromCache(targetLang, `quiz_${field}`, cachePayload);
-  if (cached) return cached;
-
   if (apiUrl) {
     try {
       const controller = new AbortController();
@@ -673,7 +644,6 @@ export async function executeResilientQuizTranslation({
         const data = await response.json();
         const translated = data?.data || data?.translated;
         if (translated) {
-          saveToCache(targetLang, `quiz_${field}`, cachePayload, translated);
           return translated;
         }
       }
@@ -691,6 +661,5 @@ export async function executeResilientQuizTranslation({
     explanation,
   });
 
-  saveToCache(targetLang, `quiz_${field}`, cachePayload, result);
   return result;
 }
