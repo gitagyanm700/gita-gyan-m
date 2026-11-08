@@ -233,8 +233,12 @@ export async function downloadAllChaptersOffline(onProgress = null) {
   let totalSavedShlokas = 0;
 
   for (let ch = 1; ch <= 18; ch++) {
+    let savedOnline = false;
     try {
-      const res = await fetch(`${API_BASE}/chapter/${ch}`, { headers });
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${API_BASE}/chapter/${ch}`, { headers, signal: controller.signal });
+      clearTimeout(t);
       if (res.ok) {
         const data = await res.json();
         const shlokas = data.shlokas || [];
@@ -244,10 +248,26 @@ export async function downloadAllChaptersOffline(onProgress = null) {
           saveChapterOffline(ch, shlokas, chapterName);
           totalSavedShlokas += shlokas.length;
           results.push(ch);
+          savedOnline = true;
         }
       }
     } catch (err) {
-      console.warn(`Failed to pre-cache Chapter ${ch}:`, err);
+      console.warn(`Failed to pre-cache Chapter ${ch} online:`, err.message);
+    }
+
+    if (!savedOnline) {
+      // Bundled fallback
+      try {
+        const fallbackMod = await import("../data/fallbackShlokas.json");
+        const fallbackMap = fallbackMod.default || fallbackMod;
+        const shlokas = fallbackMap[String(ch)];
+        if (Array.isArray(shlokas) && shlokas.length > 0) {
+          const chapterName = shlokas[0]?.chapterName || `અધ્યાય ${ch}`;
+          saveChapterOffline(ch, shlokas, chapterName);
+          totalSavedShlokas += shlokas.length;
+          results.push(ch);
+        }
+      } catch (e) {}
     }
 
     if (typeof onProgress === "function") {

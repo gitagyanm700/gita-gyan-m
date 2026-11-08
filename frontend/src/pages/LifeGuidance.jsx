@@ -345,10 +345,15 @@ function LifeGuidance() {
       setLoadingChapters((prev) => ({ ...prev, [chapterNum]: true }));
 
       const token = getValidToken();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       fetch(`${API_URL}/chapter/${chapterNum}`, {
+        signal: controller.signal,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       })
         .then((res) => {
+          clearTimeout(timeoutId);
           if (!res.ok) throw new Error("Failed to fetch chapter shlokas");
           return res.json();
         })
@@ -358,13 +363,23 @@ function LifeGuidance() {
             [chapterNum]: data.shlokas || []
           }));
         })
-        .catch((err) => {
-          console.error(`Error loading chapter ${chapterNum} shlokas:`, err);
-          // Cache empty array to avoid repeating failed network calls
-          setChapterCache((prev) => ({
-            ...prev,
-            [chapterNum]: []
-          }));
+        .catch(async (err) => {
+          clearTimeout(timeoutId);
+          console.warn(`Error loading chapter ${chapterNum} shlokas from API, using fallback:`, err.message);
+          try {
+            const fallbackMod = await import("../data/fallbackShlokas.json");
+            const fallbackMap = fallbackMod.default || fallbackMod;
+            const chList = fallbackMap[String(chapterNum)] || [];
+            setChapterCache((prev) => ({
+              ...prev,
+              [chapterNum]: chList
+            }));
+          } catch (e) {
+            setChapterCache((prev) => ({
+              ...prev,
+              [chapterNum]: []
+            }));
+          }
         })
         .finally(() => {
           setLoadingChapters((prev) => ({ ...prev, [chapterNum]: false }));

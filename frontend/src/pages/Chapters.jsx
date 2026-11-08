@@ -157,43 +157,44 @@ function Chapters() {
       try {
         setLoading(true);
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
         const response = await fetch(
-          "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks"
+          "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks",
+          { signal: controller.signal }
         );
+        clearTimeout(timeoutId);
 
         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(
-            data.message || txt("Shlok data load થઈ શક્યો નથી.", "श्लोक डेटा लोड नहीं हो सका।", "Could not load shlok data.")
-          );
+        if (response.ok && Array.isArray(data.shlokas) && data.shlokas.length > 0) {
+          const counts = {};
+          data.shlokas.forEach((shlok) => {
+            const ch = Number(shlok.chapterNumber);
+            counts[ch] = (counts[ch] || 0) + 1;
+          });
+          setShlokCounts(counts);
+          return;
         }
-
-        const shlokas = data.shlokas || [];
-
-        const counts = {};
-
-        shlokas.forEach((shlok) => {
-          const chapterNumber = Number(
-            shlok.chapterNumber
-          );
-
-          if (!counts[chapterNumber]) {
-            counts[chapterNumber] = 0;
-          }
-
-          counts[chapterNumber]++;
-        });
-
-        setShlokCounts(counts);
       } catch (error) {
-        console.error(
-          "Chapter data error:",
-          error
-        );
+        console.warn("Chapters data network error, using bundled fallback:", error.message);
       } finally {
         setLoading(false);
       }
+
+      // Fallback from bundled shlokas
+      try {
+        const fallbackMod = await import("../data/fallbackShlokas.json");
+        const fallbackMap = fallbackMod.default || fallbackMod;
+        const counts = {};
+        for (const [ch, list] of Object.entries(fallbackMap)) {
+          if (Array.isArray(list)) {
+            counts[Number(ch)] = list.length;
+          }
+        }
+        setShlokCounts(counts);
+      } catch (e) {}
     };
 
     fetchChapterData();

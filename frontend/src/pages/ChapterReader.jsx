@@ -454,9 +454,13 @@ useEffect(() => {
 
       const token = getValidToken();
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(
         `${API_URL}/chapter/${currentChapterNumber}`,
         {
+          signal: controller.signal,
           headers: token
             ? {
                 Authorization: `Bearer ${token}`,
@@ -464,6 +468,7 @@ useEffect(() => {
             : {},
         }
       );
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -495,22 +500,41 @@ useEffect(() => {
     } catch (err) {
       console.error("Fetch Chapter Shlokas Error:", err);
 
-      // 2. Offline fallback if network failed (no internet, Failed to fetch, etc.)
+      // 2. Offline storage fallback
       const offlineData = getChapterOffline(currentChapterNumber);
       if (offlineData && Array.isArray(offlineData.shlokas) && offlineData.shlokas.length > 0) {
         applyLoadedShlokas(offlineData.shlokas, offlineData.chapterName, true);
         return;
       }
 
+      // 3. Bundled Fallback (100% Guaranteed instant load even when backend is sleeping or down)
+      try {
+        const fallbackMod = await import("../data/fallbackShlokas.json");
+        const fallbackMap = fallbackMod.default || fallbackMod;
+        const chShlokas = fallbackMap[String(currentChapterNumber)];
+        if (Array.isArray(chShlokas) && chShlokas.length > 0) {
+          const resolvedName =
+            chShlokas[0]?.chapterName ||
+            chapterNames[currentChapterNumber] ||
+            (isHindi ? `अध्याय ${currentChapterNumber}` : `અધ્યાય ${currentChapterNumber}`);
+          saveChapterOffline(currentChapterNumber, chShlokas, resolvedName);
+          applyLoadedShlokas(chShlokas, resolvedName, false);
+          return;
+        }
+      } catch (fallbackErr) {
+        console.warn("Bundled fallback shlokas load error:", fallbackErr);
+      }
+
       const isNetworkErr =
         (typeof navigator !== "undefined" && !navigator.onLine) ||
-        String(err.message || "").toLowerCase().includes("fetch");
+        String(err.message || "").toLowerCase().includes("fetch") ||
+        err.name === "AbortError";
 
       setError(
         isNetworkErr
           ? (isHindi
-              ? "आप ऑफ़लाइन हैं और यह अध्याय पहले सहेजा नहीं गया है। कृपया एक बार इंटरनेट चालू करके इस अध्याय को खोलें ताकि यह ऑफ़लाइन सहेज लिया जाए।"
-              : "તમે હાલમાં ઑફલાઇન છો અને આ અધ્યાય અગાઉ સેવ થયેલ નથી. એકવાર ઇન્ટરનેટ ચાલુ કરીને આ અધ્યાય ખોલો જેથી તે ઑફલાઇન સેવ થઈ જાય.")
+              ? "सर्वर अभी धीमा है या उत्तर नहीं दे रहा है। कृपया कुछ क्षणों बाद पुनः प्रयास करें।"
+              : "સર્વર હાલમાં ધીમું છે અથવા પ્રતિક્રિયા આપી રહ્યું નથી. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.")
           : (err.message || (isHindi ? "श्लोक लोड करने में त्रुटि आई।" : "Shlokas load કરવામાં error આવ્યો."))
       );
 

@@ -310,14 +310,37 @@ useEffect(() => {
   useEffect(() => {
     const fetchTodayShlok = async () => {
       try {
-        const response = await fetch(`${API_URL}/today`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const response = await fetch(`${API_URL}/today`, { signal: controller.signal });
+        clearTimeout(timeoutId);
         const data = await response.json();
         if (data.success && data.shlok) {
           setTodayShlok(data.shlok);
+          return;
         }
       } catch (err) {
-        console.error("❌ Home Today's Shlok Error:", err);
+        console.warn("Home Today's Shlok Network Error, using bundled fallback:", err.message);
       }
+
+      // Fallback from bundled shlokas
+      try {
+        const fallbackMod = await import("../data/fallbackShlokas.json");
+        const fallbackMap = fallbackMod.default || fallbackMod;
+        const allList = Object.values(fallbackMap).flat();
+        if (allList.length > 0) {
+          const today = new Date();
+          const startOfYear = new Date(today.getFullYear(), 0, 1);
+          const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const difference = currentDate.getTime() - startOfYear.getTime();
+          const dayOfYear = Math.floor(difference / (1000 * 60 * 60 * 24));
+          const todayIndex = dayOfYear % allList.length;
+          const candidate = allList[todayIndex];
+          if (candidate?.sanskrit) {
+            setTodayShlok(candidate);
+          }
+        }
+      } catch (e) {}
     };
 
     fetchTodayShlok();
@@ -334,29 +357,34 @@ useEffect(() => {
         setMessage("");
 
         const token = getValidToken();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
+
         const response = await fetch(API_URL, {
+          signal: controller.signal,
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+        clearTimeout(timeoutId);
 
         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              txt("Shlok data load થઈ શક્યો નથી.", "श्लोक डेटा लोड नहीं हो सका।", "Could not load shlok data.")
-          );
+        if (response.ok && Array.isArray(data.shlokas) && data.shlokas.length > 0) {
+          setAllShlokas(data.shlokas);
+          return;
         }
+      } catch (error) {
+        console.warn("Home Shlok Search Network Error, using bundled fallback:", error.message);
+      } finally {
+        setLoading(false);
+      }
 
-        const fetchedShlokas =
-          data.shlokas || [];
-
-        setAllShlokas(fetchedShlokas);
-
-        // =================================================
-        // SET TODAY'S SHLOK (FALLBACK)
-        // =================================================
-
-        if (fetchedShlokas.length > 0) {
+      // Fallback from bundled shlokas
+      try {
+        const fallbackMod = await import("../data/fallbackShlokas.json");
+        const fallbackMap = fallbackMod.default || fallbackMod;
+        const allList = Object.values(fallbackMap).flat();
+        if (allList.length > 0) {
+          setAllShlokas(allList);
           setTodayShlok((prev) => {
             if (prev?.sanskrit) return prev;
             const today = new Date();
@@ -364,23 +392,12 @@ useEffect(() => {
             const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const difference = currentDate.getTime() - startOfYear.getTime();
             const dayOfYear = Math.floor(difference / (1000 * 60 * 60 * 24));
-            const todayIndex = dayOfYear % fetchedShlokas.length;
-            const candidate = fetchedShlokas[todayIndex];
+            const todayIndex = dayOfYear % allList.length;
+            const candidate = allList[todayIndex];
             return candidate?.sanskrit ? candidate : prev;
           });
         }
-      } catch (error) {
-        console.error(
-          "❌ Home Shlok Search Error:",
-          error
-        );
-
-        setMessage(
-          txt("Server સાથે connection થઈ શક્યું નથી.", "सर्वर के साथ कनेक्शन नहीं हो सका।", "Could not connect to the server.")
-        );
-      } finally {
-        setLoading(false);
-      }
+      } catch (e) {}
     };
 
     fetchAllShlokas();
