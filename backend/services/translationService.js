@@ -255,6 +255,122 @@ function preserveSanskritSubWords(origMeaning, translatedMeaning) {
 }
 
 /**
+ * Helper to process text nodes within HTML strings without altering HTML tags or attributes
+ */
+function replaceTextNodes(html, replacerFn) {
+  if (!html || typeof html !== "string") return html;
+  return html.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+    if (tag) return tag;
+    return replacerFn(text);
+  });
+}
+
+/**
+ * Faithfully mirrors user's special character and punctuation spacing from Gujarati to translated text
+ * (e.g. ' ,' , ' / ' , ' : ' , ' - ' , ' ; ' , '( ... )' , ' !' , ' ?' , ' ।')
+ */
+function alignSpecialCharacterSpacing(origText, translatedText) {
+  if (!origText || !translatedText || typeof origText !== "string" || typeof translatedText !== "string") {
+    return translatedText || "";
+  }
+
+  // Detect which punctuation spacing patterns exist in the original Gujarati text
+  const hasSpaceBeforeComma = /\s+,/.test(origText);
+  const hasSpaceBeforeColon = /\s+:/.test(origText);
+  const hasSpaceBeforeSemicolon = /\s+;/.test(origText);
+  const hasSpaceAroundSlash = /\s+\/\s+/.test(origText);
+  const hasSpaceBeforeSlashOnly = /\s+\/[^\s]/.test(origText);
+  const hasSpaceAfterSlashOnly = /[^\s]\/\s+/.test(origText);
+  const hasSpaceAroundDash = /\s+[-–—]\s+/.test(origText);
+  const hasSpaceAroundEquals = /\s+=\s+/.test(origText);
+  const hasSpaceAfterOpenParen = /\(\s+/.test(origText);
+  const hasSpaceBeforeCloseParen = /\s+\)/.test(origText);
+  const hasSpaceAfterOpenBracket = /\[\s+/.test(origText);
+  const hasSpaceBeforeCloseBracket = /\s+\]/.test(origText);
+  const hasSpaceBeforeExclamation = /\s+!/.test(origText);
+  const hasSpaceBeforeQuestion = /\s+\?/.test(origText);
+  const hasSpaceBeforeDanda = /\s+[।॥]/.test(origText);
+
+  const applyReplacements = (text) => {
+    let t = text;
+
+    // 1. Comma: ' ,'
+    if (hasSpaceBeforeComma) {
+      t = t.replace(/\s*,/g, " ,");
+    }
+
+    // 2. Colon: ' :'
+    if (hasSpaceBeforeColon) {
+      t = t.replace(/\s*:/g, " :");
+    }
+
+    // 3. Semicolon: ' ;'
+    if (hasSpaceBeforeSemicolon) {
+      t = t.replace(/\s*;/g, " ;");
+    }
+
+    // 4. Slash: ' / '
+    if (hasSpaceAroundSlash) {
+      t = t.replace(/\s*\/\s*/g, " / ");
+    } else if (hasSpaceBeforeSlashOnly) {
+      t = t.replace(/\s*\/([^\s])/g, " /$1");
+    } else if (hasSpaceAfterSlashOnly) {
+      t = t.replace(/([^\s])\/\s*/g, "$1/ ");
+    }
+
+    // 5. Dash / Hyphen: ' - '
+    if (hasSpaceAroundDash) {
+      t = t.replace(/\s*[-–—]\s*/g, " - ");
+    }
+
+    // 6. Equals: ' = '
+    if (hasSpaceAroundEquals) {
+      t = t.replace(/\s*=\s*/g, " = ");
+    }
+
+    // 7. Parentheses: '( ... )'
+    if (hasSpaceAfterOpenParen) {
+      t = t.replace(/\(\s*/g, "( ");
+    }
+    if (hasSpaceBeforeCloseParen) {
+      t = t.replace(/\s*\)/g, " )");
+    }
+
+    // 8. Brackets: '[ ... ]'
+    if (hasSpaceAfterOpenBracket) {
+      t = t.replace(/\[\s*/g, "[ ");
+    }
+    if (hasSpaceBeforeCloseBracket) {
+      t = t.replace(/\s*\]/g, " ]");
+    }
+
+    // 9. Exclamation: ' !'
+    if (hasSpaceBeforeExclamation) {
+      t = t.replace(/\s*!/g, " !");
+    }
+
+    // 10. Question mark: ' ?'
+    if (hasSpaceBeforeQuestion) {
+      t = t.replace(/\s*\?/g, " ?");
+    }
+
+    // 11. Danda: ' ।' or ' ॥'
+    if (hasSpaceBeforeDanda) {
+      t = t.replace(/\s*([।॥])/g, " $1");
+    }
+
+    return t;
+  };
+
+  // If text contains HTML tags, only process non-HTML text nodes
+  if (/<[a-z][\s\S]*>/i.test(translatedText)) {
+    return replaceTextNodes(translatedText, applyReplacements);
+  }
+
+  return applyReplacements(translatedText);
+}
+
+/**
  * Translates Gujarati Shlok content into devotional Hindi via Gemini AI
  */
 async function translateShlokToHindi({
@@ -397,7 +513,10 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
               hiMap.get(String(orig.word).trim()) ||
               parsed.wordMeanings?.[idx]?.meaningHi ||
               orig.meaning;
-            const translatedMeaning = preserveSanskritSubWords(orig.meaning, rawMeaning);
+            const translatedMeaning = alignSpecialCharacterSpacing(
+              orig.meaning,
+              preserveSanskritSubWords(orig.meaning, rawMeaning)
+            );
             return {
               word: orig.word,
               meaning: orig.meaning,
@@ -408,8 +527,8 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
           const finalResult = {
             chapterNameHi: parsed.chapterNameHi || fallbackChapterNameHi,
             speakerHi: parsed.speakerHi || fallbackSpeakerHi,
-            translationHi: parsed.translationHi || cleanHtml(translation),
-            messageHi: parsed.messageHi || cleanHtml(message),
+            translationHi: alignSpecialCharacterSpacing(translation, parsed.translationHi || cleanHtml(translation)),
+            messageHi: alignSpecialCharacterSpacing(message, parsed.messageHi || cleanHtml(message)),
             wordMeanings: mergedWordMeanings,
           };
           setToCache("hi", "shlok_full", cachePayload, finalResult);
@@ -439,7 +558,10 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
       return {
         word: w.word,
         meaning: w.meaning,
-        meaningHi: preserveSanskritSubWords(w.meaning, hiMeaning || w.meaning),
+        meaningHi: alignSpecialCharacterSpacing(
+          w.meaning,
+          preserveSanskritSubWords(w.meaning, hiMeaning || w.meaning)
+        ),
       };
     })
   );
@@ -447,8 +569,8 @@ Word Meanings (Keep exact IDs and translate meaning into Hindi): ${JSON.stringif
   return {
     chapterNameHi: fallbackChapterNameHi,
     speakerHi: fallbackSpeakerHi,
-    translationHi: fbTranslationHi || cleanHtml(translation),
-    messageHi: fbMessageHi || cleanHtml(message),
+    translationHi: alignSpecialCharacterSpacing(translation, fbTranslationHi || cleanHtml(translation)),
+    messageHi: alignSpecialCharacterSpacing(message, fbMessageHi || cleanHtml(message)),
     wordMeanings: fbWordMeanings,
   };
 }
@@ -721,7 +843,10 @@ Word Meanings: ${JSON.stringify(
               parsed.wordMeanings?.[idx]?.meaningEn ||
               orig.meaningEn ||
               "";
-            const translatedMeaning = preserveSanskritSubWords(orig.meaning, rawMeaning);
+            const translatedMeaning = alignSpecialCharacterSpacing(
+              orig.meaning,
+              preserveSanskritSubWords(orig.meaning, rawMeaning)
+            );
             return {
               word: orig.word,
               meaning: orig.meaning,
@@ -733,8 +858,8 @@ Word Meanings: ${JSON.stringify(
           const finalResult = {
             chapterNameEn: parsed.chapterNameEn || fallbackChapterNameEn,
             speakerEn: parsed.speakerEn || fallbackSpeakerEn,
-            translationEn: parsed.translationEn || cleanHtml(translation),
-            messageEn: parsed.messageEn || cleanHtml(message),
+            translationEn: alignSpecialCharacterSpacing(translation, parsed.translationEn || cleanHtml(translation)),
+            messageEn: alignSpecialCharacterSpacing(message, parsed.messageEn || cleanHtml(message)),
             wordMeanings: mergedWordMeanings,
           };
           setToCache("en", "shlok_full", cachePayload, finalResult);
@@ -762,7 +887,10 @@ Word Meanings: ${JSON.stringify(
         word: w.word,
         meaning: w.meaning,
         meaningHi: w.meaningHi || "",
-        meaningEn: preserveSanskritSubWords(w.meaning, enMeaning || w.meaning),
+        meaningEn: alignSpecialCharacterSpacing(
+          w.meaning,
+          preserveSanskritSubWords(w.meaning, enMeaning || w.meaning)
+        ),
       };
     })
   );
@@ -770,8 +898,8 @@ Word Meanings: ${JSON.stringify(
   return {
     chapterNameEn: fallbackChapterNameEn,
     speakerEn: fallbackSpeakerEn,
-    translationEn: fbTranslationEn || cleanHtml(translation),
-    messageEn: fbMessageEn || cleanHtml(message),
+    translationEn: alignSpecialCharacterSpacing(translation, fbTranslationEn || cleanHtml(translation)),
+    messageEn: alignSpecialCharacterSpacing(message, fbMessageEn || cleanHtml(message)),
     wordMeanings: fbWordMeanings,
   };
 }
@@ -1039,7 +1167,10 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
         return {
           ...orig,
           word: orig.word, // 100% Guaranteed: The user's exact small Sanskrit word is preserved untouched!
-          meaningHi: preserveSanskritSubWords(orig.meaning, rawMeaning),
+          meaningHi: alignSpecialCharacterSpacing(
+            orig.meaning,
+            preserveSanskritSubWords(orig.meaning, rawMeaning)
+          ),
         };
       })
     );
@@ -1069,6 +1200,7 @@ CRITICAL ACCURACY RULES:
    - Preserve holy scriptural names and divine vocabulary with sacred dignity (e.g. धृतराष्ट्र, संजय, अर्जुन, श्रीकृष्ण, धर्मक्षेत्र, कुरुक्षेत्र).
    - Use standard Devanagari grammar and punctuation.
 3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
+4. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in Hindi.
 
 Return ONLY valid JSON:
 {
@@ -1095,7 +1227,7 @@ ${translation}`;
     }
 
     const result = {
-      translationHi: resultHi,
+      translationHi: alignSpecialCharacterSpacing(translation, resultHi),
     };
     setToCache("hi", "translation", translation, result);
     return result;
@@ -1115,6 +1247,7 @@ CRITICAL ACCURACY RULES:
    - Translate strictly what is written in the Gujarati message without adding external commentaries or omitting any teaching.
    - Convey the philosophical depth, devotion, and moral message with clarity, inspiration, and elegance.
 2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
+3. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in Hindi.
 
 Return ONLY valid JSON:
 {
@@ -1141,7 +1274,7 @@ ${message}`;
     }
 
     const result = {
-      messageHi: resultHi,
+      messageHi: alignSpecialCharacterSpacing(message, resultHi),
     };
     setToCache("hi", "message", message, result);
     return result;
@@ -1229,7 +1362,10 @@ ${JSON.stringify(itemsToSend, null, 2)}`;
         return {
           ...orig,
           word: orig.word, // 100% Guaranteed: The user's exact small Sanskrit word is preserved untouched!
-          meaningEn: preserveSanskritSubWords(orig.meaning, rawMeaning),
+          meaningEn: alignSpecialCharacterSpacing(
+            orig.meaning,
+            preserveSanskritSubWords(orig.meaning, rawMeaning)
+          ),
         };
       })
     );
@@ -1259,6 +1395,7 @@ CRITICAL ACCURACY RULES:
    - Maintain classic, revered scriptural English (appropriate for the holy Gita).
    - Transliterate holy names accurately (e.g., Dhritarashtra, Sanjaya, Arjuna, Lord Krishna / The Blessed Lord, Kurukshetra, Dharma).
 3. FORMATTING: Preserve any HTML formatting (e.g. <b>, <i>, <p>, <br>) exactly as provided.
+4. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in English.
 
 Return ONLY valid JSON:
 {
@@ -1285,7 +1422,7 @@ ${translation}`;
     }
 
     const result = {
-      translationEn: resultEn,
+      translationEn: alignSpecialCharacterSpacing(translation, resultEn),
     };
     setToCache("en", "translation", translation, result);
     return result;
@@ -1305,6 +1442,7 @@ CRITICAL ACCURACY RULES:
    - Translate strictly and faithfully what is written in the Gujarati Message below into clear, inspiring English without adding external ideas.
    - Convey the practical spiritual wisdom clearly, eloquently, and respectfully.
 2. FORMATTING: Preserve any HTML formatting (e.g. <ul>, <li>, <b>, <i>, <p>, <br>) exactly as provided.
+3. PUNCTUATION & SPECIAL CHARACTER SPACING: If Gujarati has spaces before or after any special characters (like ' , ', ' / ', ' : ', ' - ', ' ( ', ' ) '), preserve the exact same spacing in English.
 
 Return ONLY valid JSON:
 {
@@ -1331,7 +1469,7 @@ ${message}`;
     }
 
     const result = {
-      messageEn: resultEn,
+      messageEn: alignSpecialCharacterSpacing(message, resultEn),
     };
     setToCache("en", "message", message, result);
     return result;

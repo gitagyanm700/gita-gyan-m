@@ -405,6 +405,122 @@ const preserveSanskritSubWords = (origMeaning, translatedMeaning) => {
   return translatedMeaning;
 };
 
+/**
+ * Helper to process text nodes within HTML strings without altering HTML tags or attributes
+ */
+const replaceTextNodes = (html, replacerFn) => {
+  if (!html || typeof html !== "string") return html;
+  return html.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+    if (tag) return tag;
+    return replacerFn(text);
+  });
+};
+
+/**
+ * Faithfully mirrors user's special character and punctuation spacing from Gujarati to translated text
+ * (e.g. ' ,' , ' / ' , ' : ' , ' - ' , ' ; ' , '( ... )' , ' !' , ' ?' , ' ।')
+ */
+const alignSpecialCharacterSpacing = (origText, translatedText) => {
+  if (!origText || !translatedText || typeof origText !== "string" || typeof translatedText !== "string") {
+    return translatedText || "";
+  }
+
+  // Detect which punctuation spacing patterns exist in the original Gujarati text
+  const hasSpaceBeforeComma = /\s+,/.test(origText);
+  const hasSpaceBeforeColon = /\s+:/.test(origText);
+  const hasSpaceBeforeSemicolon = /\s+;/.test(origText);
+  const hasSpaceAroundSlash = /\s+\/\s+/.test(origText);
+  const hasSpaceBeforeSlashOnly = /\s+\/[^\s]/.test(origText);
+  const hasSpaceAfterSlashOnly = /[^\s]\/\s+/.test(origText);
+  const hasSpaceAroundDash = /\s+[-–—]\s+/.test(origText);
+  const hasSpaceAroundEquals = /\s+=\s+/.test(origText);
+  const hasSpaceAfterOpenParen = /\(\s+/.test(origText);
+  const hasSpaceBeforeCloseParen = /\s+\)/.test(origText);
+  const hasSpaceAfterOpenBracket = /\[\s+/.test(origText);
+  const hasSpaceBeforeCloseBracket = /\s+\]/.test(origText);
+  const hasSpaceBeforeExclamation = /\s+!/.test(origText);
+  const hasSpaceBeforeQuestion = /\s+\?/.test(origText);
+  const hasSpaceBeforeDanda = /\s+[।॥]/.test(origText);
+
+  const applyReplacements = (text) => {
+    let t = text;
+
+    // 1. Comma: ' ,'
+    if (hasSpaceBeforeComma) {
+      t = t.replace(/\s*,/g, " ,");
+    }
+
+    // 2. Colon: ' :'
+    if (hasSpaceBeforeColon) {
+      t = t.replace(/\s*:/g, " :");
+    }
+
+    // 3. Semicolon: ' ;'
+    if (hasSpaceBeforeSemicolon) {
+      t = t.replace(/\s*;/g, " ;");
+    }
+
+    // 4. Slash: ' / '
+    if (hasSpaceAroundSlash) {
+      t = t.replace(/\s*\/\s*/g, " / ");
+    } else if (hasSpaceBeforeSlashOnly) {
+      t = t.replace(/\s*\/([^\s])/g, " /$1");
+    } else if (hasSpaceAfterSlashOnly) {
+      t = t.replace(/([^\s])\/\s*/g, "$1/ ");
+    }
+
+    // 5. Dash / Hyphen: ' - '
+    if (hasSpaceAroundDash) {
+      t = t.replace(/\s*[-–—]\s*/g, " - ");
+    }
+
+    // 6. Equals: ' = '
+    if (hasSpaceAroundEquals) {
+      t = t.replace(/\s*=\s*/g, " = ");
+    }
+
+    // 7. Parentheses: '( ... )'
+    if (hasSpaceAfterOpenParen) {
+      t = t.replace(/\(\s*/g, "( ");
+    }
+    if (hasSpaceBeforeCloseParen) {
+      t = t.replace(/\s*\)/g, " )");
+    }
+
+    // 8. Brackets: '[ ... ]'
+    if (hasSpaceAfterOpenBracket) {
+      t = t.replace(/\[\s*/g, "[ ");
+    }
+    if (hasSpaceBeforeCloseBracket) {
+      t = t.replace(/\s*\]/g, " ]");
+    }
+
+    // 9. Exclamation: ' !'
+    if (hasSpaceBeforeExclamation) {
+      t = t.replace(/\s*!/g, " !");
+    }
+
+    // 10. Question mark: ' ?'
+    if (hasSpaceBeforeQuestion) {
+      t = t.replace(/\s*\?/g, " ?");
+    }
+
+    // 11. Danda: ' ।' or ' ॥'
+    if (hasSpaceBeforeDanda) {
+      t = t.replace(/\s*([।॥])/g, " $1");
+    }
+
+    return t;
+  };
+
+  // If text contains HTML tags, only process non-HTML text nodes
+  if (/<[a-z][\s\S]*>/i.test(translatedText)) {
+    return replaceTextNodes(translatedText, applyReplacements);
+  }
+
+  return applyReplacements(translatedText);
+};
+
 const cleanSanskritWord = (word) => {
   return String(word || "")
     .replace(
@@ -1352,7 +1468,10 @@ function ShlokManagement() {
               return {
                 ...item,
                 word: item.word, // Keep user's exact Sanskrit word (including split words) strictly untouched
-                meaningHi: preserveSanskritSubWords(item.meaning, rawHi),
+                meaningHi: alignSpecialCharacterSpacing(
+                  item.meaning,
+                  preserveSanskritSubWords(item.meaning, rawHi)
+                ),
               };
             } else {
               const rawEn =
@@ -1362,7 +1481,10 @@ function ShlokManagement() {
               return {
                 ...item,
                 word: item.word, // Keep user's exact Sanskrit word (including split words) strictly untouched
-                meaningEn: preserveSanskritSubWords(item.meaning, rawEn),
+                meaningEn: alignSpecialCharacterSpacing(
+                  item.meaning,
+                  preserveSanskritSubWords(item.meaning, rawEn)
+                ),
               };
             }
           })
@@ -1377,15 +1499,19 @@ function ShlokManagement() {
         if (targetLang === "hi") {
           setFormData((prev) => ({
             ...prev,
-            translationHi:
-              translated.translationHi || prev.translationHi,
+            translationHi: alignSpecialCharacterSpacing(
+              formData.translation,
+              translated.translationHi || prev.translationHi
+            ),
           }));
           setAutoTranslateSuccess("✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થયો!");
         } else {
           setFormData((prev) => ({
             ...prev,
-            translationEn:
-              translated.translationEn || prev.translationEn,
+            translationEn: alignSpecialCharacterSpacing(
+              formData.translation,
+              translated.translationEn || prev.translationEn
+            ),
           }));
           setAutoTranslateSuccess("✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થયો!");
         }
@@ -1393,15 +1519,19 @@ function ShlokManagement() {
         if (targetLang === "hi") {
           setFormData((prev) => ({
             ...prev,
-            messageHi:
-              translated.messageHi || prev.messageHi,
+            messageHi: alignSpecialCharacterSpacing(
+              formData.message,
+              translated.messageHi || prev.messageHi
+            ),
           }));
           setAutoTranslateSuccess("✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થઈ!");
         } else {
           setFormData((prev) => ({
             ...prev,
-            messageEn:
-              translated.messageEn || prev.messageEn,
+            messageEn: alignSpecialCharacterSpacing(
+              formData.message,
+              translated.messageEn || prev.messageEn
+            ),
           }));
           setAutoTranslateSuccess("✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થઈ!");
         }
