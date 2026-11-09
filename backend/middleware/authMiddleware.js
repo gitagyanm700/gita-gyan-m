@@ -3,15 +3,20 @@ const User = require("../models/User");
 
 const protect = async (req, res, next) => {
   try {
+    let token = null;
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         message: "Login જરૂરી છે."
       });
     }
-
-    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(
       token,
@@ -260,12 +265,40 @@ const superAdminOnly = async (req, res, next) => {
   }
 };
 
+/**
+ * Strict Super Admin Only Middleware
+ * Grants access exclusively to Master Super Admins (gitagyanm700@gmail.com / aambaliyamanav@gmail.com)
+ * Sub-admins or regular users are strictly blocked.
+ */
+const strictSuperAdminOnly = async (req, res, next) => {
+  try {
+    const user = req.user || (await User.findById(req.userId));
+
+    if (!user || user.role !== "admin" || !isSuperAdmin(user)) {
+      return res.status(403).json({
+        success: false,
+        code: "SUPER_ADMIN_EXCLUSIVE",
+        message: "માત્ર મુખ્ય સુપર એડમિન (Master Super Admin) જ આ સુવિધાનો ઉપયોગ કરી શકે છે."
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Strict Super Admin Check Error:", error);
+    return res.status(500).json({
+      message: "Authorization error."
+    });
+  }
+};
+
 module.exports = {
   protect,
   optionalAuth,
   adminOnly,
   requirePermission,
   superAdminOnly,
+  strictSuperAdminOnly,
   isSuperAdmin,
   hasPermission,
 };

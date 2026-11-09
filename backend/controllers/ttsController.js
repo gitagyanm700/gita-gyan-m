@@ -232,8 +232,143 @@ const warmupChapterAudios = async (req, res) => {
   }
 };
 
+/**
+ * Super Admin Exclusive: Download Shlok Audio MP3
+ * GET/POST /api/tts/download/shlok/:chapterNumber/:shlokNumber
+ * Query or Body:
+ *   - type: "full" | "sanskrit" | "translation" | "message"
+ *   - lang: "gu" | "hi" | "en"
+ */
+const downloadShlokAudio = async (req, res) => {
+  try {
+    const chapterNumber = parseInt(req.params.chapterNumber, 10);
+    const shlokNumber = parseInt(req.params.shlokNumber, 10);
+    const type = (req.query.type || req.body?.type || "full").toLowerCase();
+    const lang = (req.query.lang || req.body?.lang || "gu").toLowerCase();
+
+    if (isNaN(chapterNumber) || isNaN(shlokNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid chapter and shlok numbers are required.",
+      });
+    }
+
+    const Shlok = require("../models/Shlok");
+    const shlok = await Shlok.findOne({ chapterNumber, shlokNumber });
+    if (!shlok) {
+      return res.status(404).json({
+        success: false,
+        message: `અધ્યાય ${chapterNumber}, શ્લોક ${shlokNumber} મળ્યો નથી.`,
+      });
+    }
+
+    const cleanHtml = (str) => {
+      if (!str) return "";
+      return String(str)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, " and ")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
+    let plainSa = String(shlok.sanskrit || "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/[॥\|]\s*[\d\.\-०-९]+\s*[॥\|]/g, "।")
+      .replace(/[॥\|]+/g, "।")
+      .replace(/[:：]/g, ". ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!plainSa && (shlok.sanskritLine1 || shlok.sanskritLine2)) {
+      plainSa = [shlok.sanskritLine1, shlok.sanskritLine2].filter(Boolean).join("\n");
+    }
+
+    const translationText =
+      lang === "hi"
+        ? (shlok.translationHi || shlok.translation)
+        : lang === "en"
+        ? (shlok.translationEn || shlok.translation)
+        : shlok.translation;
+    const plainTr = cleanHtml(translationText);
+
+    const messageText =
+      lang === "hi"
+        ? (shlok.messageHi || shlok.message)
+        : lang === "en"
+        ? (shlok.messageEn || shlok.message)
+        : shlok.message;
+    const plainMsg = cleanHtml(messageText);
+
+    let audioBuffer = null;
+    let filename = "";
+
+    if (type === "sanskrit") {
+      if (!plainSa) {
+        return res.status(404).json({ success: false, message: "Sanskrit shloka text not found." });
+      }
+      audioBuffer = await synthesizeBuffer(plainSa, "sa", "-22%");
+      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sanskrit.mp3`;
+    } else if (type === "translation") {
+      if (!plainTr) {
+        return res.status(404).json({ success: false, message: "Translation text not found." });
+      }
+      audioBuffer = await synthesizeBuffer(plainTr, lang, "-2%");
+      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Anuvad_${lang.toUpperCase()}.mp3`;
+    } else if (type === "message") {
+      if (!plainMsg) {
+        return res.status(404).json({ success: false, message: "Message text not found." });
+      }
+      audioBuffer = await synthesizeBuffer(plainMsg, lang, "-2%");
+      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sandesh_${lang.toUpperCase()}.mp3`;
+    } else {
+      // type === "full" (Combine Sanskrit + Translation + Message in one continuous MP3)
+      const parts = [];
+      if (plainSa) {
+        const saBuf = await synthesizeBuffer(plainSa, "sa", "-22%");
+        if (saBuf && saBuf.length > 0) parts.push(saBuf);
+      }
+      if (plainTr) {
+        const trBuf = await synthesizeBuffer(plainTr, lang, "-2%");
+        if (trBuf && trBuf.length > 0) parts.push(trBuf);
+      }
+      if (plainMsg) {
+        const msgBuf = await synthesizeBuffer(plainMsg, lang, "-2%");
+        if (msgBuf && msgBuf.length > 0) parts.push(msgBuf);
+      }
+
+      if (parts.length === 0) {
+        return res.status(404).json({ success: false, message: "No audio content available for this shlok." });
+      }
+
+      audioBuffer = Buffer.concat(parts);
+      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sampurna_${lang.toUpperCase()}.mp3`;
+    }
+
+    if (!audioBuffer || audioBuffer.length === 0) {
+      return res.status(500).json({ success: false, message: "Audio generation failed." });
+    }
+
+    res.set({
+      "Content-Type": "audio/mpeg",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": audioBuffer.length,
+      "Cache-Control": "private, max-age=86400",
+      "Accept-Ranges": "bytes",
+    });
+
+    return res.send(audioBuffer);
+  } catch (error) {
+    console.error("downloadShlokAudio Fatal Error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: "Failed to generate shlok audio download." });
+    }
+  }
+};
+
 module.exports = {
   generateSpeech,
   precacheSingleShlokAudio,
   warmupChapterAudios,
+  downloadShlokAudio,
 };

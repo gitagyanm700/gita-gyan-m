@@ -4611,3 +4611,462 @@ html[data-theme="dark"] .field-ai-translate-btn.en-btn:hover:not(:disabled) {
   background: rgba(79, 70, 229, 0.25);
   border-color: #818cf8;
 }
+
+/* =====================================================
+   SUPER ADMIN AUDIO MP3 DOWNLOAD BUTTONS & MODALS
+===================================================== */
+
+/* Toolbar Batch Download Button */
+.chapter-batch-audio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.chapter-batch-audio-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Individual Shlok Action Button */
+.audio-download-shlok-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+}
+
+.audio-download-shlok-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
+}
+
+/* Audio Modal Styles */
+.audio-download-modal,
+.batch-audio-modal {
+  max-width: 680px;
+  width: 95%;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: audioModalPop 0.25s ease-out;
+}
+
+@keyframes audioModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.audio-modal-header {
+  padding: 20px 24px;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.audio-modal-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.audio-super-admin-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+}
+
+.audio-modal-body {
+  padding: 24px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* Language selector */
+.audio-lang-selector-box {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.audio-lang-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.audio-lang-pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.audio-lang-pill:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.audio-lang-pill.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+/* Audio Cards Grid */
+.audio-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.audio-option-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.audio-option-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.audio-option-card.highlighted {
+  background: linear-gradient(to right, #eff6ff, #f8fafc);
+  border: 1.5px solid #bfdbfe;
+}
+
+.audio-option-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.audio-option-star {
+  font-size: 1.1rem;
+}
+
+.audio-option-info h4 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.audio-recommended-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid #bbf7d0;
+}
+
+.audio-option-info p {
+  margin: 4px 0 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.audio-option-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.audio-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.audio-preview-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.audio-preview-btn.playing {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+  animation: previewPulse 1.5s infinite;
+}
+
+@keyframes previewPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.audio-download-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #0284c7;
+  background: #0284c7;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.audio-download-action-btn:hover:not(:disabled) {
+  background: #0369a1;
+  border-color: #0369a1;
+}
+
+.audio-download-action-btn.primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.audio-download-action-btn.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.audio-download-action-btn:disabled,
+.audio-preview-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Batch Modal Formats */
+.batch-format-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .batch-format-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.batch-format-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.batch-format-radio:hover {
+  border-color: #cbd5e1;
+}
+
+.batch-format-radio.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.batch-format-radio input[type="radio"] {
+  margin-top: 3px;
+  accent-color: #2563eb;
+}
+
+.batch-format-radio strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #1e293b;
+}
+
+.batch-format-radio p {
+  margin: 2px 0 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* Progress Box */
+.batch-progress-box {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.batch-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.batch-progress-bar-track {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.batch-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, #10b981, #2563eb);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.batch-progress-sub {
+  margin: 10px 0 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.batch-complete-banner {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Dark mode styling for audio modals */
+html[data-theme="dark"] .audio-download-modal,
+html[data-theme="dark"] .batch-audio-modal {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .audio-modal-header {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .audio-modal-header h3 {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .audio-modal-icon-badge {
+  background: #78350f;
+}
+
+html[data-theme="dark"] .audio-lang-selector-box {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .audio-lang-pill {
+  background: #0f172a;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .audio-lang-pill.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .audio-option-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .audio-option-card h4 {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .audio-option-card.highlighted {
+  background: #1e293b;
+  border-color: #3b82f6;
+}
+
+html[data-theme="dark"] .audio-preview-btn {
+  background: #0f172a;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .batch-format-radio {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .batch-format-radio.selected {
+  background: #1e293b;
+  border-color: #3b82f6;
+}
+
+html[data-theme="dark"] .batch-format-radio strong {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .batch-progress-box {
+  background: #1e293b;
+  border-color: #334155;
+}

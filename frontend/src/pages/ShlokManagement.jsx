@@ -11,11 +11,44 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { hasPermission } from "../utils/permissionHelper.js";
-import { BookOpen, Activity, Type, Trash2, Save, FileText, RefreshCw, Archive, Mic, Sparkles, Plus, Highlighter, Palette, AlignLeft, AlignCenter, AlignRight, CornerDownLeft, ArrowLeft, List, Undo, Redo, Bold, Italic, Underline } from "lucide-react";
+import { hasPermission, isSuperAdminUser } from "../utils/permissionHelper.js";
+import {
+  BookOpen,
+  Activity,
+  Type,
+  Trash2,
+  Save,
+  FileText,
+  RefreshCw,
+  Archive,
+  Mic,
+  Sparkles,
+  Plus,
+  Highlighter,
+  Palette,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  CornerDownLeft,
+  ArrowLeft,
+  List,
+  Undo,
+  Redo,
+  Bold,
+  Italic,
+  Underline,
+  Download,
+  Play,
+  Pause,
+  Headphones,
+  Volume2,
+  X,
+  CheckCircle2,
+} from "lucide-react";
 import "./ShlokManagement.css";
 
 
@@ -458,6 +491,7 @@ function ShlokManagement() {
   const navigate = useNavigate();
   const { isHindi, isEnglish, isGujarati, txt } = useLanguage();
   const { user } = useAuth();
+  const isSuperAdmin = isSuperAdminUser(user);
   const canAddShloks = hasPermission(user, "add_shloks") || hasPermission(user, "manage_shloks");
   const canEditShloks = hasPermission(user, "edit_shloks") || hasPermission(user, "manage_shloks");
   const canDeleteShloks = hasPermission(user, "delete_shloks");
@@ -564,6 +598,240 @@ function ShlokManagement() {
       messageEn: "",
     };
   });
+
+  /* =====================================================
+     SUPER ADMIN AUDIO DOWNLOAD & PREVIEW (EXCLUSIVE)
+  ===================================================== */
+  const [audioModalShlok, setAudioModalShlok] = useState(null);
+  const [audioModalLang, setAudioModalLang] = useState("gu");
+  const [downloadingType, setDownloadingType] = useState(null);
+  const [previewPlayingType, setPreviewPlayingType] = useState(null);
+  const [previewLoadingType, setPreviewLoadingType] = useState(null);
+  const previewAudioRef = useRef(null);
+
+  // Batch Chapter Audio Download state
+  const [isBatchAudioModalOpen, setIsBatchAudioModalOpen] = useState(false);
+  const [batchFormat, setBatchFormat] = useState("full");
+  const [batchLang, setBatchLang] = useState("gu");
+  const [batchDownloading, setBatchDownloading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, shlokNum: 0 });
+  const batchAbortedRef = useRef(false);
+
+  const downloadBlobAsFile = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } catch (e) {}
+    }, 4000);
+  };
+
+  const stopAudioPreview = () => {
+    if (previewAudioRef.current) {
+      try {
+        previewAudioRef.current.pause();
+      } catch (e) {}
+      previewAudioRef.current = null;
+    }
+    setPreviewPlayingType(null);
+    setPreviewLoadingType(null);
+  };
+
+  const handlePreviewAudio = async (shlok, type, lang) => {
+    if (!shlok) return;
+    if (previewPlayingType === type) {
+      stopAudioPreview();
+      return;
+    }
+
+    stopAudioPreview();
+    setPreviewLoadingType(type);
+
+    try {
+      const token = getValidToken();
+      const isLocalHost =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1");
+      const base = isLocalHost
+        ? "http://localhost:5000"
+        : "https://bhagavad-gita-backend-jy1a.onrender.com";
+
+      const res = await fetch(
+        `${base}/api/tts/download/shlok/${shlok.chapterNumber}/${shlok.shlokNumber}?type=${type}&lang=${lang}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "ઓડિયો લોડ થઈ શક્યો નહીં.");
+      }
+
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      previewAudioRef.current = audio;
+
+      audio.onended = () => {
+        stopAudioPreview();
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        stopAudioPreview();
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+      setPreviewPlayingType(type);
+    } catch (err) {
+      console.error("Preview error:", err);
+      alert(err.message || "ઓડિયો પ્લે થઈ શક્યો નહીં.");
+      stopAudioPreview();
+    } finally {
+      setPreviewLoadingType(null);
+    }
+  };
+
+  const handleDownloadSingleAudio = async (shlok, type, lang) => {
+    if (!shlok || !isSuperAdmin) {
+      alert("માત્ર મુખ્ય સુપર એડમિન જ શ્લોક ઓડિયો MP3 ડાઉનલોડ કરી શકે છે.");
+      return;
+    }
+
+    setDownloadingType(type);
+
+    try {
+      const token = getValidToken();
+      const isLocalHost =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1");
+      const base = isLocalHost
+        ? "http://localhost:5000"
+        : "https://bhagavad-gita-backend-jy1a.onrender.com";
+
+      const chNum = shlok.chapterNumber;
+      const sNum = shlok.shlokNumber;
+
+      const res = await fetch(
+        `${base}/api/tts/download/shlok/${chNum}/${sNum}?type=${type}&lang=${lang}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "ઓડિયો ડાઉનલોડ કરવામાં સમસ્યા આવી.");
+      }
+
+      const blob = await res.blob();
+      const typeLabel =
+        type === "full"
+          ? "Sampurna"
+          : type === "sanskrit"
+          ? "Sanskrit"
+          : type === "translation"
+          ? "Anuvad"
+          : "Sandesh";
+      const filename = `Gita_Adhyay_${chNum}_Shlok_${sNum}_${typeLabel}_${lang.toUpperCase()}.mp3`;
+
+      downloadBlobAsFile(blob, filename);
+    } catch (err) {
+      console.error("Audio download error:", err);
+      alert(err.message || "ઓડિયો ડાઉનલોડ નિષ્ફળ ગયો. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.");
+    } finally {
+      setDownloadingType(null);
+    }
+  };
+
+  const startBatchDownload = async () => {
+    if (!isSuperAdmin || !shlokas || shlokas.length === 0) return;
+
+    setBatchDownloading(true);
+    batchAbortedRef.current = false;
+    setBatchProgress({ current: 0, total: shlokas.length, shlokNum: shlokas[0].shlokNumber });
+
+    const token = getValidToken();
+    const isLocalHost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const base = isLocalHost
+      ? "http://localhost:5000"
+      : "https://bhagavad-gita-backend-jy1a.onrender.com";
+
+    try {
+      for (let i = 0; i < shlokas.length; i++) {
+        if (batchAbortedRef.current) break;
+
+        const s = shlokas[i];
+        setBatchProgress({
+          current: i + 1,
+          total: shlokas.length,
+          shlokNum: s.shlokNumber,
+        });
+
+        try {
+          const res = await fetch(
+            `${base}/api/tts/download/shlok/${s.chapterNumber}/${s.shlokNumber}?type=${batchFormat}&lang=${batchLang}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (res.ok) {
+            const blob = await res.blob();
+            const typeLabel =
+              batchFormat === "full"
+                ? "Sampurna"
+                : batchFormat === "sanskrit"
+                ? "Sanskrit"
+                : batchFormat === "translation"
+                ? "Anuvad"
+                : "Sandesh";
+            const filename = `Gita_Adhyay_${s.chapterNumber}_Shlok_${s.shlokNumber}_${typeLabel}_${batchLang.toUpperCase()}.mp3`;
+            downloadBlobAsFile(blob, filename);
+          }
+        } catch (itemErr) {
+          console.warn(`Could not download shlok ${s.shlokNumber}:`, itemErr);
+        }
+
+        // Delay between file downloads
+        await new Promise((r) => setTimeout(r, 900));
+      }
+    } finally {
+      setBatchDownloading(false);
+    }
+  };
+
+  const stopBatchDownload = () => {
+    batchAbortedRef.current = true;
+    setBatchDownloading(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopAudioPreview();
+      batchAbortedRef.current = true;
+    };
+  }, []);
 
   /* =====================================================
      API URL
@@ -2821,19 +3089,32 @@ function ShlokManagement() {
               </p>
             </div>
 
-            <button
-              type="button"
-              className="refresh-btn"
-              onClick={() =>
-                fetchShlokas(
-                  Number(
-                    selectedChapter
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              {isSuperAdmin && shlokas.length > 0 && (
+                <button
+                  type="button"
+                  className="chapter-batch-audio-btn"
+                  onClick={() => setIsBatchAudioModalOpen(true)}
+                  title={`અધ્યાય ${selectedChapter} ના તમામ ${shlokas.length} શ્લોકના ઓડિયો MP3 ડાઉનલોડ કરો (માત્ર મુખ્ય સુપર એડમિન)`}
+                >
+                  <Download className="btn-icon" size={16} /> 👑 આખા અધ્યાય {selectedChapter} ના Audio MP3 ({shlokas.length})
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="refresh-btn"
+                onClick={() =>
+                  fetchShlokas(
+                    Number(
+                      selectedChapter
+                    )
                   )
-                )
-              }
-            >
-              <RefreshCw className="btn-icon" size={16} /> Refresh
-            </button>
+                }
+              >
+                <RefreshCw className="btn-icon" size={16} /> Refresh
+              </button>
+            </div>
 
           </div>
 
@@ -2931,6 +3212,21 @@ function ShlokManagement() {
                             </div>
 
                             <div className="shlok-actions">
+
+                              {/* 👑 SUPER ADMIN EXCLUSIVE AUDIO MP3 DOWNLOAD */}
+                              {isSuperAdmin && (
+                                <button
+                                  type="button"
+                                  className="audio-download-shlok-btn"
+                                  onClick={() => {
+                                    stopAudioPreview();
+                                    setAudioModalShlok(shlok);
+                                  }}
+                                  title="આ શ્લોકનો ઓડિયો MP3 ડાઉનલોડ કરો (👑 Super Admin)"
+                                >
+                                  <Download className="btn-icon" size={15} /> Audio MP3
+                                </button>
+                              )}
 
                               {canEditShloks && (
                                 <button
@@ -3127,6 +3423,499 @@ function ShlokManagement() {
           )}
 
         </section>
+
+        {/* =================================================
+            1. SUPER ADMIN SINGLE SHLOK AUDIO MODAL
+        ================================================= */}
+        {isSuperAdmin && audioModalShlok && typeof document !== "undefined" && createPortal(
+          <div
+            className="admin-modal-overlay"
+            onClick={() => {
+              stopAudioPreview();
+              setAudioModalShlok(null);
+            }}
+          >
+            <div
+              className="admin-modal-content audio-download-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="admin-modal-header audio-modal-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div className="audio-modal-icon-badge">
+                    <Headphones size={24} color="#d97706" />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700", color: "#1e293b" }}>
+                        અધ્યાય {audioModalShlok.chapterNumber}, શ્લોક {audioModalShlok.shlokNumber}
+                      </h3>
+                      <span className="audio-super-admin-pill">
+                        👑 Super Admin Exclusive
+                      </span>
+                    </div>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                      ઓડિયો MP3 ડાઉનલોડ અને પ્રીવ્યૂ મેનેજર
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="admin-modal-close-btn"
+                  onClick={() => {
+                    stopAudioPreview();
+                    setAudioModalShlok(null);
+                  }}
+                  title="બંધ કરો"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="admin-modal-body audio-modal-body">
+                {/* LANGUAGE SELECTOR */}
+                <div className="audio-lang-selector-box">
+                  <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "#475569", display: "block", marginBottom: "8px" }}>
+                    ઓડિયો ભાષા પસંદ કરો (Language):
+                  </label>
+                  <div className="audio-lang-pills">
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${audioModalLang === "gu" ? "active" : ""}`}
+                      onClick={() => {
+                        stopAudioPreview();
+                        setAudioModalLang("gu");
+                      }}
+                    >
+                      ગુજરાતી (Default)
+                    </button>
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${audioModalLang === "hi" ? "active" : ""}`}
+                      onClick={() => {
+                        stopAudioPreview();
+                        setAudioModalLang("hi");
+                      }}
+                    >
+                      हिन्दी (Hindi)
+                    </button>
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${audioModalLang === "en" ? "active" : ""}`}
+                      onClick={() => {
+                        stopAudioPreview();
+                        setAudioModalLang("en");
+                      }}
+                    >
+                      English
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 AUDIO OPTIONS */}
+                <div className="audio-cards-grid">
+                  {/* OPTION 1: FULL SHLOKA AUDIO */}
+                  <div className="audio-option-card highlighted">
+                    <div className="audio-option-info">
+                      <div className="audio-option-title-row">
+                        <span className="audio-option-star">🌟</span>
+                        <h4>સંપૂર્ણ શ્લોક (Full Audio MP3)</h4>
+                        <span className="audio-recommended-badge">સૌથી શ્રેષ્ઠ</span>
+                      </div>
+                      <p>
+                        સંસ્કૃત શ્લોકનું ઉચ્ચારણ + {audioModalLang === "hi" ? "हिन्दी" : audioModalLang === "en" ? "English" : "ગુજરાતી"} અનુવાદ + જીવન સંદેશ એક જ MP3 ફાઇલમાં.
+                      </p>
+                    </div>
+                    <div className="audio-option-actions">
+                      <button
+                        type="button"
+                        className={`audio-preview-btn ${previewPlayingType === "full" ? "playing" : ""}`}
+                        onClick={() => handlePreviewAudio(audioModalShlok, "full", audioModalLang)}
+                        disabled={previewLoadingType === "full"}
+                        title="ઓડિયો સાંભળો"
+                      >
+                        {previewLoadingType === "full" ? (
+                          <>⏳ લોડિંગ...</>
+                        ) : previewPlayingType === "full" ? (
+                          <><Pause size={15} /> ⏸️ બંધ કરો</>
+                        ) : (
+                          <><Play size={15} /> ▶️ સાંભળો</>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="audio-download-action-btn primary"
+                        onClick={() => handleDownloadSingleAudio(audioModalShlok, "full", audioModalLang)}
+                        disabled={downloadingType === "full"}
+                        title="સંપૂર્ણ શ્લોક MP3 ડાઉનલોડ કરો"
+                      >
+                        {downloadingType === "full" ? (
+                          <>⏳ ડાઉનલોડિંગ...</>
+                        ) : (
+                          <><Download size={15} /> 📥 MP3 ડાઉનલોડ</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OPTION 2: SANSKRIT ONLY */}
+                  <div className="audio-option-card">
+                    <div className="audio-option-info">
+                      <div className="audio-option-title-row">
+                        <span className="audio-option-star">🕉️</span>
+                        <h4>સંસ્કૃત શ્લોક (Sanskrit Audio MP3)</h4>
+                      </div>
+                      <p>
+                        ભગવાન શ્રીકૃષ્ણ / અર્જુનનું શુદ્ધ શાસ્ત્રોક્ત સંસ્કૃત શ્લોક પઠન.
+                      </p>
+                    </div>
+                    <div className="audio-option-actions">
+                      <button
+                        type="button"
+                        className={`audio-preview-btn ${previewPlayingType === "sanskrit" ? "playing" : ""}`}
+                        onClick={() => handlePreviewAudio(audioModalShlok, "sanskrit", "sa")}
+                        disabled={previewLoadingType === "sanskrit"}
+                      >
+                        {previewLoadingType === "sanskrit" ? (
+                          <>⏳ લોડિંગ...</>
+                        ) : previewPlayingType === "sanskrit" ? (
+                          <><Pause size={15} /> ⏸️ બંધ કરો</>
+                        ) : (
+                          <><Play size={15} /> ▶️ સાંભળો</>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="audio-download-action-btn"
+                        onClick={() => handleDownloadSingleAudio(audioModalShlok, "sanskrit", "sa")}
+                        disabled={downloadingType === "sanskrit"}
+                      >
+                        {downloadingType === "sanskrit" ? (
+                          <>⏳ ડાઉનલોડિંગ...</>
+                        ) : (
+                          <><Download size={15} /> 📥 MP3 ડાઉનલોડ</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OPTION 3: TRANSLATION ONLY */}
+                  <div className="audio-option-card">
+                    <div className="audio-option-info">
+                      <div className="audio-option-title-row">
+                        <span className="audio-option-star">📖</span>
+                        <h4>{audioModalLang === "hi" ? "हिन्दी" : audioModalLang === "en" ? "English" : "ગુજરાતી"} અનુવાદ (Translation MP3)</h4>
+                      </div>
+                      <p>
+                        સરળ અને સ્પષ્ટ ભાષામાં શ્લોકનો સંપૂર્ણ ભાવાર્થ અને અનુવાદ.
+                      </p>
+                    </div>
+                    <div className="audio-option-actions">
+                      <button
+                        type="button"
+                        className={`audio-preview-btn ${previewPlayingType === "translation" ? "playing" : ""}`}
+                        onClick={() => handlePreviewAudio(audioModalShlok, "translation", audioModalLang)}
+                        disabled={previewLoadingType === "translation"}
+                      >
+                        {previewLoadingType === "translation" ? (
+                          <>⏳ લોડિંગ...</>
+                        ) : previewPlayingType === "translation" ? (
+                          <><Pause size={15} /> ⏸️ બંધ કરો</>
+                        ) : (
+                          <><Play size={15} /> ▶️ સાંભળો</>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="audio-download-action-btn"
+                        onClick={() => handleDownloadSingleAudio(audioModalShlok, "translation", audioModalLang)}
+                        disabled={downloadingType === "translation"}
+                      >
+                        {downloadingType === "translation" ? (
+                          <>⏳ ડાઉનલોડિંગ...</>
+                        ) : (
+                          <><Download size={15} /> 📥 MP3 ડાઉનલોડ</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OPTION 4: MESSAGE ONLY */}
+                  <div className="audio-option-card">
+                    <div className="audio-option-info">
+                      <div className="audio-option-title-row">
+                        <span className="audio-option-star">✨</span>
+                        <h4>{audioModalLang === "hi" ? "हिन्दी" : audioModalLang === "en" ? "English" : "ગુજરાતી"} સંદેશ (Message MP3)</h4>
+                      </div>
+                      <p>
+                        આજના દૈનિક જીવન માટે ઉપયોગી પ્રેરણાદાયી જીવન માર્ગદર્શન અને સંદેશ.
+                      </p>
+                    </div>
+                    <div className="audio-option-actions">
+                      <button
+                        type="button"
+                        className={`audio-preview-btn ${previewPlayingType === "message" ? "playing" : ""}`}
+                        onClick={() => handlePreviewAudio(audioModalShlok, "message", audioModalLang)}
+                        disabled={previewLoadingType === "message"}
+                      >
+                        {previewLoadingType === "message" ? (
+                          <>⏳ લોડિંગ...</>
+                        ) : previewPlayingType === "message" ? (
+                          <><Pause size={15} /> ⏸️ બંધ કરો</>
+                        ) : (
+                          <><Play size={15} /> ▶️ સાંભળો</>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="audio-download-action-btn"
+                        onClick={() => handleDownloadSingleAudio(audioModalShlok, "message", audioModalLang)}
+                        disabled={downloadingType === "message"}
+                      >
+                        {downloadingType === "message" ? (
+                          <>⏳ ડાઉનલોડિંગ...</>
+                        ) : (
+                          <><Download size={15} /> 📥 MP3 ડાઉનલોડ</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="admin-modal-footer">
+                <button
+                  type="button"
+                  className="admin-modal-close-action"
+                  onClick={() => {
+                    stopAudioPreview();
+                    setAudioModalShlok(null);
+                  }}
+                >
+                  બંધ કરો
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* =================================================
+            2. SUPER ADMIN BATCH CHAPTER AUDIO DOWNLOAD MODAL
+        ================================================= */}
+        {isSuperAdmin && isBatchAudioModalOpen && typeof document !== "undefined" && createPortal(
+          <div
+            className="admin-modal-overlay"
+            onClick={() => {
+              if (!batchDownloading) setIsBatchAudioModalOpen(false);
+            }}
+          >
+            <div
+              className="admin-modal-content batch-audio-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="admin-modal-header audio-modal-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div className="audio-modal-icon-badge">
+                    <Download size={24} color="#2563eb" />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: "700", color: "#1e293b" }}>
+                        અધ્યાય {selectedChapter} - બધા શ્લોક ડાઉનલોડ કરો
+                      </h3>
+                      <span className="audio-super-admin-pill">
+                        👑 Super Admin Exclusive
+                      </span>
+                    </div>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                      કુલ {shlokas.length} શ્લોકો એક પછી એક MP3 માં ડાઉનલોડ થશે
+                    </p>
+                  </div>
+                </div>
+
+                {!batchDownloading && (
+                  <button
+                    type="button"
+                    className="admin-modal-close-btn"
+                    onClick={() => setIsBatchAudioModalOpen(false)}
+                    title="બંધ કરો"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+
+              <div className="admin-modal-body audio-modal-body">
+                {/* FORMAT SELECTION */}
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontSize: "0.88rem", fontWeight: "600", color: "#334155", display: "block", marginBottom: "8px" }}>
+                    કયા પ્રકારનો ઓડિયો ડાઉનલોડ કરવો છે?
+                  </label>
+                  <div className="batch-format-grid">
+                    <label className={`batch-format-radio ${batchFormat === "full" ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="batchFormat"
+                        value="full"
+                        checked={batchFormat === "full"}
+                        onChange={(e) => setBatchFormat(e.target.value)}
+                        disabled={batchDownloading}
+                      />
+                      <div>
+                        <strong>🌟 સંપૂર્ણ શ્લોક (Full Audio MP3)</strong>
+                        <p>સંસ્કૃત + અનુવાદ + જીવન સંદેશ (ભલામણ કરેલ)</p>
+                      </div>
+                    </label>
+
+                    <label className={`batch-format-radio ${batchFormat === "sanskrit" ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="batchFormat"
+                        value="sanskrit"
+                        checked={batchFormat === "sanskrit"}
+                        onChange={(e) => setBatchFormat(e.target.value)}
+                        disabled={batchDownloading}
+                      />
+                      <div>
+                        <strong>🕉️ માત્ર સંસ્કૃત શ્લોક (Sanskrit Only)</strong>
+                        <p>મૂળ શ્લોક ઉચ્ચારણ</p>
+                      </div>
+                    </label>
+
+                    <label className={`batch-format-radio ${batchFormat === "translation" ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="batchFormat"
+                        value="translation"
+                        checked={batchFormat === "translation"}
+                        onChange={(e) => setBatchFormat(e.target.value)}
+                        disabled={batchDownloading}
+                      />
+                      <div>
+                        <strong>📖 માત્ર અનુવાદ (Translation Only)</strong>
+                        <p>સરળ ભાવાર્થ અને અર્થ</p>
+                      </div>
+                    </label>
+
+                    <label className={`batch-format-radio ${batchFormat === "message" ? "selected" : ""}`}>
+                      <input
+                        type="radio"
+                        name="batchFormat"
+                        value="message"
+                        checked={batchFormat === "message"}
+                        onChange={(e) => setBatchFormat(e.target.value)}
+                        disabled={batchDownloading}
+                      />
+                      <div>
+                        <strong>✨ માત્ર સંદેશ (Message Only)</strong>
+                        <p>જીવન માર્ગદર્શન</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* LANGUAGE SELECTION */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ fontSize: "0.88rem", fontWeight: "600", color: "#334155", display: "block", marginBottom: "8px" }}>
+                    ભાષા પસંદ કરો:
+                  </label>
+                  <div className="audio-lang-pills">
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${batchLang === "gu" ? "active" : ""}`}
+                      onClick={() => setBatchLang("gu")}
+                      disabled={batchDownloading}
+                    >
+                      ગુજરાતી (Default)
+                    </button>
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${batchLang === "hi" ? "active" : ""}`}
+                      onClick={() => setBatchLang("hi")}
+                      disabled={batchDownloading}
+                    >
+                      हिन्दी
+                    </button>
+                    <button
+                      type="button"
+                      className={`audio-lang-pill ${batchLang === "en" ? "active" : ""}`}
+                      onClick={() => setBatchLang("en")}
+                      disabled={batchDownloading}
+                    >
+                      English
+                    </button>
+                  </div>
+                </div>
+
+                {/* PROGRESS DISPLAY */}
+                {batchDownloading && (
+                  <div className="batch-progress-box">
+                    <div className="batch-progress-header">
+                      <span>
+                        પ્રગતિ: <strong>શ્લોક {batchProgress.current} / {batchProgress.total}</strong>
+                      </span>
+                      <span>
+                        {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                      </span>
+                    </div>
+                    <div className="batch-progress-bar-track">
+                      <div
+                        className="batch-progress-bar-fill"
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                      />
+                    </div>
+                    <p className="batch-progress-sub">
+                      ⏳ અધ્યાય {selectedChapter}, શ્લોક {batchProgress.shlokNum} ડાઉનલોડ થઈ રહ્યો છે... (બ્રાઉઝર બંધ ન કરશો)
+                    </p>
+                  </div>
+                )}
+
+                {/* COMPLETED BANNER */}
+                {!batchDownloading && batchProgress.total > 0 && batchProgress.current === batchProgress.total && (
+                  <div className="batch-complete-banner">
+                    <CheckCircle2 size={20} color="#16a34a" />
+                    <span>અધ્યાય {selectedChapter} ના બધા {batchProgress.total} શ્લોક સફળતાપૂર્વક ડાઉનલોડ થઈ ગયા છે! 🎉</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-modal-footer">
+                {!batchDownloading ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-modal-close-action"
+                      onClick={() => setIsBatchAudioModalOpen(false)}
+                    >
+                      રદ કરો
+                    </button>
+                    <button
+                      type="button"
+                      className="audio-download-action-btn primary"
+                      onClick={startBatchDownload}
+                    >
+                      <Download size={16} /> શરૂ કરો: બધા {shlokas.length} શ્લોક ડાઉનલોડ કરો
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="admin-modal-del-btn"
+                    onClick={stopBatchDownload}
+                  >
+                    ⏹️ ડાઉનલોડ રોકો (Stop)
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       </div>
     </main>

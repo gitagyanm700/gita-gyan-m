@@ -918,6 +918,33 @@ function Admin() {
               </Link>
             )}
 
+            {/* =================================================
+                SUPER ADMIN AUDIO MP3 DOWNLOADER (EXCLUSIVE)
+            ================================================= */}
+
+            {isSuperAdmin && (
+              <Link
+                to="/admin/shloks"
+                className="management-card audio-management-card"
+              >
+                <div className="management-icon" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#10b981" }}>
+                  <Download size={48} color="#10b981" strokeWidth={1.5} />
+                </div>
+                <div className="management-content">
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <h2>Audio MP3 Downloader</h2>
+                    <span style={{ fontSize: "0.72rem", background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: "999px", fontWeight: "700" }}>
+                      👑 Only You
+                    </span>
+                  </div>
+                  <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
+                    દરેક શ્લોકના ઓડિયો MP3 ડાઉનલોડ કરો
+                  </p>
+                </div>
+                <div className="management-arrow"><ArrowRight size={22} className="management-arrow-icon" /></div>
+              </Link>
+            )}
+
           </div>
         )}
 
