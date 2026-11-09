@@ -18,6 +18,7 @@ import {
   X,
   ArrowRight,
   ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import "./About.css";
@@ -626,6 +627,63 @@ function About() {
             })}
           </div>
         </section>
+
+        {/* =====================================================
+            ABOUT FOOTER: SPIRITUAL MISSION & LEGAL DISCLAIMER
+        ===================================================== */}
+        <footer className="about-compact-footer">
+          <div className="about-disclaimer-card">
+            <div className="about-disclaimer-header">
+              <div className="about-disclaimer-icon-badge">
+                <ShieldCheck size={22} color="#059669" />
+              </div>
+              <div>
+                <h3 className="about-disclaimer-title">
+                  {txt(
+                    "આધ્યાત્મિક ઉદ્દેશ્ય અને કાનૂની અસ્વીકરણ (Legal Disclaimer)",
+                    "आध्यात्मिक उद्देश्य एवं कानूनी अस्वीकरण (Legal Disclaimer)",
+                    "Spiritual Mission & Legal Disclaimer"
+                  )}
+                </h3>
+                <span className="about-disclaimer-badge">
+                  {txt("બિન-વ્યાવસાયિક જ્ઞાન સેવા", "गैर-व्यावसायिक ज्ञान सेवा", "Non-Commercial Service")}
+                </span>
+              </div>
+            </div>
+
+            <p className="about-disclaimer-text">
+              {txt(
+                "શ્રીમદ્ ભગવદ્ ગીતા એ સર્વ માનવજાતના આધ્યાત્મિક કલ્યાણ માટેનો સનાતન ધર્મગ્રંથ છે, જે સાર્વજનિક સંપત્તિ (Public Domain) છે. આ પ્લેટફોર્મ સંપૂર્ણપણે બિન-વ્યાવસાયિક (Non-Commercial), શૈક્ષણિક અને નિઃશુલ્ક જ્ઞાન સેવાના પવિત્ર ઉદ્દેશ્યથી બનાવવામાં આવ્યું છે. અહીં પ્રસ્તુત સંસ્કૃત શ્લોકો, સરળ ભાવાર્થ, શબ્દાર્થ, જીવન સંદેશ અને AI ઑડિયો વાચકોને ગીતાજીના દિવ્ય જ્ઞાન સાથે સરળતાથી જોડવા માટે છે. કોઈપણ સામગ્રીનો ઉપયોગ વ્યાવસાયિક વેચાણ કે નફા માટે કરવામાં આવતો નથી (The Indian Copyright Act, 1957 - Section 52 Fair Dealing).",
+                "श्रीमद्भगवद्गीता समस्त मानव कल्याण और आध्यात्मिक उत्थान के लिए सनातन धर्मग्रंथ है, जो सार्वजनिक संपत्ति (Public Domain) है। यह मंच पूर्णतः गैर-व्यावसायिक (Non-Commercial), शैक्षिक और निःशुल्क ज्ञान सेवा के पवित्र उद्देश्य से निर्मित है। यहाँ प्रस्तुत संस्कृत श्लोक, सरल भावार्थ, शब्दार्थ, जीवन संदेश और AI ऑडियो पाठकों को प्रभु श्रीकृष्ण के दिव्य उपदेशों से जोड़ने के लिए हैं। किसी भी सामग्री का उपयोग व्यावसायिक लाभ हेतु नहीं किया जाता है।",
+                "The Shrimad Bhagavad Gita is an ancient sacred scripture belonging to the Public Domain for the spiritual upliftment of humanity. This platform is non-commercial, free, and educational in nature (Fair Dealing under Section 52 of the Indian Copyright Act, 1957). All Sanskrit verses, word meanings, translations, life guidance, and AI audio are provided solely for devotional and educational purposes without any commercial intent."
+              )}
+            </p>
+
+            <div className="about-disclaimer-pills">
+              <span className="about-pill-item">
+                <CheckCircle2 size={14} color="#10b981" />
+                <span>{txt("100% સાર્વજનિક ધર્મગ્રંથ (Public Domain)", "100% सार्वजनिक धर्मग्रंथ (Public Domain)", "100% Public Domain Text")}</span>
+              </span>
+              <span className="about-pill-item">
+                <CheckCircle2 size={14} color="#10b981" />
+                <span>{txt("નિઃશુલ્ક આધ્યાત્મિક સેવા", "निःशुल्क आध्यात्मिक सेवा", "Free Spiritual Service")}</span>
+              </span>
+              <span className="about-pill-item">
+                <CheckCircle2 size={14} color="#10b981" />
+                <span>{txt("Fair Dealing Protection (Sec 52)", "Fair Dealing Protection (Sec 52)", "Fair Dealing Protection (Sec 52)")}</span>
+              </span>
+            </div>
+
+            <div className="about-footer-bottom-row">
+              <p>
+                © {new Date().getFullYear()} {txt("શ્રીમદ્ ભગવદ્ ગીતા | સર્વ ભક્તોના કલ્યાણ માટે સમર્પિત", "श्रीमद्भगवद्गीता | सर्व भक्तों के कल्याण हेतु समर्पित", "Shrimad Bhagavad Gita | Dedicated to the welfare of all")}
+              </p>
+              <span className="about-mantra-tag">
+                ॐ નમો ભગવતે વાસુદેવાય
+              </span>
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* =====================================================
