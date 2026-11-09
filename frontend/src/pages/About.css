@@ -891,43 +891,11 @@
   line-height: 1.3;
 }
 
-.about-disclaimer-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: #dcfce7;
-  color: #15803d;
-  padding: 2px 8px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-top: 3px;
-  border: 1px solid #bbf7d0;
-}
-
 .about-disclaimer-text {
   font-size: 0.88rem;
   color: #475569;
   line-height: 1.65;
   margin: 0 0 16px 0;
-}
-
-.about-disclaimer-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.about-pill-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #166534;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  padding: 5px 12px;
-  border-radius: 999px;
 }
 
 .about-footer-bottom-row {
@@ -975,12 +943,6 @@ html[data-theme="dark"] .about-disclaimer-title {
 
 html[data-theme="dark"] .about-disclaimer-text {
   color: #cbd5e1;
-}
-
-html[data-theme="dark"] .about-pill-item {
-  background: rgba(16, 185, 129, 0.12);
-  color: #86efac;
-  border-color: rgba(16, 185, 129, 0.3);
 }
 
 html[data-theme="dark"] .about-footer-bottom-row {

@@ -645,9 +645,6 @@ function About() {
                     "Spiritual Mission & Legal Disclaimer"
                   )}
                 </h3>
-                <span className="about-disclaimer-badge">
-                  {txt("બિન-વ્યાવસાયિક જ્ઞાન સેવા", "गैर-व्यावसायिक ज्ञान सेवा", "Non-Commercial Service")}
-                </span>
               </div>
             </div>
 
@@ -659,24 +656,9 @@ function About() {
               )}
             </p>
 
-            <div className="about-disclaimer-pills">
-              <span className="about-pill-item">
-                <CheckCircle2 size={14} color="#10b981" />
-                <span>{txt("100% સાર્વજનિક ધર્મગ્રંથ (Public Domain)", "100% सार्वजनिक धर्मग्रंथ (Public Domain)", "100% Public Domain Text")}</span>
-              </span>
-              <span className="about-pill-item">
-                <CheckCircle2 size={14} color="#10b981" />
-                <span>{txt("નિઃશુલ્ક આધ્યાત્મિક સેવા", "निःशुल्क आध्यात्मिक सेवा", "Free Spiritual Service")}</span>
-              </span>
-              <span className="about-pill-item">
-                <CheckCircle2 size={14} color="#10b981" />
-                <span>{txt("Fair Dealing Protection (Sec 52)", "Fair Dealing Protection (Sec 52)", "Fair Dealing Protection (Sec 52)")}</span>
-              </span>
-            </div>
-
             <div className="about-footer-bottom-row">
               <p>
-                © {new Date().getFullYear()} {txt("શ્રીમદ્ ભગવદ્ ગીતા | સર્વ ભક્તોના કલ્યાણ માટે સમર્પિત", "श्रीमद्भगवद्गीता | सर्व भक्तों के कल्याण हेतु समर्पित", "Shrimad Bhagavad Gita | Dedicated to the welfare of all")}
+                {txt("શ્રીમદ્ ભગવદ્ ગીતા | સર્વ ભક્તોના કલ્યાણ માટે સમર્પિત", "श्रीमद्भगवद्गीता | सर्व भक्तों के कल्याण हेतु समर्पित", "Shrimad Bhagavad Gita | Dedicated to the welfare of all")}
               </p>
               <span className="about-mantra-tag">
                 ॐ નમો ભગવતે વાસુદેવાય
