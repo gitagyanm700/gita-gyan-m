@@ -35,7 +35,7 @@
   position: relative;
   width: 100%;
   max-width: 480px;
-  max-height: min(96dvh, 640px);
+  max-height: min(96dvh, 710px);
   display: flex;
   flex-direction: column;
   background: linear-gradient(145deg, rgba(13, 27, 56, 0.98) 0%, rgba(6, 14, 30, 0.99) 100%);
@@ -259,7 +259,6 @@
   max-height: 40vh;
   width: auto;
   height: auto;
-  aspect-ratio: 9 / 16;
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);

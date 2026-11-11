@@ -10,6 +10,12 @@ import {
   Share2
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import AdminShareSizeSelector from "./AdminShareSizeSelector.jsx";
+import {
+  DEFAULT_SHARE_CARD_SIZE_ID,
+  getShareCardSizePreset
+} from "../utils/shareCardSizes.js";
 import "./ShareQuizQuestionModal.css";
 
 const THEMES = [
@@ -254,12 +260,39 @@ export default function ShareQuizQuestionModal({
   questionData
 }) {
   const { txt } = useLanguage();
+  const { user, isLoggedIn } = useAuth();
+  const isAdmin = Boolean(isLoggedIn && user?.role === "admin");
+
   const canvasRef = useRef(null);
   const logoImageRef = useRef(null);
   const [selectedThemeId, setSelectedThemeId] = useState("royal-blue");
+  const [selectedSizeId, setSelectedSizeId] = useState(DEFAULT_SHARE_CARD_SIZE_ID);
+  const [sizeSheetOpen, setSizeSheetOpen] = useState(false);
+  const [sizeSheetMode, setSizeSheetMode] = useState("select");
+  const [hasConfirmedSize, setHasConfirmedSize] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [copiedText, setCopiedText] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const activeSizePreset = isAdmin
+    ? getShareCardSizePreset(selectedSizeId)
+    : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
+      setSizeSheetOpen(false);
+      setHasConfirmedSize(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSizeSheetOpen(false);
+      setHasConfirmedSize(false);
+      setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
+    }
+  }, [isOpen]);
 
   // Pre-load App Logo for Background Watermark
   useEffect(() => {
@@ -299,22 +332,42 @@ export default function ShareQuizQuestionModal({
     }, 16);
 
     return () => clearTimeout(timer);
-  }, [isOpen, questionData, selectedThemeId]);
+  }, [isOpen, questionData, selectedThemeId, activeSizePreset.id]);
 
-  const renderCanvasCard = () => {
+  const renderCanvasCard = (presetOverride = null) => {
     const canvas = canvasRef.current;
-    if (!canvas || !questionData) return;
+    if (!canvas || !questionData) return "";
+
+    const preset = isAdmin
+      ? presetOverride || activeSizePreset
+      : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
     setIsGenerating(true);
     try {
       const ctx = canvas.getContext("2d");
-      const width = 1080;
-      const cardHeight = 1920;
-      canvas.width = width;
-      canvas.height = cardHeight;
 
-      const outerMargin = 38;
-      const innerMargin = 52;
+      const targetWidth = preset.width;
+      const targetHeight = preset.height;
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const layoutMode = preset.layoutMode || "9:16";
+      const isLandscape = layoutMode === "16:9";
+      const isSquare = layoutMode === "1:1";
+      const isPortrait45 = layoutMode === "4:5";
+
+      const vWidth = isLandscape ? 1920 : 1080;
+      const vHeight = isLandscape ? 1080 : isSquare ? 1080 : isPortrait45 ? 1350 : 1920;
+      const scaleRatioX = targetWidth / vWidth;
+      const scaleRatioY = targetHeight / vHeight;
+
+      ctx.save();
+      if (scaleRatioX !== 1 || scaleRatioY !== 1) {
+        ctx.scale(scaleRatioX, scaleRatioY);
+      }
+
+      const outerMargin = layoutMode === "9:16" ? 38 : isSquare ? 28 : 32;
+      const innerMargin = layoutMode === "9:16" ? 52 : isSquare ? 40 : 44;
 
       // 1. Prepare Question & Options Data
       const cleanGuQuestion = cleanHtmlText(questionData.question || "");
@@ -341,63 +394,85 @@ export default function ShareQuizQuestionModal({
         badgeLabel = `શ્રીમદ્ભગવદ્ગીતા ક્વિઝ • પ્રશ્ન ${qNum}`;
       }
 
-      // Vertical layout boundaries
-      const headingCenterY = innerMargin + 64; // ~116px
-      const badgeCenterY = headingCenterY + 68; // ~184px
-      const headerDividerY = badgeCenterY + 44; // ~228px
+      // Header & Footer boundaries
+      const headingFontSize = layoutMode === "9:16" ? 44 : isSquare ? 38 : 40;
+      const headingCenterY =
+        layoutMode === "9:16" ? innerMargin + 64 : isSquare ? innerMargin + 38 : innerMargin + 42;
+      const badgeCenterY =
+        layoutMode === "9:16" ? headingCenterY + 68 : headingCenterY + 50;
+      const bH = layoutMode === "9:16" ? 46 : 38;
+      const headerDividerY =
+        layoutMode === "9:16" ? badgeCenterY + 44 : badgeCenterY + 33;
 
-      const footerDividerY = cardHeight - innerMargin - 66; // 1802px
-      const availableH = footerDividerY - headerDividerY - 24; // ~1550px
+      const footerDividerY =
+        layoutMode === "9:16"
+          ? vHeight - innerMargin - 66
+          : isSquare
+          ? vHeight - innerMargin - 48
+          : vHeight - innerMargin - 50;
 
-      const contentMaxW = width - 140; // 940px
-      const optionBoxW = width - 130; // 950px
-      const optionTextMaxW = optionBoxW - 100; // 850px
+      const availableH = footerDividerY - headerDividerY - (layoutMode === "9:16" ? 24 : 18);
 
-      // Simulation evaluator to find optimum scale factor so both sections fit perfectly
-      const evaluateLayout = (scale) => {
-        const sectionHeaderH = Math.round(36 * scale);
-        const qFontSize = Math.max(22, Math.round(34 * scale));
-        const qLineH = Math.round(qFontSize * 1.55);
-        const optFontSize = Math.max(19, Math.round(27 * scale));
-        const optLineH = Math.round(optFontSize * 1.45);
-        const optPadY = Math.round(14 * scale);
-        const optBoxGap = Math.round(13 * scale);
-        const qBoxPad = Math.round(18 * scale);
+      // Helper to measure a single language block (stacked or 2x2 option grid)
+      const measureLangSection = (
+        qText,
+        opts,
+        fontFamily,
+        boxW,
+        qWrapW,
+        scale,
+        useGrid,
+        minFonts
+      ) => {
+        const sectionHeaderH = Math.max(22, Math.round(36 * scale));
+        const qFontSize = Math.max(minFonts.qMin, Math.round(34 * scale));
+        const qLineH = Math.round(qFontSize * (layoutMode === "9:16" ? 1.55 : 1.48));
+        const qBoxPad = Math.max(10, Math.round(18 * scale));
+        const optFontSize = Math.max(minFonts.oMin, Math.round(27 * scale));
+        const optLineH = Math.round(optFontSize * (layoutMode === "9:16" ? 1.45 : 1.38));
+        const optPadY = Math.max(8, Math.round(14 * scale));
+        const optBoxGap = Math.max(7, Math.round(13 * scale));
 
-        // Gujarati Measurements
-        ctx.font = `bold ${qFontSize}px "Noto Sans Gujarati", sans-serif`;
-        const wrappedGuQ = wrapText(ctx, cleanGuQuestion, contentMaxW - qBoxPad * 2);
-        const guQBoxH = wrappedGuQ.length * qLineH + qBoxPad * 2;
+        ctx.font = `bold ${qFontSize}px ${fontFamily}`;
+        const wrappedQ = wrapText(ctx, qText, qWrapW - qBoxPad * 2);
+        const qBoxH = wrappedQ.length * qLineH + qBoxPad * 2;
 
-        ctx.font = `600 ${optFontSize}px "Noto Sans Gujarati", sans-serif`;
-        const guOptBoxes = rawGuOptions.map((opt) => {
-          const lines = wrapText(ctx, opt, optionTextMaxW);
-          const h = Math.max(Math.round(58 * scale), lines.length * optLineH + optPadY * 2);
+        const badgeR = Math.max(13, Math.round(18 * scale));
+        const colGap = 14;
+        const halfBoxW = (boxW - colGap) / 2;
+        const badgeOffset = useGrid ? 28 : 40;
+        const textMaxW = useGrid
+          ? halfBoxW - (badgeOffset + badgeR + 28)
+          : boxW - (badgeOffset + badgeR + 36);
+
+        ctx.font = `600 ${optFontSize}px ${fontFamily}`;
+        const optBoxes = opts.map((opt) => {
+          const lines = wrapText(ctx, opt, textMaxW);
+          const h = Math.max(
+            Math.round((useGrid ? 50 : 58) * scale),
+            lines.length * optLineH + optPadY * 2
+          );
           return { lines, h };
         });
-        const totalGuOptH = guOptBoxes.reduce((acc, o) => acc + o.h, 0) + (guOptBoxes.length - 1) * optBoxGap;
-        const totalGuSectionH = sectionHeaderH + 12 + guQBoxH + 16 + totalGuOptH;
 
-        // English Measurements
-        ctx.font = `bold ${qFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        const wrappedEnQ = wrapText(ctx, cleanEnQuestion, contentMaxW - qBoxPad * 2);
-        const enQBoxH = wrappedEnQ.length * qLineH + qBoxPad * 2;
+        let totalOptH = 0;
+        let row1H = 0;
+        let row2H = 0;
+        if (useGrid) {
+          row1H = Math.max(optBoxes[0].h, optBoxes[1].h);
+          row2H = Math.max(optBoxes[2].h, optBoxes[3].h);
+          totalOptH = row1H + optBoxGap + row2H;
+        } else {
+          totalOptH =
+            optBoxes.reduce((acc, o) => acc + o.h, 0) +
+            (optBoxes.length - 1) * optBoxGap;
+        }
 
-        ctx.font = `600 ${optFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        const enOptBoxes = rawEnOptions.map((opt) => {
-          const lines = wrapText(ctx, opt, optionTextMaxW);
-          const h = Math.max(Math.round(58 * scale), lines.length * optLineH + optPadY * 2);
-          return { lines, h };
-        });
-        const totalEnOptH = enOptBoxes.reduce((acc, o) => acc + o.h, 0) + (enOptBoxes.length - 1) * optBoxGap;
-        const totalEnSectionH = sectionHeaderH + 12 + enQBoxH + 16 + totalEnOptH;
-
-        const dividerGap = Math.round(30 * scale);
-        const totalRequiredH = totalGuSectionH + dividerGap + totalEnSectionH;
+        const headerGap = layoutMode === "9:16" ? 12 : 10;
+        const qOptGap = layoutMode === "9:16" ? 16 : 12;
+        const totalSectionH = sectionHeaderH + headerGap + qBoxH + qOptGap + totalOptH;
 
         return {
-          scale,
-          totalRequiredH,
           sectionHeaderH,
           qFontSize,
           qLineH,
@@ -406,78 +481,204 @@ export default function ShareQuizQuestionModal({
           optLineH,
           optPadY,
           optBoxGap,
-          wrappedGuQ,
-          guQBoxH,
-          guOptBoxes,
-          totalGuSectionH,
-          wrappedEnQ,
-          enQBoxH,
-          enOptBoxes,
-          totalEnSectionH,
-          dividerGap
+          badgeR,
+          badgeOffset,
+          colGap,
+          halfBoxW,
+          headerGap,
+          qOptGap,
+          wrappedQ,
+          qBoxH,
+          optBoxes,
+          row1H,
+          row2H,
+          totalSectionH,
+          useGrid,
         };
       };
 
-      // Search for largest scale where all content fits inside available height
+      const guFont = '"Noto Sans Gujarati", sans-serif';
+      const enFont = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
       let bestLayout = null;
-      for (let s = 1.0; s >= 0.52; s -= 0.02) {
-        const layout = evaluateLayout(Number(s.toFixed(2)));
-        if (layout.totalRequiredH <= availableH || s <= 0.54) {
-          bestLayout = layout;
-          break;
+
+      if (layoutMode === "9:16") {
+        const contentMaxW = vWidth - 140;
+        const optionBoxW = vWidth - 130;
+        const minFonts = { qMin: 22, oMin: 19 };
+        for (let s = 1.0; s >= 0.52; s -= 0.02) {
+          const sc = Number(s.toFixed(2));
+          const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, optionBoxW, contentMaxW, sc, false, minFonts);
+          const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, optionBoxW, contentMaxW, sc, false, minFonts);
+          const dividerGap = Math.round(30 * sc);
+          const totalRequiredH = gu.totalSectionH + dividerGap + en.totalSectionH;
+          if (totalRequiredH <= availableH || s <= 0.54) {
+            bestLayout = {
+              mode: "vertical",
+              scale: sc,
+              boxW: optionBoxW,
+              gu,
+              en,
+              dividerGap,
+              totalRequiredH,
+            };
+            break;
+          }
+        }
+      } else if (layoutMode === "4:5") {
+        const optionBoxW = vWidth - 110; // 970px
+        const minFonts = { qMin: 16, oMin: 14 };
+        // Try stacked first down to 0.58; if too tight, use 2x2 grid so fonts stay larger
+        for (let s = 0.94; s >= 0.58; s -= 0.02) {
+          const sc = Number(s.toFixed(2));
+          const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, optionBoxW, optionBoxW, sc, false, minFonts);
+          const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, optionBoxW, optionBoxW, sc, false, minFonts);
+          const dividerGap = Math.round(24 * sc);
+          const totalRequiredH = gu.totalSectionH + dividerGap + en.totalSectionH;
+          if (totalRequiredH <= availableH) {
+            bestLayout = {
+              mode: "vertical",
+              scale: sc,
+              boxW: optionBoxW,
+              gu,
+              en,
+              dividerGap,
+              totalRequiredH,
+            };
+            break;
+          }
+        }
+        if (!bestLayout) {
+          for (let s = 0.92; s >= 0.34; s -= 0.02) {
+            const sc = Number(s.toFixed(2));
+            const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, optionBoxW, optionBoxW, sc, true, minFonts);
+            const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, optionBoxW, optionBoxW, sc, true, minFonts);
+            const dividerGap = Math.round(24 * sc);
+            const totalRequiredH = gu.totalSectionH + dividerGap + en.totalSectionH;
+            if (totalRequiredH <= availableH || s <= 0.36) {
+              bestLayout = {
+                mode: "vertical",
+                scale: sc,
+                boxW: optionBoxW,
+                gu,
+                en,
+                dividerGap,
+                totalRequiredH,
+              };
+              break;
+            }
+          }
+        }
+      } else if (layoutMode === "1:1") {
+        const optionBoxW = vWidth - 104; // 976px
+        const minFonts = { qMin: 15, oMin: 13 };
+        for (let s = 0.94; s >= 0.32; s -= 0.02) {
+          const sc = Number(s.toFixed(2));
+          const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, optionBoxW, optionBoxW, sc, true, minFonts);
+          const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, optionBoxW, optionBoxW, sc, true, minFonts);
+          const dividerGap = Math.round(20 * sc);
+          const totalRequiredH = gu.totalSectionH + dividerGap + en.totalSectionH;
+          if (totalRequiredH <= availableH || s <= 0.34) {
+            bestLayout = {
+              mode: "vertical",
+              scale: sc,
+              boxW: optionBoxW,
+              gu,
+              en,
+              dividerGap,
+              totalRequiredH,
+            };
+            break;
+          }
+        }
+      } else {
+        // 16:9 Landscape: Side-by-Side 2 Columns (Gujarati Left, English Right)
+        const colBoxW = 845;
+        const minFonts = { qMin: 17, oMin: 15 };
+        for (let s = 1.0; s >= 0.34; s -= 0.02) {
+          const sc = Number(s.toFixed(2));
+          const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, colBoxW, colBoxW, sc, false, minFonts);
+          const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, colBoxW, colBoxW, sc, false, minFonts);
+          const maxColH = Math.max(gu.totalSectionH, en.totalSectionH);
+          if (maxColH <= availableH || s <= 0.36) {
+            bestLayout = {
+              mode: "two-column",
+              scale: sc,
+              boxW: colBoxW,
+              gu,
+              en,
+              totalRequiredH: maxColH,
+            };
+            break;
+          }
         }
       }
-      if (!bestLayout) bestLayout = evaluateLayout(0.54);
 
-      // Distribute slack evenly between sections
-      const totalSlack = Math.max(0, availableH - bestLayout.totalRequiredH);
-      const topSpacing = Math.min(26, Math.floor(totalSlack * 0.25));
-      const midSpacing = Math.min(48, Math.floor(totalSlack * 0.5));
+      if (!bestLayout) {
+        const fallbackW = isLandscape ? 845 : vWidth - 110;
+        const fallbackFonts = { qMin: 15, oMin: 13 };
+        const gu = measureLangSection(cleanGuQuestion, rawGuOptions, guFont, fallbackW, fallbackW, 0.48, !isLandscape && layoutMode !== "9:16", fallbackFonts);
+        const en = measureLangSection(cleanEnQuestion, rawEnOptions, enFont, fallbackW, fallbackW, 0.48, !isLandscape && layoutMode !== "9:16", fallbackFonts);
+        bestLayout = {
+          mode: isLandscape ? "two-column" : "vertical",
+          scale: 0.48,
+          boxW: fallbackW,
+          gu,
+          en,
+          dividerGap: 18,
+          totalRequiredH: isLandscape
+            ? Math.max(gu.totalSectionH, en.totalSectionH)
+            : gu.totalSectionH + 18 + en.totalSectionH,
+        };
+      }
 
       // 2. Render Background & Frames
       const bgGrad = ctx.createRadialGradient(
-        width / 2,
-        cardHeight / 2,
+        vWidth / 2,
+        vHeight / 2,
         60,
-        width / 2,
-        cardHeight / 2,
-        Math.max(width, cardHeight) * 0.75
+        vWidth / 2,
+        vHeight / 2,
+        Math.max(vWidth, vHeight) * 0.75
       );
       bgGrad.addColorStop(0, currentTheme.primaryGrad[1]);
       bgGrad.addColorStop(0.55, currentTheme.primaryGrad[0]);
       bgGrad.addColorStop(1, currentTheme.primaryGrad[2]);
       ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, width, cardHeight);
+      ctx.fillRect(0, 0, vWidth, vHeight);
 
       // Top Ambient Glow
       const topGlow = ctx.createRadialGradient(
-        width / 2,
+        vWidth / 2,
         110,
         10,
-        width / 2,
+        vWidth / 2,
         110,
-        width * 0.45
+        vWidth * 0.45
       );
       topGlow.addColorStop(0, currentTheme.glowColor);
       topGlow.addColorStop(1, "transparent");
       ctx.fillStyle = topGlow;
-      ctx.fillRect(0, 0, width, cardHeight);
+      ctx.fillRect(0, 0, vWidth, vHeight);
 
       // 3. Subtle Website Link Repeating Background Watermark
       const logoImg = logoImageRef.current;
       const hasLogo = logoImg && logoImg.complete && logoImg.naturalWidth > 0;
-      const logoSize = 650;
-      const logoCenterX = width / 2;
-      const logoCenterY = (cardHeight - logoSize) / 2 + 40 + logoSize / 2;
-      const exclusionRadius = 355;
+      const logoSize = layoutMode === "9:16" ? 650 : Math.round(Math.min(vWidth, vHeight) * 0.48);
+      const logoCenterX = vWidth / 2;
+      const logoCenterY =
+        layoutMode === "9:16"
+          ? (vHeight - logoSize) / 2 + 40 + logoSize / 2
+          : (headerDividerY + footerDividerY) / 2;
+      const exclusionRadius = layoutMode === "9:16" ? 355 : Math.round(logoSize * 0.56);
 
       ctx.save();
       ctx.beginPath();
       ctx.rect(
         outerMargin + 2,
         outerMargin + 2,
-        width - (outerMargin + 2) * 2,
-        cardHeight - (outerMargin + 2) * 2
+        vWidth - (outerMargin + 2) * 2,
+        vHeight - (outerMargin + 2) * 2
       );
       ctx.arc(logoCenterX, logoCenterY, exclusionRadius, 0, Math.PI * 2);
       ctx.clip("evenodd");
@@ -493,12 +694,12 @@ export default function ShareQuizQuestionModal({
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      ctx.translate(width / 2, cardHeight / 2);
+      ctx.translate(vWidth / 2, vHeight / 2);
       ctx.rotate(angle);
 
       const stepX = 370;
       const stepY = 72;
-      const bounds = 1500;
+      const bounds = layoutMode === "9:16" ? 1500 : Math.ceil(Math.hypot(vWidth, vHeight));
 
       for (let yRot = -bounds; yRot <= bounds; yRot += stepY) {
         const rowIndex = Math.round((yRot + bounds) / stepY);
@@ -506,8 +707,8 @@ export default function ShareQuizQuestionModal({
 
         for (let xRot = -bounds; xRot <= bounds; xRot += stepX) {
           const curXRot = xRot + xOffset;
-          const worldX = width / 2 + curXRot * cosA - yRot * sinA;
-          const worldY = cardHeight / 2 + curXRot * sinA + yRot * cosA;
+          const worldX = vWidth / 2 + curXRot * cosA - yRot * sinA;
+          const worldY = vHeight / 2 + curXRot * sinA + yRot * cosA;
 
           const distToLogo = Math.hypot(worldX - logoCenterX, worldY - logoCenterY);
           if (distToLogo < exclusionRadius + 65) {
@@ -522,8 +723,8 @@ export default function ShareQuizQuestionModal({
       if (hasLogo) {
         ctx.save();
         ctx.globalAlpha = 0.085;
-        const logoX = (width - logoSize) / 2;
-        const logoY = (cardHeight - logoSize) / 2 + 40;
+        const logoX = logoCenterX - logoSize / 2;
+        const logoY = logoCenterY - logoSize / 2;
         ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
         ctx.restore();
       }
@@ -534,8 +735,8 @@ export default function ShareQuizQuestionModal({
       ctx.strokeRect(
         outerMargin,
         outerMargin,
-        width - outerMargin * 2,
-        cardHeight - outerMargin * 2
+        vWidth - outerMargin * 2,
+        vHeight - outerMargin * 2
       );
 
       ctx.strokeStyle = currentTheme.innerBorder;
@@ -543,8 +744,8 @@ export default function ShareQuizQuestionModal({
       ctx.strokeRect(
         innerMargin,
         innerMargin,
-        width - innerMargin * 2,
-        cardHeight - innerMargin * 2
+        vWidth - innerMargin * 2,
+        vHeight - innerMargin * 2
       );
 
       // Corner Ornaments
@@ -565,15 +766,15 @@ export default function ShareQuizQuestionModal({
         ctx.stroke();
       };
       drawCorner(innerMargin, innerMargin);
-      drawCorner(width - innerMargin, innerMargin);
-      drawCorner(innerMargin, cardHeight - innerMargin);
-      drawCorner(width - innerMargin, cardHeight - innerMargin);
+      drawCorner(vWidth - innerMargin, innerMargin);
+      drawCorner(innerMargin, vHeight - innerMargin);
+      drawCorner(vWidth - innerMargin, vHeight - innerMargin);
 
       // Divider Helper
-      const drawDivider = (yPos, divW = 540) => {
+      const drawDivider = (yPos, divW = 540, centerX = vWidth / 2) => {
         ctx.save();
         const half = divW / 2;
-        const divGrad = ctx.createLinearGradient(width / 2 - half, yPos, width / 2 + half, yPos);
+        const divGrad = ctx.createLinearGradient(centerX - half, yPos, centerX + half, yPos);
         divGrad.addColorStop(0, "transparent");
         divGrad.addColorStop(0.35, currentTheme.innerBorder);
         divGrad.addColorStop(0.5, currentTheme.borderGold);
@@ -583,13 +784,36 @@ export default function ShareQuizQuestionModal({
         ctx.strokeStyle = divGrad;
         ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.moveTo(width / 2 - half, yPos);
-        ctx.lineTo(width / 2 + half, yPos);
+        ctx.moveTo(centerX - half, yPos);
+        ctx.lineTo(centerX + half, yPos);
         ctx.stroke();
 
         ctx.fillStyle = currentTheme.borderGold;
         ctx.beginPath();
-        ctx.arc(width / 2, yPos, 4, 0, Math.PI * 2);
+        ctx.arc(centerX, yPos, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      };
+
+      const drawVerticalDivider = (xPos, yTop, yBottom) => {
+        const midY = (yTop + yBottom) / 2;
+        ctx.save();
+        const vGrad = ctx.createLinearGradient(xPos, yTop, xPos, yBottom);
+        vGrad.addColorStop(0, "transparent");
+        vGrad.addColorStop(0.15, currentTheme.innerBorder);
+        vGrad.addColorStop(0.5, currentTheme.borderGold);
+        vGrad.addColorStop(0.85, currentTheme.innerBorder);
+        vGrad.addColorStop(1, "transparent");
+        ctx.strokeStyle = vGrad;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(xPos, yTop);
+        ctx.lineTo(xPos, yBottom);
+        ctx.stroke();
+
+        ctx.fillStyle = currentTheme.borderGold;
+        ctx.beginPath();
+        ctx.arc(xPos, midY, 4.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       };
@@ -598,202 +822,189 @@ export default function ShareQuizQuestionModal({
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      ctx.font = 'bold 44px "Noto Sans Devanagari", "Noto Sans Gujarati", serif';
+      ctx.font = `bold ${headingFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
       ctx.fillStyle = currentTheme.headerColor;
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
       ctx.shadowBlur = 10;
-      ctx.fillText("॥ શ્રીમદ્ભગવદ્ગીતા ક્વિઝ ॥", width / 2, headingCenterY);
+      ctx.fillText("॥ શ્રીમદ્ભગવદ્ગીતા ક્વિઝ ॥", vWidth / 2, headingCenterY);
       ctx.shadowBlur = 0;
 
-      // Chapter / Category Badge Pill
-      ctx.font = 'bold 24px "Noto Sans Gujarati", sans-serif';
+      ctx.font = `bold ${layoutMode === "9:16" ? 24 : 21}px "Noto Sans Gujarati", sans-serif`;
       const bMetrics = ctx.measureText(badgeLabel);
       const bPadX = 32;
-      const bW = Math.min(width - 240, bMetrics.width + bPadX * 2);
-      const bH = 46;
+      const bW = Math.min(vWidth - 200, bMetrics.width + bPadX * 2);
 
       drawRoundRect(
         ctx,
-        width / 2 - bW / 2,
+        vWidth / 2 - bW / 2,
         badgeCenterY - bH / 2,
         bW,
         bH,
-        23,
+        Math.round(bH / 2),
         "rgba(0, 0, 0, 0.42)",
         currentTheme.innerBorder,
         1.3
       );
       ctx.fillStyle = currentTheme.titleAccent;
-      ctx.fillText(badgeLabel, width / 2, badgeCenterY);
+      ctx.fillText(badgeLabel, vWidth / 2, badgeCenterY);
 
-      drawDivider(headerDividerY, 560);
+      drawDivider(headerDividerY, isLandscape ? 780 : 560);
 
-      // 5. Section 1: Gujarati Question & Options
-      let currY = headerDividerY + 20 + topSpacing;
       const optLetters = ["A", "B", "C", "D"];
 
-      // Section Header (Gujarati)
-      ctx.font = `bold ${bestLayout.sectionHeaderH}px "Noto Sans Gujarati", sans-serif`;
-      ctx.fillStyle = currentTheme.titleAccent;
-      ctx.fillText(`✦ પ્રશ્ન ${qNum} (ગુજરાતી) ✦`, width / 2, currY + bestLayout.sectionHeaderH / 2);
-      currY += bestLayout.sectionHeaderH + 12;
+      // Helper to render one language section cleanly at (boxX, startY)
+      const drawLangSection = (boxX, startY, boxW, sec, titleText, fontFamily) => {
+        const centerX = boxX + boxW / 2;
+        let currY = startY;
 
-      // Gujarati Question Box
-      const qBoxX = (width - optionBoxW) / 2;
-      drawRoundRect(
-        ctx,
-        qBoxX,
-        currY,
-        optionBoxW,
-        bestLayout.guQBoxH,
-        16,
-        "rgba(255, 255, 255, 0.06)",
-        currentTheme.boxBorder,
-        1.2
-      );
-
-      ctx.font = `bold ${bestLayout.qFontSize}px "Noto Sans Gujarati", sans-serif`;
-      ctx.fillStyle = currentTheme.questionColor;
-      ctx.textAlign = "center";
-      let qTextY = currY + bestLayout.qBoxPad + bestLayout.qLineH / 2;
-      bestLayout.wrappedGuQ.forEach((line) => {
-        ctx.fillText(line, width / 2, qTextY);
-        qTextY += bestLayout.qLineH;
-      });
-      currY += bestLayout.guQBoxH + 16;
-
-      // Gujarati Options (A, B, C, D)
-      bestLayout.guOptBoxes.forEach((optBox, idx) => {
-        drawRoundRect(
-          ctx,
-          qBoxX,
-          currY,
-          optionBoxW,
-          optBox.h,
-          14,
-          currentTheme.boxBg,
-          currentTheme.boxBorder,
-          1
-        );
-
-        // Letter Badge on left
-        const badgeR = Math.max(16, Math.round(18 * bestLayout.scale));
-        const badgeX = qBoxX + 40;
-        const badgeY = currY + optBox.h / 2;
-        ctx.beginPath();
-        ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
-        ctx.fillStyle = currentTheme.badgeBg;
-        ctx.fill();
-        ctx.strokeStyle = currentTheme.badgeBorder;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ctx.font = `bold ${Math.round(bestLayout.optFontSize * 0.95)}px -apple-system, sans-serif`;
-        ctx.fillStyle = currentTheme.badgeColor;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(optLetters[idx], badgeX, badgeY);
+        ctx.font = `bold ${sec.sectionHeaderH}px ${fontFamily}`;
+        ctx.fillStyle = currentTheme.titleAccent;
+        ctx.fillText(titleText, centerX, currY + sec.sectionHeaderH / 2);
+        currY += sec.sectionHeaderH + sec.headerGap;
 
-        // Option text
-        ctx.font = `600 ${bestLayout.optFontSize}px "Noto Sans Gujarati", sans-serif`;
-        ctx.fillStyle = currentTheme.optionTextColor;
-        ctx.textAlign = "left";
-        const optTextStartX = badgeX + badgeR + 20;
-        let optTextY = currY + (optBox.h - (optBox.lines.length - 1) * bestLayout.optLineH) / 2;
-        optBox.lines.forEach((line) => {
-          ctx.fillText(line, optTextStartX, optTextY);
-          optTextY += bestLayout.optLineH;
-        });
-
-        currY += optBox.h + bestLayout.optBoxGap;
-      });
-
-      // 6. Central Divider between Gujarati and English
-      currY += 6 + midSpacing / 2;
-      drawDivider(currY, 680);
-      currY += 20 + midSpacing / 2;
-
-      // 7. Section 2: English Question & Options
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      // Section Header (English)
-      ctx.font = `bold ${bestLayout.sectionHeaderH}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      ctx.fillStyle = currentTheme.titleAccent;
-      ctx.fillText(`✦ Question ${qNum} (English) ✦`, width / 2, currY + bestLayout.sectionHeaderH / 2);
-      currY += bestLayout.sectionHeaderH + 12;
-
-      // English Question Box
-      drawRoundRect(
-        ctx,
-        qBoxX,
-        currY,
-        optionBoxW,
-        bestLayout.enQBoxH,
-        16,
-        "rgba(255, 255, 255, 0.06)",
-        currentTheme.boxBorder,
-        1.2
-      );
-
-      ctx.font = `bold ${bestLayout.qFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      ctx.fillStyle = currentTheme.questionColor;
-      ctx.textAlign = "center";
-      let enQTextY = currY + bestLayout.qBoxPad + bestLayout.qLineH / 2;
-      bestLayout.wrappedEnQ.forEach((line) => {
-        ctx.fillText(line, width / 2, enQTextY);
-        enQTextY += bestLayout.qLineH;
-      });
-      currY += bestLayout.enQBoxH + 16;
-
-      // English Options (A, B, C, D)
-      bestLayout.enOptBoxes.forEach((optBox, idx) => {
+        // Question Box
         drawRoundRect(
           ctx,
-          qBoxX,
+          boxX,
           currY,
-          optionBoxW,
-          optBox.h,
-          14,
-          currentTheme.boxBg,
+          boxW,
+          sec.qBoxH,
+          16,
+          "rgba(255, 255, 255, 0.06)",
           currentTheme.boxBorder,
-          1
+          1.2
         );
 
-        // Letter Badge on left
-        const badgeR = Math.max(16, Math.round(18 * bestLayout.scale));
-        const badgeX = qBoxX + 40;
-        const badgeY = currY + optBox.h / 2;
-        ctx.beginPath();
-        ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
-        ctx.fillStyle = currentTheme.badgeBg;
-        ctx.fill();
-        ctx.strokeStyle = currentTheme.badgeBorder;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ctx.font = `bold ${Math.round(bestLayout.optFontSize * 0.95)}px -apple-system, sans-serif`;
-        ctx.fillStyle = currentTheme.badgeColor;
+        ctx.font = `bold ${sec.qFontSize}px ${fontFamily}`;
+        ctx.fillStyle = currentTheme.questionColor;
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(optLetters[idx], badgeX, badgeY);
-
-        // Option text
-        ctx.font = `600 ${bestLayout.optFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-        ctx.fillStyle = currentTheme.optionTextColor;
-        ctx.textAlign = "left";
-        const optTextStartX = badgeX + badgeR + 20;
-        let optTextY = currY + (optBox.h - (optBox.lines.length - 1) * bestLayout.optLineH) / 2;
-        optBox.lines.forEach((line) => {
-          ctx.fillText(line, optTextStartX, optTextY);
-          optTextY += bestLayout.optLineH;
+        let qTextY = currY + sec.qBoxPad + sec.qLineH / 2;
+        sec.wrappedQ.forEach((line) => {
+          ctx.fillText(line, centerX, qTextY);
+          qTextY += sec.qLineH;
         });
+        currY += sec.qBoxH + sec.qOptGap;
 
-        currY += optBox.h + bestLayout.optBoxGap;
-      });
+        const drawOptionBox = (ox, oy, ow, oh, optBox, idx) => {
+          drawRoundRect(
+            ctx,
+            ox,
+            oy,
+            ow,
+            oh,
+            14,
+            currentTheme.boxBg,
+            currentTheme.boxBorder,
+            1
+          );
+
+          const badgeX = ox + sec.badgeOffset;
+          const badgeY = oy + oh / 2;
+          ctx.beginPath();
+          ctx.arc(badgeX, badgeY, sec.badgeR, 0, Math.PI * 2);
+          ctx.fillStyle = currentTheme.badgeBg;
+          ctx.fill();
+          ctx.strokeStyle = currentTheme.badgeBorder;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.font = `bold ${Math.round(sec.optFontSize * 0.95)}px -apple-system, sans-serif`;
+          ctx.fillStyle = currentTheme.badgeColor;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(optLetters[idx], badgeX, badgeY);
+
+          ctx.font = `600 ${sec.optFontSize}px ${fontFamily}`;
+          ctx.fillStyle = currentTheme.optionTextColor;
+          ctx.textAlign = "left";
+          const optTextStartX = badgeX + sec.badgeR + (sec.useGrid ? 14 : 20);
+          let optTextY =
+            oy + (oh - (optBox.lines.length - 1) * sec.optLineH) / 2;
+          optBox.lines.forEach((line) => {
+            ctx.fillText(line, optTextStartX, optTextY);
+            optTextY += sec.optLineH;
+          });
+        };
+
+        if (sec.useGrid) {
+          // 2x2 Option Grid: Row 1 (A, B), Row 2 (C, D)
+          const rightColX = boxX + sec.halfBoxW + sec.colGap;
+          drawOptionBox(boxX, currY, sec.halfBoxW, sec.row1H, sec.optBoxes[0], 0);
+          drawOptionBox(rightColX, currY, sec.halfBoxW, sec.row1H, sec.optBoxes[1], 1);
+          currY += sec.row1H + sec.optBoxGap;
+
+          drawOptionBox(boxX, currY, sec.halfBoxW, sec.row2H, sec.optBoxes[2], 2);
+          drawOptionBox(rightColX, currY, sec.halfBoxW, sec.row2H, sec.optBoxes[3], 3);
+        } else {
+          sec.optBoxes.forEach((optBox, idx) => {
+            drawOptionBox(boxX, currY, boxW, optBox.h, optBox, idx);
+            currY += optBox.h + sec.optBoxGap;
+          });
+        }
+      };
+
+      // 5. Render Main Question Sections
+      if (bestLayout.mode === "two-column") {
+        // 16:9 Landscape: Left Gujarati, Right English
+        drawVerticalDivider(vWidth / 2, headerDividerY + 22, footerDividerY - 22);
+
+        const guSlack = Math.max(0, availableH - bestLayout.gu.totalSectionH);
+        const enSlack = Math.max(0, availableH - bestLayout.en.totalSectionH);
+        const guStartY = headerDividerY + 10 + Math.floor(guSlack * 0.48);
+        const enStartY = headerDividerY + 10 + Math.floor(enSlack * 0.48);
+
+        drawLangSection(
+          70,
+          guStartY,
+          bestLayout.boxW,
+          bestLayout.gu,
+          `✦ પ્રશ્ન ${qNum} (ગુજરાતી) ✦`,
+          guFont
+        );
+        drawLangSection(
+          1005,
+          enStartY,
+          bestLayout.boxW,
+          bestLayout.en,
+          `✦ Question ${qNum} (English) ✦`,
+          enFont
+        );
+      } else {
+        // Vertical Stacked Mode (9:16, 4:5, 1:1)
+        const totalSlack = Math.max(0, availableH - bestLayout.totalRequiredH);
+        const topSpacing = Math.min(26, Math.floor(totalSlack * 0.25));
+        const midSpacing = Math.min(48, Math.floor(totalSlack * 0.5));
+
+        const qBoxX = (vWidth - bestLayout.boxW) / 2;
+        let currY = headerDividerY + (layoutMode === "9:16" ? 20 : 12) + topSpacing;
+
+        drawLangSection(
+          qBoxX,
+          currY,
+          bestLayout.boxW,
+          bestLayout.gu,
+          `✦ પ્રશ્ન ${qNum} (ગુજરાતી) ✦`,
+          guFont
+        );
+
+        currY += bestLayout.gu.totalSectionH + 6 + midSpacing / 2;
+        drawDivider(currY, 680);
+        currY += (layoutMode === "9:16" ? 20 : 14) + midSpacing / 2;
+
+        drawLangSection(
+          qBoxX,
+          currY,
+          bestLayout.boxW,
+          bestLayout.en,
+          `✦ Question ${qNum} (English) ✦`,
+          enFont
+        );
+      }
 
       // 8. Footer: Divider & Website Pill
-      drawDivider(footerDividerY, 520);
+      drawDivider(footerDividerY, isLandscape ? 720 : 520);
 
       const siteUrl = "gita-gyan-m.vercel.app";
       const pillText = `🔗 ${siteUrl}`;
@@ -801,44 +1012,81 @@ export default function ShareQuizQuestionModal({
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const pillMetrics = ctx.measureText(pillText);
-      const pillW = Math.min(width - 200, pillMetrics.width + 56);
-      const pillH = 46;
-      const pillY = footerDividerY + 36;
+      const pillW = Math.min(vWidth - 200, pillMetrics.width + 56);
+      const pillH = layoutMode === "9:16" ? 46 : 38;
+      const pillY = footerDividerY + (layoutMode === "9:16" ? 36 : 27);
 
       drawRoundRect(
         ctx,
-        width / 2 - pillW / 2,
+        vWidth / 2 - pillW / 2,
         pillY - pillH / 2,
         pillW,
         pillH,
-        23,
+        Math.round(pillH / 2),
         "rgba(0, 0, 0, 0.48)",
         currentTheme.innerBorder,
         1.4
       );
 
       ctx.fillStyle = currentTheme.headerColor;
-      ctx.fillText(pillText, width / 2, pillY);
+      ctx.fillText(pillText, vWidth / 2, pillY);
+
+      ctx.restore();
 
       // Export preview
       const dataUrl = canvas.toDataURL("image/png");
       setPreviewUrl(dataUrl);
       setIsGenerating(false);
+      return dataUrl;
     } catch (err) {
       console.error("Error generating quiz question canvas:", err);
       setIsGenerating(false);
+      return "";
     }
   };
 
-  const handleDownload = () => {
-    if (!previewUrl) return;
+  const triggerDownloadWithPreset = (preset) => {
+    const targetPreset = isAdmin
+      ? preset || activeSizePreset
+      : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
+
+    const dataUrl = renderCanvasCard(targetPreset);
+    if (!dataUrl) return;
+
     const link = document.createElement("a");
     const ch = questionData.chapterNumber || "general";
     const shl = questionData.shlokaNumber ? `_Shl${questionData.shlokaNumber}` : "";
     const qNum = questionData.shlokaQuestionNumber || 1;
-    link.download = `Gita_Quiz_Question_Ch${ch}${shl}_Q${qNum}.png`;
-    link.href = previewUrl;
+    link.download = isAdmin
+      ? `Gita_Quiz_Question_Ch${ch}${shl}_Q${qNum}_${targetPreset.width}x${targetPreset.height}.png`
+      : `Gita_Quiz_Question_Ch${ch}${shl}_Q${qNum}.png`;
+    link.href = dataUrl;
     link.click();
+  };
+
+  const handleDownload = () => {
+    if (!previewUrl) return;
+    if (isAdmin && !hasConfirmedSize) {
+      setSizeSheetMode("download");
+      setSizeSheetOpen(true);
+      return;
+    }
+    triggerDownloadWithPreset(activeSizePreset);
+  };
+
+  const handleSelectSize = (preset) => {
+    if (!isAdmin) return;
+    setSelectedSizeId(preset.id);
+    setHasConfirmedSize(true);
+    setSizeSheetOpen(false);
+  };
+
+  const handleDownloadSize = (preset) => {
+    if (!isAdmin) return;
+    setSelectedSizeId(preset.id);
+    setHasConfirmedSize(true);
+    setSizeSheetOpen(false);
+    triggerDownloadWithPreset(preset);
   };
 
   const handleShareWhatsApp = async () => {
@@ -948,6 +1196,9 @@ export default function ShareQuizQuestionModal({
                 src={previewUrl}
                 alt="Quiz Question Card Preview"
                 className="share-quiz-card-img"
+                style={{
+                  aspectRatio: `${activeSizePreset.width} / ${activeSizePreset.height}`
+                }}
               />
             ) : (
               <div className="share-quiz-preview-loading">
@@ -985,6 +1236,22 @@ export default function ShareQuizQuestionModal({
               })}
             </div>
           </div>
+
+          {/* Admin-Only Export Size Picker */}
+          <AdminShareSizeSelector
+            isAdmin={isAdmin}
+            selectedSizeId={activeSizePreset.id}
+            isSheetOpen={sizeSheetOpen}
+            sheetMode={sizeSheetMode}
+            onOpenSheet={(mode) => {
+              setSizeSheetMode(mode || "select");
+              setSizeSheetOpen(true);
+            }}
+            onCloseSheet={() => setSizeSheetOpen(false)}
+            onSelectSize={handleSelectSize}
+            onDownloadSize={handleDownloadSize}
+            disabled={isGenerating}
+          />
 
           {/* Action Buttons: 3 options in 1 single row */}
           <div className="share-quiz-actions">

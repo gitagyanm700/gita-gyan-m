@@ -10,6 +10,12 @@ import {
   MessageCircle
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import AdminShareSizeSelector from "./AdminShareSizeSelector.jsx";
+import {
+  DEFAULT_SHARE_CARD_SIZE_ID,
+  getShareCardSizePreset
+} from "../utils/shareCardSizes.js";
 import "./ShareShlokaModal.css";
 
 const THEMES = [
@@ -349,13 +355,41 @@ export default function ShareShlokaModal({
   onClose,
   shlokaData
 }) {
-  const { isHindi, isEnglish, isGujarati, txt } = useLanguage();
+  const { isHindi, isEnglish, txt } = useLanguage();
+  const { user, isLoggedIn } = useAuth();
+  const isAdmin = Boolean(isLoggedIn && user?.role === "admin");
+
   const canvasRef = useRef(null);
   const logoImageRef = useRef(null);
   const [selectedThemeId, setSelectedThemeId] = useState("royal-blue");
+  const [selectedSizeId, setSelectedSizeId] = useState(DEFAULT_SHARE_CARD_SIZE_ID);
+  const [sizeSheetOpen, setSizeSheetOpen] = useState(false);
+  const [sizeSheetMode, setSizeSheetMode] = useState("select");
+  const [hasConfirmedSize, setHasConfirmedSize] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const activeSizePreset = isAdmin
+    ? getShareCardSizePreset(selectedSizeId)
+    : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
+
+  // Reset admin size state cleanly if user is not admin or modal closes
+  useEffect(() => {
+    if (!isAdmin) {
+      setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
+      setSizeSheetOpen(false);
+      setHasConfirmedSize(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSizeSheetOpen(false);
+      setHasConfirmedSize(false);
+      setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
+    }
+  }, [isOpen]);
 
   // Pre-load App Logo for Background Watermark
   useEffect(() => {
@@ -395,16 +429,41 @@ export default function ShareShlokaModal({
     }, 16);
 
     return () => clearTimeout(timer);
-  }, [isOpen, shlokaData, selectedThemeId]);
+  }, [isOpen, shlokaData, selectedThemeId, activeSizePreset.id]);
 
-  const renderCanvasCard = () => {
+  const renderCanvasCard = (presetOverride = null) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !shlokaData) return "";
+
+    const preset = isAdmin
+      ? presetOverride || activeSizePreset
+      : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
     setIsGenerating(true);
     try {
       const ctx = canvas.getContext("2d");
-      const width = 1080;
+
+      // Exact requested pixel output dimensions
+      const targetWidth = preset.width;
+      const targetHeight = preset.height;
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const layoutMode = preset.layoutMode || "9:16";
+      const isLandscape = layoutMode === "16:9";
+      const isSquare = layoutMode === "1:1";
+      const isPortrait45 = layoutMode === "4:5";
+
+      // Virtual design space (for 1280x720, draws at 1920x1080 virtual and scales 2/3 cleanly)
+      const vWidth = isLandscape ? 1920 : 1080;
+      const vHeight = isLandscape ? 1080 : isSquare ? 1080 : isPortrait45 ? 1350 : 1920;
+      const scaleRatioX = targetWidth / vWidth;
+      const scaleRatioY = targetHeight / vHeight;
+
+      ctx.save();
+      if (scaleRatioX !== 1 || scaleRatioY !== 1) {
+        ctx.scale(scaleRatioX, scaleRatioY);
+      }
 
       // 1. Prepare Text & Measurements
       const chNum = shlokaData.chapterNumber || 1;
@@ -412,7 +471,6 @@ export default function ShareShlokaModal({
       const shlokNum = shlokaData.shlokNumber || 1;
       const cleanSpeaker = cleanHtmlText(shlokaData.speaker || "");
 
-      // Measure Translation & Message FIRST so hasMessage is available everywhere
       const cleanTranslation = cleanHtmlText(
         shlokaData.translation ||
         shlokaData.gujaratiSummary ||
@@ -443,108 +501,147 @@ export default function ShareShlokaModal({
         }
       }
 
-      // 2. Pre-calculate Layout and Auto-Scale to Fit Within Card Borders
-      const cardHeight = 1920;
-      canvas.width = width;
-      canvas.height = cardHeight;
+      // 2. Chrome & Header/Footer Geometry per Layout Mode
+      const outerMargin = layoutMode === "9:16" ? 38 : isSquare ? 28 : 32;
+      const innerMargin = layoutMode === "9:16" ? 52 : isSquare ? 40 : 44;
 
-      const outerMargin = 38;
-      const innerMargin = 52;
+      const headingFontSize = layoutMode === "9:16" ? 62 : isPortrait45 ? 52 : isLandscape ? 48 : 46;
+      const headingCenterY =
+        layoutMode === "9:16"
+          ? innerMargin + 66
+          : isPortrait45
+          ? innerMargin + 48
+          : innerMargin + 40;
 
-      // Header Block vertical coordinates
-      const headingCenterY = innerMargin + 66; // 118px (Comfortably below top inner border at y=52)
-      const badgeH = 54;
-      const badgeCenterY = headingCenterY + 74; // 192px
-      const speakerH = cleanSpeaker ? 40 : 0;
-      const speakerCenterY = cleanSpeaker ? badgeCenterY + badgeH / 2 + 36 : badgeCenterY + badgeH / 2;
-      const headerDividerY = cleanSpeaker ? speakerCenterY + 22 + 30 : badgeCenterY + badgeH / 2 + 32;
+      const badgeH = layoutMode === "9:16" ? 54 : isPortrait45 ? 44 : 40;
+      const badgeFontSize = layoutMode === "9:16" ? 30 : isPortrait45 ? 25 : 23;
+      const badgeCenterY =
+        layoutMode === "9:16"
+          ? headingCenterY + 74
+          : isPortrait45
+          ? headingCenterY + 58
+          : headingCenterY + 48;
 
-      // Footer Block vertical limits (Firm boundary strictly above bottom inner border and footer branding)
-      const footerDividerY = cardHeight - innerMargin - 66; // 1802px
-      const maxContentBottom = footerDividerY - 26; // 1776px
-      const availableH = maxContentBottom - headerDividerY; // ~1460px
+      const speakerFontSize = layoutMode === "9:16" ? 42 : isPortrait45 ? 34 : 28;
+      const speakerCenterY = cleanSpeaker
+        ? badgeCenterY + badgeH / 2 + (layoutMode === "9:16" ? 36 : isPortrait45 ? 28 : 23)
+        : badgeCenterY + badgeH / 2;
 
-      const sanskritBoxW = width - 110; // 970px
-      const sanskritMaxW = sanskritBoxW - 50; // 920px
-      const mainTextMaxW = width - 140; // 940px
+      const headerDividerY = cleanSpeaker
+        ? speakerCenterY + (layoutMode === "9:16" ? 52 : isPortrait45 ? 38 : 32)
+        : badgeCenterY + badgeH / 2 + (layoutMode === "9:16" ? 32 : 22);
 
-      // Simulation evaluator to find exact height at any scale
-      const evaluateLayout = (scale) => {
-        // Sanskrit sizing
-        let sFontSize = Math.max(28, Math.round((hasMessage ? 42 : 48) * Math.min(1.0, scale + 0.08)));
+      const footerDividerY =
+        layoutMode === "9:16"
+          ? vHeight - innerMargin - 66
+          : isPortrait45
+          ? vHeight - innerMargin - 54
+          : vHeight - innerMargin - 48;
+
+      const maxContentBottom = footerDividerY - (layoutMode === "9:16" ? 26 : 16);
+      const availableH = maxContentBottom - headerDividerY;
+
+      // Helper to measure message points in a given max width & font size
+      const measureMsgBlock = (maxW, scale, minFont, baseFont) => {
+        if (!hasMessage) {
+          return {
+            totalMsgH: 0,
+            mFontSize: baseFont,
+            mLineH: Math.round(baseFont * 1.6),
+            mPointGap: 14,
+            mTitleH: 38,
+            wrappedMsgPoints: [],
+          };
+        }
+        const mFontSize = Math.max(minFont, Math.round(baseFont * scale));
+        const mLineH = Math.round(mFontSize * 1.56);
+        const mPointGap = Math.max(8, Math.round(20 * scale));
+        const mTitleH = Math.max(26, Math.round(46 * scale));
+        const wrappedMsgPoints = [];
+
+        ctx.font = `bold ${mFontSize}px "Noto Sans Gujarati", sans-serif`;
+        messagePoints.forEach((point) => {
+          let prefix = "✦ ";
+          const cleanCheck = point.replace(/[\uE000\uE001]/g, "").trim();
+          if (/^[\d+.)•✦\-\*]/.test(cleanCheck)) {
+            prefix = "";
+          }
+          const pointText = prefix ? `${prefix}${point}` : point;
+          const lines = wrapText(ctx, pointText, maxW);
+          if (lines.length > 0) {
+            wrappedMsgPoints.push(lines);
+          }
+        });
+
+        let totalMLines = 0;
+        wrappedMsgPoints.forEach((lines) => {
+          totalMLines += lines.length;
+        });
+        const pointsGaps = Math.max(0, wrappedMsgPoints.length - 1) * mPointGap;
+        const totalMsgH = 14 + mTitleH + totalMLines * mLineH + pointsGaps;
+
+        return {
+          totalMsgH,
+          mFontSize,
+          mLineH,
+          mPointGap,
+          mTitleH,
+          wrappedMsgPoints,
+        };
+      };
+
+      // Helper to evaluate vertical single-column layout
+      const evaluateSingleColumn = (scale, boxW, textMaxW, minFonts) => {
+        const sMaxW = boxW - (layoutMode === "9:16" ? 50 : 44);
+        let sFontSize = Math.max(
+          minFonts.sMin,
+          Math.round((hasMessage ? 42 : 48) * Math.min(1.0, scale + 0.08))
+        );
         ctx.font = `bold ${sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
         if (rawSanskritLines.length > 0) {
           let maxLineW = Math.max(...rawSanskritLines.map((l) => ctx.measureText(l).width));
-          while (maxLineW > sanskritMaxW && sFontSize > 24) {
+          while (maxLineW > sMaxW && sFontSize > minFonts.sMin - 4) {
             sFontSize -= 1;
             ctx.font = `bold ${sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
             maxLineW = Math.max(...rawSanskritLines.map((l) => ctx.measureText(l).width));
           }
         }
-        const sLineH = Math.round(sFontSize * 1.62);
+        const sLineH = Math.round(sFontSize * (layoutMode === "9:16" ? 1.62 : 1.54));
         const sVertPad = Math.round(sFontSize * (hasMessage ? 0.68 : 0.88));
 
         const wrappedS = [];
         if (rawSanskritLines.length > 0) {
           rawSanskritLines.forEach((line) => {
-            wrappedS.push(...wrapText(ctx, line, sanskritMaxW));
+            wrappedS.push(...wrapText(ctx, line, sMaxW));
           });
         } else {
-          wrappedS.push(...wrapText(ctx, cleanSanskrit, sanskritMaxW));
+          wrappedS.push(...wrapText(ctx, cleanSanskrit, sMaxW));
         }
         const sToDisplay = wrappedS.length <= 3 ? wrappedS : wrappedS.slice(0, 2);
-        const totalSLinesH = (sToDisplay.length - 1) * sLineH;
+        const totalSLinesH = Math.max(0, sToDisplay.length - 1) * sLineH;
         const sBoxH = totalSLinesH + sVertPad * 2;
         const totalSH = sBoxH + 16;
 
-        // Translation sizing
-        const tFontSize = Math.max(20, Math.round((hasMessage ? 38 : 46) * scale));
-        const tLineH = Math.round(tFontSize * 1.65);
-        const tTitleH = Math.max(34, Math.round(52 * scale));
+        const tFontSize = Math.max(minFonts.tMin, Math.round((hasMessage ? 38 : 46) * scale));
+        const tLineH = Math.round(tFontSize * (layoutMode === "9:16" ? 1.65 : 1.56));
+        const tTitleH = Math.max(26, Math.round(52 * scale));
         ctx.font = `bold ${tFontSize}px "Noto Sans Gujarati", sans-serif`;
-        const wrappedTrans = wrapText(ctx, cleanTranslation, mainTextMaxW);
+        const wrappedTrans = wrapText(ctx, cleanTranslation, textMaxW);
         const totalTransH = tTitleH + wrappedTrans.length * tLineH;
 
-        // Message sizing
-        let totalMsgH = 0;
-        let mFontSize = Math.max(18, Math.round(35 * scale));
-        let mLineH = Math.round(mFontSize * 1.60);
-        let mPointGap = Math.max(12, Math.round(22 * scale));
-        let mTitleH = Math.max(34, Math.round(48 * scale));
-        let wrappedMsgPoints = [];
-
-        if (hasMessage) {
-          ctx.font = `bold ${mFontSize}px "Noto Sans Gujarati", sans-serif`;
-          messagePoints.forEach((point) => {
-            let prefix = "✦ ";
-            const cleanCheck = point.replace(/[\uE000\uE001]/g, "").trim();
-            if (/^[\d+.)•✦\-\*]/.test(cleanCheck)) {
-              prefix = "";
-            }
-            const pointText = prefix ? `${prefix}${point}` : point;
-            const lines = wrapText(ctx, pointText, mainTextMaxW);
-            if (lines.length > 0) {
-              wrappedMsgPoints.push(lines);
-            }
-          });
-
-          let totalMLines = 0;
-          wrappedMsgPoints.forEach((lines) => {
-            totalMLines += lines.length;
-          });
-          const pointsGaps = Math.max(0, wrappedMsgPoints.length - 1) * mPointGap;
-          totalMsgH = 16 + mTitleH + (totalMLines * mLineH) + pointsGaps;
-        }
-
+        const msgData = measureMsgBlock(textMaxW, scale, minFonts.mMin, 35);
         const numGaps = hasMessage ? 3 : 2;
-        const baseGap = Math.max(16, Math.round(30 * scale));
-        const totalRequiredH = totalSH + totalTransH + (hasMessage ? totalMsgH : 0) + (numGaps * baseGap);
+        const baseGap = Math.max(minFonts.gapMin, Math.round(30 * scale));
+        const totalRequiredH =
+          totalSH + totalTransH + (hasMessage ? msgData.totalMsgH : 0) + numGaps * baseGap;
 
         return {
+          mode: "single",
           scale,
           totalRequiredH,
           baseGap,
           numGaps,
+          sanskritBoxW: boxW,
           sFontSize,
           sLineH,
           sVertPad,
@@ -556,400 +653,675 @@ export default function ShareShlokaModal({
           tTitleH,
           wrappedTrans,
           totalTransH,
-          mFontSize,
-          mLineH,
-          mPointGap,
-          mTitleH,
-          wrappedMsgPoints,
-          totalMsgH,
+          ...msgData,
         };
       };
 
-      // Search for the LARGEST scale factor where all text fits with zero overflow
-      let bestLayout = null;
-      for (let s = 1.0; s >= 0.46; s -= 0.02) {
-        const layout = evaluateLayout(Number(s.toFixed(2)));
-        if (layout.totalRequiredH <= availableH || s <= 0.48) {
-          bestLayout = layout;
-          break;
-        }
-      }
-      if (!bestLayout) {
-        bestLayout = evaluateLayout(0.48);
-      }
-
-      // Distribute slack evenly so content fills the card proportionally and beautifully
-      const totalSlack = Math.max(0, availableH - bestLayout.totalRequiredH);
-      const extraPerGap = Math.floor(totalSlack / (bestLayout.numGaps + 1));
-      const sectionGap = Math.min(54, bestLayout.baseGap + extraPerGap);
-
-    // 3. Render Background & Frames
-    // Radial Gradient
-    const bgGrad = ctx.createRadialGradient(
-      width / 2,
-      cardHeight / 2,
-      60,
-      width / 2,
-      cardHeight / 2,
-      Math.max(width, cardHeight) * 0.75
-    );
-    bgGrad.addColorStop(0, currentTheme.primaryGrad[1]);
-    bgGrad.addColorStop(0.55, currentTheme.primaryGrad[0]);
-    bgGrad.addColorStop(1, currentTheme.primaryGrad[2]);
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, cardHeight);
-
-    // Celestial Ambient Glow (Top Center)
-    const topGlow = ctx.createRadialGradient(
-      width / 2,
-      110,
-      10,
-      width / 2,
-      110,
-      width * 0.45
-    );
-    topGlow.addColorStop(0, currentTheme.glowColor);
-    topGlow.addColorStop(1, "transparent");
-    ctx.fillStyle = topGlow;
-    ctx.fillRect(0, 0, width, cardHeight);
-
-    // =========================================================================
-    // Subtle Website Link Repeating Background Watermark (Excluding Logo Zone)
-    // =========================================================================
-    const logoImg = logoImageRef.current;
-    const hasLogo = logoImg && logoImg.complete && logoImg.naturalWidth > 0;
-    const logoSize = 650;
-    const logoCenterX = width / 2;
-    const logoCenterY = (cardHeight - logoSize) / 2 + 40 + logoSize / 2; // 1000px
-    const exclusionRadius = 355; // Clean circular buffer around the central logo
-
-    ctx.save();
-    // 1. Clipping Mask: Keep watermark strictly inside card borders & EXCLUDE circular logo region
-    ctx.beginPath();
-    ctx.rect(
-      outerMargin + 2,
-      outerMargin + 2,
-      width - (outerMargin + 2) * 2,
-      cardHeight - (outerMargin + 2) * 2
-    );
-    ctx.arc(logoCenterX, logoCenterY, exclusionRadius, 0, Math.PI * 2);
-    ctx.clip("evenodd");
-
-    // 2. Setup Watermark Typography & Coordinates
-    const watermarkText = "gita-gyan-m.vercel.app";
-    const angle = -24 * (Math.PI / 180);
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
-
-    ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = currentTheme.borderGold || currentTheme.headerColor || "#f5c542";
-    ctx.globalAlpha = 0.08; // Easily visible in normal card view while preserving text contrast
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.translate(width / 2, cardHeight / 2);
-    ctx.rotate(angle);
-
-    const stepX = 370; // Spacing between repeated links in a row
-    const stepY = 72;  // Vertical line height between rows
-    const bounds = 1500; // Ample bounds to seamlessly cover rotated 1080x1920 card
-
-    for (let yRot = -bounds; yRot <= bounds; yRot += stepY) {
-      const rowIndex = Math.round((yRot + bounds) / stepY);
-      const xOffset = rowIndex % 2 === 1 ? stepX / 2 : 0;
-
-      for (let xRot = -bounds; xRot <= bounds; xRot += stepX) {
-        const curXRot = xRot + xOffset;
-
-        // Unrotated world coordinates to test distance from the logo center
-        const worldX = width / 2 + curXRot * cosA - yRot * sinA;
-        const worldY = cardHeight / 2 + curXRot * sinA + yRot * cosA;
-
-        // Skip candidate if inside or directly adjacent to the logo area
-        const distToLogo = Math.hypot(worldX - logoCenterX, worldY - logoCenterY);
-        if (distToLogo < exclusionRadius + 65) {
-          continue;
-        }
-
-        ctx.fillText(watermarkText, curXRot, yRot);
-      }
-    }
-    ctx.restore();
-
-    // Subtle App Logo Background Watermark (Rendered in its clean, dedicated center zone)
-    if (hasLogo) {
-      ctx.save();
-      // Gentle opacity ensuring fonts remain 100% crisp, sharp and high-contrast
-      ctx.globalAlpha = 0.085;
-      const logoX = (width - logoSize) / 2;
-      const logoY = (cardHeight - logoSize) / 2 + 40;
-      ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-      ctx.restore();
-    }
-
-    // Ornamental Borders
-    // Outer gold border
-    ctx.strokeStyle = currentTheme.borderGold;
-    ctx.lineWidth = 3.5;
-    ctx.strokeRect(
-      outerMargin,
-      outerMargin,
-      width - outerMargin * 2,
-      cardHeight - outerMargin * 2
-    );
-
-    // Inner hairline gold border
-    ctx.strokeStyle = currentTheme.innerBorder;
-    ctx.lineWidth = 1.4;
-    ctx.strokeRect(
-      innerMargin,
-      innerMargin,
-      width - innerMargin * 2,
-      cardHeight - innerMargin * 2
-    );
-
-    // Corner Ornaments
-    const cornerSize = 22;
-    const drawCornerOrnament = (cx, cy) => {
-      ctx.fillStyle = currentTheme.borderGold;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = currentTheme.borderGold;
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(cx - cornerSize, cy);
-      ctx.lineTo(cx + cornerSize, cy);
-      ctx.moveTo(cx, cy - cornerSize);
-      ctx.lineTo(cx, cy + cornerSize);
-      ctx.stroke();
-    };
-
-    drawCornerOrnament(innerMargin, innerMargin);
-    drawCornerOrnament(width - innerMargin, innerMargin);
-    drawCornerOrnament(innerMargin, cardHeight - innerMargin);
-    drawCornerOrnament(width - innerMargin, cardHeight - innerMargin);
-
-    // Ornamental Divider Helper
-    const drawDivider = (yPos, widthSpan = 420) => {
-      ctx.strokeStyle = currentTheme.innerBorder;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(width / 2 - widthSpan / 2, yPos);
-      ctx.lineTo(width / 2 + widthSpan / 2, yPos);
-      ctx.stroke();
-
-      // Diamond ornament at center
-      ctx.fillStyle = currentTheme.borderGold;
-      ctx.beginPath();
-      ctx.moveTo(width / 2, yPos - 4.5);
-      ctx.lineTo(width / 2 + 5, yPos);
-      ctx.lineTo(width / 2, yPos + 4.5);
-      ctx.lineTo(width / 2 - 5, yPos);
-      ctx.closePath();
-      ctx.fill();
-    };
-
-    // 4. Render Sacred Header Block (Title + Badge + Speaker at top)
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Sacred Heading (Comfortably below top inner border)
-    ctx.font = 'bold 62px "Noto Sans Devanagari", "Noto Sans Gujarati", serif';
-    ctx.fillStyle = currentTheme.headerColor;
-    ctx.fillText(txt("॥ શ્રીમદ્ભગવદ્ગીતા ॥", "॥ श्रीमद्भगवद्गीता ॥", "॥ Shrimad Bhagavad Gita ॥"), width / 2, headingCenterY);
-
-    // Chapter & Shlok Badge Pill (Spaced cleanly below heading)
-    const badgeText = chName
-      ? txt(`અધ્યાય ${chNum} (${chName}) • શ્લોક ${shlokNum}`, `अध्याय ${chNum} (${chName}) • श्लोक ${shlokNum}`, `Chapter ${chNum} (${chName}) • Shloka ${shlokNum}`)
-      : txt(`અધ્યાય ${chNum} • શ્લોક ${shlokNum}`, `अध्याय ${chNum} • श्लोक ${shlokNum}`, `Chapter ${chNum} • Shloka ${shlokNum}`);
-    ctx.font = 'bold 30px "Noto Sans Gujarati", sans-serif';
-    const badgeMetrics = ctx.measureText(badgeText);
-    const badgeW = Math.min(width - 140, Math.max(340, badgeMetrics.width + 60));
-
-    drawRoundRect(
-      ctx,
-      width / 2 - badgeW / 2,
-      badgeCenterY - badgeH / 2,
-      badgeW,
-      badgeH,
-      29,
-      "rgba(0, 0, 0, 0.40)",
-      currentTheme.innerBorder,
-      1.5
-    );
-
-    ctx.fillStyle = currentTheme.footerColor;
-    ctx.fillText(badgeText, width / 2, badgeCenterY);
-
-    // Speaker Name (Spaced cleanly below badge)
-    if (cleanSpeaker) {
-      ctx.font = 'italic 700 42px "Noto Sans Devanagari", "Noto Sans Gujarati", sans-serif';
-      ctx.fillStyle = currentTheme.sanskritAccent;
-      ctx.fillText(`~ ${cleanSpeaker} ~`, width / 2, speakerCenterY);
-    }
-
-    // Header Divider below Header & Speaker Block
-    drawDivider(headerDividerY, 520);
-    let currY = headerDividerY + sectionGap;
-
-    // 5. Sanskrit Shloka Box (Right below Speaker/Header)
-    const boxX = (width - sanskritBoxW) / 2;
-    const boxY = currY;
-
-    drawRoundRect(
-      ctx,
-      boxX,
-      boxY,
-      sanskritBoxW,
-      bestLayout.sBoxH,
-      22,
-      currentTheme.sanskritBoxBg || "rgba(255, 255, 255, 0.08)",
-      currentTheme.sanskritBoxBorder || "rgba(245, 197, 66, 0.40)",
-      1.8
-    );
-
-    ctx.font = `bold ${bestLayout.sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
-    ctx.fillStyle = currentTheme.sanskritColor;
-
-    let sLineY = boxY + bestLayout.sVertPad;
-    bestLayout.sToDisplay.forEach((line) => {
-      ctx.fillText(line, width / 2, sLineY);
-      sLineY += bestLayout.sLineH;
-    });
-
-    currY = boxY + bestLayout.sBoxH + 16;
-    drawDivider(currY, 500);
-    currY += sectionGap;
-
-    // 6. Translation Section (Right below Sanskrit)
-    const transHeadingSize = Math.max(26, Math.round(36 * (bestLayout.tFontSize / 38)));
-    ctx.font = `bold ${transHeadingSize}px "Noto Sans Gujarati", sans-serif`;
-    ctx.fillStyle = currentTheme.headerColor;
-    ctx.fillText(txt("• ગુજરાતી ભાવાર્થ •", "• हिन्दी भावार्थ •", "• English Translation •"), width / 2, currY + 12);
-    currY += bestLayout.tTitleH;
-
-    ctx.font = `bold ${bestLayout.tFontSize}px "Noto Sans Gujarati", sans-serif`;
-    ctx.fillStyle = currentTheme.translationColor;
-
-    bestLayout.wrappedTrans.forEach((line) => {
-      ctx.fillText(line, width / 2, currY + 10);
-      currY += bestLayout.tLineH;
-    });
-
-    // 7. Divine Message / Understanding (Right below Translation)
-    if (hasMessage && bestLayout.wrappedMsgPoints.length > 0) {
-      currY += 16;
-      drawDivider(currY, 480);
-      currY += sectionGap;
-
-      const msgHeadingSize = Math.max(26, Math.round(34 * (bestLayout.mFontSize / 35)));
-      ctx.font = `bold ${msgHeadingSize}px "Noto Sans Gujarati", sans-serif`;
-      ctx.fillStyle = currentTheme.sanskritAccent;
-      ctx.fillText(txt("✨ દિવ્ય સંદેશ / જીવન બોધ ✨", "✨ दिव्य संदेश / जीवन बोध ✨", "✨ Divine Message / Life Wisdom ✨"), width / 2, currY + 10);
-      currY += bestLayout.mTitleH;
-
-      ctx.font = `bold ${bestLayout.mFontSize}px "Noto Sans Gujarati", sans-serif`;
-      ctx.fillStyle = currentTheme.translationColor;
-
-      bestLayout.wrappedMsgPoints.forEach((lines, pIdx) => {
-        lines.forEach((line) => {
-          const segments = parseLineSegments(line);
-          const hasUnderline = segments.some((s) => s.underline);
-
-          if (!hasUnderline) {
-            ctx.textAlign = "center";
-            ctx.fillText(line.replace(/[\uE000\uE001]/g, ""), width / 2, currY + 8);
-          } else {
-            const cleanFullText = line.replace(/[\uE000\uE001]/g, "");
-            const totalLineWidth = ctx.measureText(cleanFullText).width;
-            let currentX = width / 2 - totalLineWidth / 2;
-            const lineY = currY + 8;
-            const underlineY = lineY + Math.round(bestLayout.mFontSize * 0.58);
-            const underlineThickness = Math.max(2, Math.round(bestLayout.mFontSize * 0.08));
-
-            ctx.textAlign = "left";
-            segments.forEach((seg) => {
-              const segW = ctx.measureText(seg.text).width;
-              ctx.fillText(seg.text, currentX, lineY);
-
-              if (seg.underline) {
-                const trimmedText = seg.text.replace(/\s+$/, "");
-                const underlineW = trimmedText ? ctx.measureText(trimmedText).width : segW;
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.strokeStyle =
-                  currentTheme.borderGold ||
-                  currentTheme.sanskritAccent ||
-                  currentTheme.translationColor;
-                ctx.lineWidth = underlineThickness;
-                ctx.lineCap = "round";
-                ctx.moveTo(currentX, underlineY);
-                ctx.lineTo(currentX + underlineW, underlineY);
-                ctx.stroke();
-                ctx.restore();
-              }
-
-              currentX += segW;
-            });
-            ctx.textAlign = "center";
+      // Helper to evaluate two-column layout (16:9 landscape or ultra-long 1:1)
+      const evaluateTwoColumn = (scale, leftBoxW, leftTextMaxW, rightTextMaxW, minFonts) => {
+        const sMaxW = leftBoxW - 40;
+        let sFontSize = Math.max(
+          minFonts.sMin,
+          Math.round(38 * Math.min(1.0, scale + 0.08))
+        );
+        ctx.font = `bold ${sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
+        if (rawSanskritLines.length > 0) {
+          let maxLineW = Math.max(...rawSanskritLines.map((l) => ctx.measureText(l).width));
+          while (maxLineW > sMaxW && sFontSize > minFonts.sMin - 4) {
+            sFontSize -= 1;
+            ctx.font = `bold ${sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
+            maxLineW = Math.max(...rawSanskritLines.map((l) => ctx.measureText(l).width));
           }
-
-          currY += bestLayout.mLineH;
-        });
-        if (pIdx < bestLayout.wrappedMsgPoints.length - 1) {
-          currY += bestLayout.mPointGap;
         }
-      });
+        const sLineH = Math.round(sFontSize * 1.52);
+        const sVertPad = Math.round(sFontSize * 0.66);
+
+        const wrappedS = [];
+        if (rawSanskritLines.length > 0) {
+          rawSanskritLines.forEach((line) => {
+            wrappedS.push(...wrapText(ctx, line, sMaxW));
+          });
+        } else {
+          wrappedS.push(...wrapText(ctx, cleanSanskrit, sMaxW));
+        }
+        const sToDisplay = wrappedS.length <= 3 ? wrappedS : wrappedS.slice(0, 2);
+        const totalSLinesH = Math.max(0, sToDisplay.length - 1) * sLineH;
+        const sBoxH = totalSLinesH + sVertPad * 2;
+
+        const tFontSize = Math.max(minFonts.tMin, Math.round(33 * scale));
+        const tLineH = Math.round(tFontSize * 1.54);
+        const tTitleH = Math.max(28, Math.round(44 * scale));
+        ctx.font = `bold ${tFontSize}px "Noto Sans Gujarati", sans-serif`;
+        const wrappedTrans = wrapText(ctx, cleanTranslation, leftTextMaxW);
+        const totalTransH = tTitleH + wrappedTrans.length * tLineH;
+
+        const colGap = Math.max(14, Math.round(28 * scale));
+        const leftTotalH = sBoxH + 14 + colGap + totalTransH;
+
+        const msgData = measureMsgBlock(rightTextMaxW, scale, minFonts.mMin, 31);
+        const rightTotalH = msgData.totalMsgH - 14; // No horizontal top divider gap needed on right
+
+        return {
+          mode: "two-column",
+          scale,
+          leftTotalH,
+          rightTotalH,
+          totalRequiredH: Math.max(leftTotalH, rightTotalH) + 24,
+          colGap,
+          sanskritBoxW: leftBoxW,
+          sFontSize,
+          sLineH,
+          sVertPad,
+          sBoxH,
+          sToDisplay,
+          tFontSize,
+          tLineH,
+          tTitleH,
+          wrappedTrans,
+          totalTransH,
+          ...msgData,
+        };
+      };
+
+      // Choose the best layout for the active aspect ratio
+      let bestLayout = null;
+
+      if (layoutMode === "9:16") {
+        const sanskritBoxW = vWidth - 110;
+        const mainTextMaxW = vWidth - 140;
+        const minFonts = { sMin: 28, tMin: 20, mMin: 18, gapMin: 16 };
+        for (let s = 1.0; s >= 0.46; s -= 0.02) {
+          const layout = evaluateSingleColumn(Number(s.toFixed(2)), sanskritBoxW, mainTextMaxW, minFonts);
+          if (layout.totalRequiredH <= availableH || s <= 0.48) {
+            bestLayout = layout;
+            break;
+          }
+        }
+        if (!bestLayout) {
+          bestLayout = evaluateSingleColumn(0.48, sanskritBoxW, mainTextMaxW, minFonts);
+        }
+      } else if (layoutMode === "4:5") {
+        const sanskritBoxW = vWidth - 96;
+        const mainTextMaxW = vWidth - 120;
+        const minFonts = { sMin: 20, tMin: 16, mMin: 14, gapMin: 10 };
+        for (let s = 0.96; s >= 0.28; s -= 0.02) {
+          const layout = evaluateSingleColumn(Number(s.toFixed(2)), sanskritBoxW, mainTextMaxW, minFonts);
+          if (layout.totalRequiredH <= availableH || s <= 0.30) {
+            bestLayout = layout;
+            break;
+          }
+        }
+        if (!bestLayout) {
+          bestLayout = evaluateSingleColumn(0.30, sanskritBoxW, mainTextMaxW, minFonts);
+        }
+      } else if (layoutMode === "1:1") {
+        const sanskritBoxW = vWidth - 96;
+        const mainTextMaxW = vWidth - 116;
+        const minFonts = { sMin: 19, tMin: 15, mMin: 14, gapMin: 8 };
+        let singleBest = null;
+        for (let s = 0.92; s >= 0.28; s -= 0.02) {
+          const layout = evaluateSingleColumn(Number(s.toFixed(2)), sanskritBoxW, mainTextMaxW, minFonts);
+          if (layout.totalRequiredH <= availableH || s <= 0.30) {
+            singleBest = layout;
+            break;
+          }
+        }
+        if (!singleBest) {
+          singleBest = evaluateSingleColumn(0.30, sanskritBoxW, mainTextMaxW, minFonts);
+        }
+
+        // For long shlokas with message in 1:1, compare against 2-column and pick whichever keeps larger readable text
+        if (hasMessage && singleBest.scale < 0.56) {
+          let twoColBest = null;
+          for (let s = 0.92; s >= 0.30; s -= 0.02) {
+            const layout = evaluateTwoColumn(Number(s.toFixed(2)), 442, 442, 442, minFonts);
+            if (layout.totalRequiredH <= availableH || s <= 0.32) {
+              twoColBest = layout;
+              break;
+            }
+          }
+          if (twoColBest && twoColBest.mFontSize > singleBest.mFontSize) {
+            bestLayout = twoColBest;
+          } else {
+            bestLayout = singleBest;
+          }
+        } else {
+          bestLayout = singleBest;
+        }
+      } else {
+        // 16:9 Landscape (1920x1080 or 1280x720 virtualized at 1920x1080)
+        const minFonts = { sMin: 20, tMin: 16, mMin: 15, gapMin: 10 };
+        if (hasMessage) {
+          for (let s = 1.0; s >= 0.32; s -= 0.02) {
+            const layout = evaluateTwoColumn(Number(s.toFixed(2)), 820, 800, 810, minFonts);
+            if (layout.totalRequiredH <= availableH || s <= 0.34) {
+              bestLayout = layout;
+              break;
+            }
+          }
+          if (!bestLayout) {
+            bestLayout = evaluateTwoColumn(0.34, 820, 800, 810, minFonts);
+          }
+        } else {
+          const sanskritBoxW = 1540;
+          const mainTextMaxW = 1540;
+          for (let s = 1.0; s >= 0.38; s -= 0.02) {
+            const layout = evaluateSingleColumn(Number(s.toFixed(2)), sanskritBoxW, mainTextMaxW, minFonts);
+            if (layout.totalRequiredH <= availableH || s <= 0.40) {
+              bestLayout = layout;
+              break;
+            }
+          }
+          if (!bestLayout) {
+            bestLayout = evaluateSingleColumn(0.40, sanskritBoxW, mainTextMaxW, minFonts);
+          }
+        }
+      }
+
+      // 3. Render Background & Frames
+      const bgGrad = ctx.createRadialGradient(
+        vWidth / 2,
+        vHeight / 2,
+        60,
+        vWidth / 2,
+        vHeight / 2,
+        Math.max(vWidth, vHeight) * 0.75
+      );
+      bgGrad.addColorStop(0, currentTheme.primaryGrad[1]);
+      bgGrad.addColorStop(0.55, currentTheme.primaryGrad[0]);
+      bgGrad.addColorStop(1, currentTheme.primaryGrad[2]);
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, vWidth, vHeight);
+
+      // Celestial Ambient Glow (Top Center)
+      const topGlow = ctx.createRadialGradient(
+        vWidth / 2,
+        110,
+        10,
+        vWidth / 2,
+        110,
+        vWidth * 0.45
+      );
+      topGlow.addColorStop(0, currentTheme.glowColor);
+      topGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = topGlow;
+      ctx.fillRect(0, 0, vWidth, vHeight);
+
+      // Repeating Website Link Watermark (Excluding Logo Zone)
+      const logoImg = logoImageRef.current;
+      const hasLogo = logoImg && logoImg.complete && logoImg.naturalWidth > 0;
+      const logoSize = layoutMode === "9:16" ? 650 : Math.round(Math.min(vWidth, vHeight) * 0.48);
+      const logoCenterX = vWidth / 2;
+      const logoCenterY =
+        layoutMode === "9:16"
+          ? (vHeight - logoSize) / 2 + 40 + logoSize / 2
+          : (headerDividerY + footerDividerY) / 2;
+      const exclusionRadius = layoutMode === "9:16" ? 355 : Math.round(logoSize * 0.56);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(
+        outerMargin + 2,
+        outerMargin + 2,
+        vWidth - (outerMargin + 2) * 2,
+        vHeight - (outerMargin + 2) * 2
+      );
+      ctx.arc(logoCenterX, logoCenterY, exclusionRadius, 0, Math.PI * 2);
+      ctx.clip("evenodd");
+
+      const watermarkText = "gita-gyan-m.vercel.app";
+      const angle = -24 * (Math.PI / 180);
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = currentTheme.borderGold || currentTheme.headerColor || "#f5c542";
+      ctx.globalAlpha = 0.08;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.translate(vWidth / 2, vHeight / 2);
+      ctx.rotate(angle);
+
+      const stepX = 370;
+      const stepY = 72;
+      const bounds = layoutMode === "9:16" ? 1500 : Math.ceil(Math.hypot(vWidth, vHeight));
+
+      for (let yRot = -bounds; yRot <= bounds; yRot += stepY) {
+        const rowIndex = Math.round((yRot + bounds) / stepY);
+        const xOffset = rowIndex % 2 === 1 ? stepX / 2 : 0;
+
+        for (let xRot = -bounds; xRot <= bounds; xRot += stepX) {
+          const curXRot = xRot + xOffset;
+          const worldX = vWidth / 2 + curXRot * cosA - yRot * sinA;
+          const worldY = vHeight / 2 + curXRot * sinA + yRot * cosA;
+          const distToLogo = Math.hypot(worldX - logoCenterX, worldY - logoCenterY);
+          if (distToLogo < exclusionRadius + 65) {
+            continue;
+          }
+          ctx.fillText(watermarkText, curXRot, yRot);
+        }
+      }
+      ctx.restore();
+
+      // Subtle App Logo Background Watermark
+      if (hasLogo) {
+        ctx.save();
+        ctx.globalAlpha = 0.085;
+        const logoX = logoCenterX - logoSize / 2;
+        const logoY = logoCenterY - logoSize / 2;
+        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+        ctx.restore();
+      }
+
+      // Ornamental Borders
+      ctx.strokeStyle = currentTheme.borderGold;
+      ctx.lineWidth = 3.5;
+      ctx.strokeRect(
+        outerMargin,
+        outerMargin,
+        vWidth - outerMargin * 2,
+        vHeight - outerMargin * 2
+      );
+
+      ctx.strokeStyle = currentTheme.innerBorder;
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(
+        innerMargin,
+        innerMargin,
+        vWidth - innerMargin * 2,
+        vHeight - innerMargin * 2
+      );
+
+      const cornerSize = 22;
+      const drawCornerOrnament = (cx, cy) => {
+        ctx.fillStyle = currentTheme.borderGold;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = currentTheme.borderGold;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(cx - cornerSize, cy);
+        ctx.lineTo(cx + cornerSize, cy);
+        ctx.moveTo(cx, cy - cornerSize);
+        ctx.lineTo(cx, cy + cornerSize);
+        ctx.stroke();
+      };
+
+      drawCornerOrnament(innerMargin, innerMargin);
+      drawCornerOrnament(vWidth - innerMargin, innerMargin);
+      drawCornerOrnament(innerMargin, vHeight - innerMargin);
+      drawCornerOrnament(vWidth - innerMargin, vHeight - innerMargin);
+
+      const drawDivider = (yPos, widthSpan = 420, centerX = vWidth / 2) => {
+        ctx.strokeStyle = currentTheme.innerBorder;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - widthSpan / 2, yPos);
+        ctx.lineTo(centerX + widthSpan / 2, yPos);
+        ctx.stroke();
+
+        ctx.fillStyle = currentTheme.borderGold;
+        ctx.beginPath();
+        ctx.moveTo(centerX, yPos - 4.5);
+        ctx.lineTo(centerX + 5, yPos);
+        ctx.lineTo(centerX, yPos + 4.5);
+        ctx.lineTo(centerX - 5, yPos);
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      const drawVerticalDivider = (xPos, yTop, yBottom) => {
+        const midY = (yTop + yBottom) / 2;
+        ctx.save();
+        const vGrad = ctx.createLinearGradient(xPos, yTop, xPos, yBottom);
+        vGrad.addColorStop(0, "transparent");
+        vGrad.addColorStop(0.15, currentTheme.innerBorder);
+        vGrad.addColorStop(0.5, currentTheme.borderGold);
+        vGrad.addColorStop(0.85, currentTheme.innerBorder);
+        vGrad.addColorStop(1, "transparent");
+        ctx.strokeStyle = vGrad;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(xPos, yTop);
+        ctx.lineTo(xPos, yBottom);
+        ctx.stroke();
+
+        ctx.fillStyle = currentTheme.borderGold;
+        ctx.beginPath();
+        ctx.moveTo(xPos, midY - 5.5);
+        ctx.lineTo(xPos + 5.5, midY);
+        ctx.lineTo(xPos, midY + 5.5);
+        ctx.lineTo(xPos - 5.5, midY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+
+      // Helper to render message lines with underline preservation centered around centerX
+      const drawMessagePointsBlock = (centerX, startY, layoutObj) => {
+        let y = startY;
+        const msgHeadingSize = Math.max(22, Math.round(34 * (layoutObj.mFontSize / 35)));
+        ctx.font = `bold ${msgHeadingSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.sanskritAccent;
+        ctx.textAlign = "center";
+        ctx.fillText(
+          txt("✨ દિવ્ય સંદેશ / જીવન બોધ ✨", "✨ दिव्य संदेश / जीवन बोध ✨", "✨ Divine Message / Life Wisdom ✨"),
+          centerX,
+          y + 10
+        );
+        y += layoutObj.mTitleH;
+
+        ctx.font = `bold ${layoutObj.mFontSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.translationColor;
+
+        layoutObj.wrappedMsgPoints.forEach((lines, pIdx) => {
+          lines.forEach((line) => {
+            const segments = parseLineSegments(line);
+            const hasUnderline = segments.some((s) => s.underline);
+
+            if (!hasUnderline) {
+              ctx.textAlign = "center";
+              ctx.fillText(line.replace(/[\uE000\uE001]/g, ""), centerX, y + 8);
+            } else {
+              const cleanFullText = line.replace(/[\uE000\uE001]/g, "");
+              const totalLineWidth = ctx.measureText(cleanFullText).width;
+              let currentX = centerX - totalLineWidth / 2;
+              const lineY = y + 8;
+              const underlineY = lineY + Math.round(layoutObj.mFontSize * 0.58);
+              const underlineThickness = Math.max(2, Math.round(layoutObj.mFontSize * 0.08));
+
+              ctx.textAlign = "left";
+              segments.forEach((seg) => {
+                const segW = ctx.measureText(seg.text).width;
+                ctx.fillText(seg.text, currentX, lineY);
+
+                if (seg.underline) {
+                  const trimmedText = seg.text.replace(/\s+$/, "");
+                  const underlineW = trimmedText ? ctx.measureText(trimmedText).width : segW;
+
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.strokeStyle =
+                    currentTheme.borderGold ||
+                    currentTheme.sanskritAccent ||
+                    currentTheme.translationColor;
+                  ctx.lineWidth = underlineThickness;
+                  ctx.lineCap = "round";
+                  ctx.moveTo(currentX, underlineY);
+                  ctx.lineTo(currentX + underlineW, underlineY);
+                  ctx.stroke();
+                  ctx.restore();
+                }
+
+                currentX += segW;
+              });
+              ctx.textAlign = "center";
+            }
+
+            y += layoutObj.mLineH;
+          });
+          if (pIdx < layoutObj.wrappedMsgPoints.length - 1) {
+            y += layoutObj.mPointGap;
+          }
+        });
+      };
+
+      // 4. Render Sacred Header Block
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.font = `bold ${headingFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
+      ctx.fillStyle = currentTheme.headerColor;
+      ctx.fillText(
+        txt("॥ શ્રીમદ્ભગવદ્ગીતા ॥", "॥ श्रीमद्भगवद्गीता ॥", "॥ Shrimad Bhagavad Gita ॥"),
+        vWidth / 2,
+        headingCenterY
+      );
+
+      const badgeText = chName
+        ? txt(`અધ્યાય ${chNum} (${chName}) • શ્લોક ${shlokNum}`, `अध्याय ${chNum} (${chName}) • श्लोक ${shlokNum}`, `Chapter ${chNum} (${chName}) • Shloka ${shlokNum}`)
+        : txt(`અધ્યાય ${chNum} • શ્લોક ${shlokNum}`, `अध्याय ${chNum} • श्लोक ${shlokNum}`, `Chapter ${chNum} • Shloka ${shlokNum}`);
+      ctx.font = `bold ${badgeFontSize}px "Noto Sans Gujarati", sans-serif`;
+      const badgeMetrics = ctx.measureText(badgeText);
+      const badgeW = Math.min(vWidth - 140, Math.max(320, badgeMetrics.width + 56));
+
+      drawRoundRect(
+        ctx,
+        vWidth / 2 - badgeW / 2,
+        badgeCenterY - badgeH / 2,
+        badgeW,
+        badgeH,
+        Math.round(badgeH / 2),
+        "rgba(0, 0, 0, 0.40)",
+        currentTheme.innerBorder,
+        1.5
+      );
+
+      ctx.fillStyle = currentTheme.footerColor;
+      ctx.fillText(badgeText, vWidth / 2, badgeCenterY);
+
+      if (cleanSpeaker) {
+        ctx.font = `italic 700 ${speakerFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.sanskritAccent;
+        ctx.fillText(`~ ${cleanSpeaker} ~`, vWidth / 2, speakerCenterY);
+      }
+
+      drawDivider(headerDividerY, isLandscape ? 760 : 520);
+
+      // 5. Render Main Content
+      if (bestLayout.mode === "two-column") {
+        const leftCenterX = isLandscape ? 492 : 292;
+        const rightCenterX = isLandscape ? 1428 : 788;
+        const centerLineX = vWidth / 2;
+
+        drawVerticalDivider(centerLineX, headerDividerY + 24, footerDividerY - 24);
+
+        // Left Column: Sanskrit + Translation (vertically centered in availableH)
+        const leftSlack = Math.max(0, availableH - bestLayout.leftTotalH);
+        let leftY = headerDividerY + 12 + Math.floor(leftSlack * 0.45);
+        const boxX = leftCenterX - bestLayout.sanskritBoxW / 2;
+
+        drawRoundRect(
+          ctx,
+          boxX,
+          leftY,
+          bestLayout.sanskritBoxW,
+          bestLayout.sBoxH,
+          20,
+          currentTheme.sanskritBoxBg || "rgba(255, 255, 255, 0.08)",
+          currentTheme.sanskritBoxBorder || "rgba(245, 197, 66, 0.40)",
+          1.8
+        );
+
+        ctx.font = `bold ${bestLayout.sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
+        ctx.fillStyle = currentTheme.sanskritColor;
+        let sLineY = leftY + bestLayout.sVertPad;
+        bestLayout.sToDisplay.forEach((line) => {
+          ctx.fillText(line, leftCenterX, sLineY);
+          sLineY += bestLayout.sLineH;
+        });
+
+        leftY += bestLayout.sBoxH + 14;
+        drawDivider(leftY, isLandscape ? 420 : 280, leftCenterX);
+        leftY += bestLayout.colGap;
+
+        const transHeadingSize = Math.max(22, Math.round(34 * (bestLayout.tFontSize / 33)));
+        ctx.font = `bold ${transHeadingSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.headerColor;
+        ctx.fillText(
+          txt("• ગુજરાતી ભાવાર્થ •", "• हिन्दी भावार्थ •", "• English Translation •"),
+          leftCenterX,
+          leftY + 10
+        );
+        leftY += bestLayout.tTitleH;
+
+        ctx.font = `bold ${bestLayout.tFontSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.translationColor;
+        bestLayout.wrappedTrans.forEach((line) => {
+          ctx.fillText(line, leftCenterX, leftY + 8);
+          leftY += bestLayout.tLineH;
+        });
+
+        // Right Column: Divine Message (vertically centered in availableH)
+        const rightSlack = Math.max(0, availableH - bestLayout.rightTotalH);
+        const rightStartY = headerDividerY + 12 + Math.floor(rightSlack * 0.45);
+        drawMessagePointsBlock(rightCenterX, rightStartY, bestLayout);
+      } else {
+        // Single Column Mode (9:16, 4:5, standard 1:1, or 16:9 without message)
+        const totalSlack = Math.max(0, availableH - bestLayout.totalRequiredH);
+        const extraPerGap = Math.floor(totalSlack / (bestLayout.numGaps + 1));
+        const maxGapCap = layoutMode === "9:16" ? 54 : 38;
+        const sectionGap =
+          bestLayout.totalRequiredH > availableH
+            ? Math.max(
+                6,
+                Math.floor(
+                  (availableH - (bestLayout.totalRequiredH - bestLayout.numGaps * bestLayout.baseGap)) /
+                    bestLayout.numGaps
+                )
+              )
+            : Math.min(maxGapCap, bestLayout.baseGap + extraPerGap);
+
+        let currY = headerDividerY + sectionGap;
+
+        const boxX = (vWidth - bestLayout.sanskritBoxW) / 2;
+        const boxY = currY;
+
+        drawRoundRect(
+          ctx,
+          boxX,
+          boxY,
+          bestLayout.sanskritBoxW,
+          bestLayout.sBoxH,
+          22,
+          currentTheme.sanskritBoxBg || "rgba(255, 255, 255, 0.08)",
+          currentTheme.sanskritBoxBorder || "rgba(245, 197, 66, 0.40)",
+          1.8
+        );
+
+        ctx.font = `bold ${bestLayout.sFontSize}px "Noto Sans Devanagari", "Noto Sans Gujarati", serif`;
+        ctx.fillStyle = currentTheme.sanskritColor;
+
+        let sLineY = boxY + bestLayout.sVertPad;
+        bestLayout.sToDisplay.forEach((line) => {
+          ctx.fillText(line, vWidth / 2, sLineY);
+          sLineY += bestLayout.sLineH;
+        });
+
+        currY = boxY + bestLayout.sBoxH + 16;
+        drawDivider(currY, isLandscape ? 720 : 500);
+        currY += sectionGap;
+
+        const transHeadingSize = Math.max(22, Math.round(36 * (bestLayout.tFontSize / 38)));
+        ctx.font = `bold ${transHeadingSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.headerColor;
+        ctx.fillText(
+          txt("• ગુજરાતી ભાવાર્થ •", "• हिन्दी भावार्थ •", "• English Translation •"),
+          vWidth / 2,
+          currY + 12
+        );
+        currY += bestLayout.tTitleH;
+
+        ctx.font = `bold ${bestLayout.tFontSize}px "Noto Sans Gujarati", sans-serif`;
+        ctx.fillStyle = currentTheme.translationColor;
+
+        bestLayout.wrappedTrans.forEach((line) => {
+          ctx.fillText(line, vWidth / 2, currY + 10);
+          currY += bestLayout.tLineH;
+        });
+
+        if (hasMessage && bestLayout.wrappedMsgPoints.length > 0) {
+          currY += 16;
+          drawDivider(currY, isLandscape ? 700 : 480);
+          currY += sectionGap;
+          drawMessagePointsBlock(vWidth / 2, currY, bestLayout);
+        }
+      }
+
+      // 8. Footer Branding & Website Pill
+      drawDivider(footerDividerY, isLandscape ? 700 : 480);
+
+      const siteUrl = "gita-gyan-m.vercel.app";
+      const pillText = `🔗 ${siteUrl}`;
+      ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const pillMetrics = ctx.measureText(pillText);
+      const pillW = Math.min(vWidth - 200, pillMetrics.width + 54);
+      const pillH = layoutMode === "9:16" ? 44 : 38;
+      const pillY = footerDividerY + (layoutMode === "9:16" ? 36 : 27);
+
+      drawRoundRect(
+        ctx,
+        vWidth / 2 - pillW / 2,
+        pillY - pillH / 2,
+        pillW,
+        pillH,
+        Math.round(pillH / 2),
+        "rgba(0, 0, 0, 0.45)",
+        currentTheme.innerBorder,
+        1.4
+      );
+
+      ctx.fillStyle = currentTheme.headerColor;
+      ctx.fillText(pillText, vWidth / 2, pillY);
+
+      ctx.restore();
+
+      // Generate preview data URL
+      const dataUrl = canvas.toDataURL("image/png");
+      setPreviewUrl(dataUrl);
+      setIsGenerating(false);
+      return dataUrl;
+    } catch (err) {
+      console.error("Error generating canvas card:", err);
+      setIsGenerating(false);
+      return "";
     }
+  };
 
-    // 8. Footer Branding & Website Watermark (Firmly Anchored at Bottom)
-    drawDivider(footerDividerY, 480);
+  const triggerDownloadWithPreset = (preset) => {
+    const targetPreset = isAdmin
+      ? preset || activeSizePreset
+      : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
-    // Sleek Website Link Pill (Professional & Prominent)
-    const siteUrl = "gita-gyan-m.vercel.app";
-    const pillText = `🔗 ${siteUrl}`;
-    ctx.font = '700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    const pillMetrics = ctx.measureText(pillText);
-    const pillW = Math.min(width - 200, pillMetrics.width + 54);
-    const pillH = 44;
-    const pillY = footerDividerY + 36;
+    const dataUrl = renderCanvasCard(targetPreset);
+    if (!dataUrl) return;
 
-    drawRoundRect(
-      ctx,
-      width / 2 - pillW / 2,
-      pillY - pillH / 2,
-      pillW,
-      pillH,
-      22,
-      "rgba(0, 0, 0, 0.45)",
-      currentTheme.innerBorder,
-      1.4
-    );
-
-    ctx.fillStyle = currentTheme.headerColor;
-    ctx.fillText(pillText, width / 2, pillY);
-
-    // Generate preview data URL
-    const dataUrl = canvas.toDataURL("image/png");
-    setPreviewUrl(dataUrl);
-    setIsGenerating(false);
-  } catch (err) {
-    console.error("Error generating canvas card:", err);
-    setIsGenerating(false);
-  }
-};
-
-  const handleDownload = () => {
-    if (!previewUrl) return;
     const link = document.createElement("a");
     const ch = shlokaData.chapterNumber || 1;
     const shl = shlokaData.shlokNumber || 1;
-    link.download = `Bhagavad_Gita_Adhyay_${ch}_Shlok_${shl}.png`;
-    link.href = previewUrl;
+    link.download = isAdmin
+      ? `Bhagavad_Gita_Adhyay_${ch}_Shlok_${shl}_${targetPreset.width}x${targetPreset.height}.png`
+      : `Bhagavad_Gita_Adhyay_${ch}_Shlok_${shl}.png`;
+    link.href = dataUrl;
     link.click();
+  };
+
+  const handleDownload = () => {
+    if (!previewUrl) return;
+    if (isAdmin && !hasConfirmedSize) {
+      setSizeSheetMode("download");
+      setSizeSheetOpen(true);
+      return;
+    }
+    triggerDownloadWithPreset(activeSizePreset);
+  };
+
+  const handleSelectSize = (preset) => {
+    if (!isAdmin) return;
+    setSelectedSizeId(preset.id);
+    setHasConfirmedSize(true);
+    setSizeSheetOpen(false);
+  };
+
+  const handleDownloadSize = (preset) => {
+    if (!isAdmin) return;
+    setSelectedSizeId(preset.id);
+    setHasConfirmedSize(true);
+    setSizeSheetOpen(false);
+    triggerDownloadWithPreset(preset);
   };
 
   const handleShareWhatsApp = async () => {
@@ -1049,16 +1421,6 @@ export default function ShareShlokaModal({
     setTimeout(() => setCopied(false), 2200);
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prevOverflow;
-      };
-    }
-  }, [isOpen]);
-
   if (!isOpen || !shlokaData || typeof document === "undefined") return null;
 
   return createPortal(
@@ -1136,6 +1498,9 @@ export default function ShareShlokaModal({
                   src={previewUrl}
                   alt="Bhagavad Gita Shloka Card Preview"
                   className="share-card-preview-img"
+                  style={{
+                    aspectRatio: `${activeSizePreset.width} / ${activeSizePreset.height}`
+                  }}
                 />
               </a>
             ) : (
@@ -1157,6 +1522,22 @@ export default function ShareShlokaModal({
               <span>🔗 gita-gyan-m.vercel.app</span>
             </a>
           </div>
+
+          {/* ADMIN-ONLY EXPORT SIZE PICKER */}
+          <AdminShareSizeSelector
+            isAdmin={isAdmin}
+            selectedSizeId={activeSizePreset.id}
+            isSheetOpen={sizeSheetOpen}
+            sheetMode={sizeSheetMode}
+            onOpenSheet={(mode) => {
+              setSizeSheetMode(mode || "select");
+              setSizeSheetOpen(true);
+            }}
+            onCloseSheet={() => setSizeSheetOpen(false)}
+            onSelectSize={handleSelectSize}
+            onDownloadSize={handleDownloadSize}
+            disabled={isGenerating}
+          />
 
           {/* ACTION BUTTONS */}
           <div className="share-modal-actions">
