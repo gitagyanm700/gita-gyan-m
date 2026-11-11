@@ -4,6 +4,7 @@ import {
   alignSpecialCharacterSpacing,
   preserveSanskritSubWords,
   htmlToPlainText,
+  containsGujarati,
 } from "../utils/aiTranslator.js";
 import {
   useEffect,
@@ -1498,39 +1499,45 @@ function ShlokManagement() {
       });
 
       if (field === "words" && Array.isArray(translated.wordMeanings)) {
-        setWordMeanings((prev) =>
-          prev.map((item, idx) => {
-            const translatedItem = translated.wordMeanings[idx];
+        const outKey = targetLang === "hi" ? "meaningHi" : "meaningEn";
+        const computedWords = wordMeanings.map((item, idx) => {
+          const translatedItem = translated.wordMeanings[idx];
+          const hasOrigMeaning = Boolean(htmlToPlainText(item.meaning || ""));
+          const rawVal = translatedItem?.[outKey];
 
-            if (targetLang === "hi") {
-              const rawHi =
-                translatedItem?.meaningHi !== undefined
-                  ? translatedItem.meaningHi
-                  : item.meaningHi || "";
-              return {
-                ...item,
-                word: item.word, // Keep user's exact Sanskrit word (including split words) strictly untouched
-                meaningHi: alignSpecialCharacterSpacing(
-                  item.meaning,
-                  preserveSanskritSubWords(item.meaning, rawHi)
-                ),
-              };
-            } else {
-              const rawEn =
-                translatedItem?.meaningEn !== undefined
-                  ? translatedItem.meaningEn
-                  : item.meaningEn || "";
-              return {
-                ...item,
-                word: item.word, // Keep user's exact Sanskrit word (including split words) strictly untouched
-                meaningEn: alignSpecialCharacterSpacing(
-                  item.meaning,
-                  preserveSanskritSubWords(item.meaning, rawEn)
-                ),
-              };
-            }
-          })
-        );
+          if (!hasOrigMeaning) {
+            return {
+              ...item,
+              word: item.word,
+              [outKey]: "",
+            };
+          }
+
+          if (!rawVal || !String(rawVal).trim() || containsGujarati(rawVal)) {
+            throw new Error(
+              `શબ્દ "${item.word || idx + 1}" નો અનુવાદ અધૂરો અથવા ગુજરાતીમાં રહી ગયો છે. કૃપા કરીને ફરી પ્રયાસ કરો.`
+            );
+          }
+
+          const aligned = alignSpecialCharacterSpacing(
+            item.meaning,
+            preserveSanskritSubWords(item.meaning, rawVal)
+          );
+
+          if (!aligned.trim() || containsGujarati(aligned)) {
+            throw new Error(
+              `શબ્દ "${item.word || idx + 1}" ના અનુવાદમાં ગુજરાતી અક્ષરો રહી ગયા છે. કૃપા કરીને ફરી પ્રયાસ કરો.`
+            );
+          }
+
+          return {
+            ...item,
+            word: item.word, // Keep user's exact Sanskrit word (including split words) strictly untouched
+            [outKey]: aligned,
+          };
+        });
+
+        setWordMeanings(computedWords);
 
         setAutoTranslateSuccess(
           targetLang === "hi"
@@ -1538,45 +1545,53 @@ function ShlokManagement() {
             : `✨ સંસ્કૃત-અંગ્રેજી શબ્દાર્થ (Word Meanings) સફળતાપૂર્વક AI દ્વારા અનુવાદિત થયા! (${timeStr})`
         );
       } else if (field === "translation") {
-        if (targetLang === "hi") {
-          setFormData((prev) => ({
-            ...prev,
-            translationHi: alignSpecialCharacterSpacing(
-              formData.translation,
-              translated.translationHi || prev.translationHi
-            ),
-          }));
-          setAutoTranslateSuccess(`✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`);
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            translationEn: alignSpecialCharacterSpacing(
-              formData.translation,
-              translated.translationEn || prev.translationEn
-            ),
-          }));
-          setAutoTranslateSuccess(`✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`);
+        const outKey = targetLang === "hi" ? "translationHi" : "translationEn";
+        const rawText = translated[outKey];
+        if (!rawText || !htmlToPlainText(rawText) || containsGujarati(rawText)) {
+          throw new Error(
+            targetLang === "hi"
+              ? "હિન્દી શ્લોકાર્થ અનુવાદ પૂર્ણ થઈ શક્યો નથી અથવા તેમાં ગુજરાતી અક્ષરો રહી ગયા છે."
+              : "અંગ્રેજી શ્લોકાર્થ અનુવાદ પૂર્ણ થઈ શક્યો નથી અથવા તેમાં ગુજરાતી અક્ષરો રહી ગયા છે."
+          );
         }
+        const aligned = alignSpecialCharacterSpacing(formData.translation, rawText);
+        if (!htmlToPlainText(aligned) || containsGujarati(aligned)) {
+          throw new Error("અનુવાદમાં ગુજરાતી અક્ષરો રહી ગયા છે. કૃપા કરીને ફરી પ્રયાસ કરો.");
+        }
+        setFormData((prev) => ({
+          ...prev,
+          [outKey]: aligned,
+        }));
+        setAutoTranslateSuccess(
+          targetLang === "hi"
+            ? `✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`
+            : `✨ શ્લોકાર્થ (અનુવાદ) સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થયો! (${timeStr})`
+        );
       } else if (field === "message") {
-        if (targetLang === "hi") {
-          setFormData((prev) => ({
-            ...prev,
-            messageHi: alignSpecialCharacterSpacing(
-              formData.message,
-              translated.messageHi || prev.messageHi
-            ),
-          }));
-          setAutoTranslateSuccess(`✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`);
-        } else {
-          setFormData((prev) => ({
-            ...prev,
-            messageEn: alignSpecialCharacterSpacing(
-              formData.message,
-              translated.messageEn || prev.messageEn
-            ),
-          }));
-          setAutoTranslateSuccess(`✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`);
+        const outKey = targetLang === "hi" ? "messageHi" : "messageEn";
+        const rawText = translated[outKey];
+        if (!rawText || !htmlToPlainText(rawText) || containsGujarati(rawText)) {
+          throw new Error(
+            targetLang === "hi"
+              ? "હિન્દી ગીતા સંદેશ અનુવાદ પૂર્ણ થઈ શક્યો નથી અથવા તેમાં ગુજરાતી અક્ષરો રહી ગયા છે."
+              : "અંગ્રેજી ગીતા સંદેશ અનુવાદ પૂર્ણ થઈ શક્યો નથી અથવા તેમાં ગુજરાતી અક્ષરો રહી ગયા છે."
+          );
         }
+        const aligned = alignSpecialCharacterSpacing(formData.message, rawText);
+        if (!htmlToPlainText(aligned) || containsGujarati(aligned)) {
+          throw new Error("સંદેશના અનુવાદમાં ગુજરાતી અક્ષરો રહી ગયા છે. કૃપા કરીને ફરી પ્રયાસ કરો.");
+        }
+        setFormData((prev) => ({
+          ...prev,
+          [outKey]: aligned,
+        }));
+        setAutoTranslateSuccess(
+          targetLang === "hi"
+            ? `✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક હિન્દીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`
+            : `✨ ગીતા સંદેશ / વ્યાખ્યા સફળતાપૂર્વક અંગ્રેજીમાં AI દ્વારા અનુવાદિત થઈ! (${timeStr})`
+        );
+      } else {
+        throw new Error("અમાન્ય અનુવાદ પ્રતિસાદ પ્રાપ્ત થયો. કૃપા કરીને ફરી પ્રયાસ કરો.");
       }
     } catch (err) {
       console.error("Field translate error:", err);
