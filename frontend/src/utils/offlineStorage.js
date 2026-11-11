@@ -5,7 +5,7 @@
 // =========================================================
 
 import { getValidToken } from "./authHelper.js";
-import { autoSyncChapterAudios } from "./audioCache.js";
+import { autoSyncMultipleChaptersAudios } from "./audioCache.js";
 import { isRunningInStandaloneApp } from "./pwaManager.js";
 
 const API_BASE = "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
@@ -288,14 +288,22 @@ export async function downloadAllChaptersOffline(onProgress = null) {
     } catch (e) {}
   }
 
-  // After saving shlokas text, automatically start background audio sync for Chapter 1 (in App only)
+  // After saving shlokas text, automatically start fast background audio sync for downloaded chapters (in App only)
   if (isRunningInStandaloneApp()) {
     try {
-      const ch1 = getChapterOffline(1);
-      if (ch1 && Array.isArray(ch1.shlokas)) {
+      const lang =
+        (typeof localStorage !== "undefined" && localStorage.getItem("gita_language")) || "gu";
+      const entries = [];
+      for (const ch of results) {
+        const chData = getChapterOffline(ch);
+        if (chData && Array.isArray(chData.shlokas) && chData.shlokas.length > 0) {
+          entries.push({ chapterNumber: ch, shlokas: chData.shlokas });
+        }
+      }
+      if (entries.length > 0) {
         setTimeout(() => {
-          autoSyncChapterAudios(1, ch1.shlokas, "gu");
-        }, 600);
+          autoSyncMultipleChaptersAudios(entries, lang);
+        }, 500);
       }
     } catch (e) {}
   }

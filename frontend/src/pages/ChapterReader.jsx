@@ -15,7 +15,16 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { trackShlokaRead, getFirstUnreadShloka, getLocalProgress } from "../utils/readingTracker.js";
 import { saveChapterOffline, getChapterOffline } from "../utils/offlineStorage.js";
-import { saveAudioToCache, getAudioFromCache, isAudioInCache, autoSyncChapterAudios, stopAudioSync } from "../utils/audioCache.js";
+import {
+  saveAudioToCache,
+  getAudioFromCache,
+  isAudioInCache,
+  autoSyncChapterAudios,
+  stopAudioSync,
+  extractCleanTextForSpeech,
+  formatSanskritForSpeech,
+  fetchNeuralAudioBlob,
+} from "../utils/audioCache.js";
 import { isRunningInStandaloneApp } from "../utils/pwaManager.js";
 
 function ChapterReader() {
@@ -1149,85 +1158,6 @@ if (
     }
   };
 
-  // Helper to extract clean spoken text from HTML with natural pauses (1s pause after point titles / colons / lists)
-  const extractCleanTextForSpeech = (htmlString) => {
-    if (!htmlString) return "";
-    try {
-      const tempDiv = document.createElement("div");
-      const preprocessed = String(htmlString)
-        .replace(/<br\s*[\/]?>/gi, " [P] ")
-        .replace(/<\/p>/gi, " [P] ")
-        .replace(/<\/li>/gi, " [P] ")
-        .replace(/<li>/gi, " [P] ")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&");
-      tempDiv.innerHTML = preprocessed;
-      let text = (tempDiv.textContent || tempDiv.innerText || "");
-
-      // Strip remaining HTML tags
-      text = text.replace(/<[^>]*>/g, "");
-
-      // 1-second natural pause after speaker name or point titles with colons (e.g. "ધૃતરાષ્ટ્રે કહ્યું :")
-      text = text.replace(/\s*[:：]\s*/g, " [P] ");
-
-      // Remove bullet marks
-      text = text.replace(/[•\-\*]/g, " ");
-
-      // Collapse extra spaces
-      text = text.replace(/\s+/g, " ").trim();
-
-      // Replace pause marker with ". ... " which causes a calm ~1 second pause in speech synthesis
-      text = text.replace(/\s*\[P\]\s*/g, ". ... ");
-
-      // Clean up duplicate pause markers or trailing punctuation
-      text = text
-        .replace(/(\.\s*\.\.\.\s*)+/g, ". ... ")
-        .replace(/^[\.\s\.\.\.]+/, "")
-        .replace(/[\.\s\.\.\.]+$/, ".")
-        .trim();
-
-      return text;
-    } catch (e) {
-      return String(htmlString)
-        .replace(/<[^>]*>/g, " ")
-        .replace(/\s*[:：]\s*/g, ". ... ")
-        .trim();
-    }
-  };
-
-  // Formats Sanskrit verse text with natural poetic meter (rag/chandas pauses) for authentic recitation
-  const formatSanskritForSpeech = (shlokObj) => {
-    if (!shlokObj) return "";
-    let plain = removeHtml(shlokObj.sanskrit || "");
-    if (!plain && (shlokObj.sanskritLine1 || shlokObj.sanskritLine2)) {
-      plain = [shlokObj.sanskritLine1, shlokObj.sanskritLine2].filter(Boolean).join("\n");
-    }
-    // Strip trailing shloka numbers like ॥ १ ॥ or || 1 ||
-    plain = plain.replace(/[॥\|]\s*[\d\.\-०-९]+\s*[॥\|]/g, "।");
-    const rawLines = plain
-      .split(/\n+/)
-      .map((l) => l.replace(/\s+/g, " ").trim())
-      .filter(Boolean);
-
-    const rhythmLines = rawLines
-      .map((line) => {
-        let cleanLine = line.replace(/[|।॥]+$/g, "").trim();
-        const words = cleanLine.split(/\s+/).filter((w) => !/^[|।॥\d\.\-०-९]+$/.test(w));
-        if (words.length >= 4) {
-          const half = Math.ceil(words.length / 2);
-          const pada1 = words.slice(0, half).join(" ");
-          const pada2 = words.slice(half).join(" ");
-          return `${pada1}, ${pada2} ।`;
-        } else if (words.length > 0) {
-          return `${words.join(" ")} ।`;
-        }
-        return "";
-      })
-      .filter(Boolean);
-
-    return rhythmLines.join("\n\n");
-  };
-
   // Smoothly scroll the screen to keep the active section comfortably in view
   const scrollToSection = (sectionType) => {
     try {
@@ -1244,60 +1174,6 @@ if (
         window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
       }
     } catch (e) {}
-  };
-
-  // Resiliently fetch Microsoft Neural AI speech audio (with automatic fallback to Render and retry)
-  const fetchNeuralAudioBlob = async (text, lang, customRate = null) => {
-    const isLocal =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
-    // Candidate endpoints: If on localhost, check local first, but ALWAYS fall back to Render!
-    const candidateBases = isLocal
-      ? ["http://localhost:5000", "https://bhagavad-gita-backend-jy1a.onrender.com"]
-      : ["https://bhagavad-gita-backend-jy1a.onrender.com"];
-
-    const payload = {
-      text,
-      lang,
-      voice: "male", // Niranjan / Madhur
-    };
-    if (customRate) {
-      payload.rate = customRate;
-    }
-
-    let lastFetchErr = null;
-    for (const base of candidateBases) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const controller = new AbortController();
-          const timeoutMs = base.includes("localhost") ? 2000 : 25000;
-          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-          const response = await fetch(`${base}/api/tts/speak`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            return await response.blob();
-          }
-        } catch (err) {
-          lastFetchErr = err;
-          // If localhost connection failed or timed out, immediately skip to Render!
-          if (base.includes("localhost")) {
-            break;
-          }
-          if (attempt < 2) {
-            await new Promise((r) => setTimeout(r, 650));
-          }
-        }
-      }
-    }
-    throw lastFetchErr || new Error("Failed to fetch audio from all endpoints");
   };
 
   // Marks shloka as read strictly when the full audio sequence completes
@@ -1892,26 +1768,36 @@ if (
   // Quiet background auto-download of Neural TTS audios for this chapter into IndexedDB (In App Only!)
   // Automatically saves audio in background so the user does NOT need to listen to it online!
   useEffect(() => {
-    if (typeof window === "undefined" || !navigator.onLine) return;
+    setAudioSyncProgress({ current: 0, total: 0, done: false });
+    if (typeof window === "undefined") return;
     if (!isRunningInStandaloneApp()) return;
     if (!shlokas || shlokas.length === 0) return;
 
     const currentLang = isEnglish ? "en" : isHindi ? "hi" : "gu";
-    autoSyncChapterAudios(
-      currentChapterNumber,
-      shlokas,
-      currentLang,
-      currentShloka,
-      (prog) => {
-        setAudioSyncProgress({
-          current: prog.current,
-          total: prog.total,
-          done: prog.current >= prog.total,
-        });
-      }
-    );
+    const startSync = () => {
+      if (!navigator.onLine) return;
+      autoSyncChapterAudios(
+        currentChapterNumber,
+        shlokas,
+        currentLang,
+        currentShloka,
+        (prog) => {
+          setAudioSyncProgress({
+            current: prog.current,
+            total: prog.total,
+            done: prog.current >= prog.total,
+          });
+        }
+      );
+    };
 
+    if (navigator.onLine) {
+      startSync();
+    }
+
+    window.addEventListener("online", startSync);
     return () => {
+      window.removeEventListener("online", startSync);
       stopAudioSync();
     };
   }, [currentChapterNumber, shlokas.length, language]);

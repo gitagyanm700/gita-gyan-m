@@ -85,6 +85,13 @@ const generalApiLimiter = new MemoryRateLimiter(
   "ખૂબ જ ઝડપથી વિનંતીઓ મોકલાઈ રહી છે. કૃપા કરીને થોડી ક્ષણો પછી પ્રયાસ કરો."
 ).middleware();
 
+// Dedicated High-Throughput Limiter for Neural TTS & Batch Offline Audio Sync
+const ttsLimiter = new MemoryRateLimiter(
+  60 * 1000,
+  2500,
+  "ઑડિયો સિંક વિનંતીઓની મર્યાદા પાર થઈ છે. કૃપા કરીને થોડી ક્ષણો પછી પ્રયાસ કરો."
+).middleware();
+
 // =====================================================
 // 2. HTTP SECURITY HEADERS (HELMET EQUIVALENT)
 // =====================================================
@@ -232,6 +239,7 @@ module.exports = {
   authLimiter,
   otpLimiter,
   generalApiLimiter,
+  ttsLimiter,
   corsOptions,
   secureErrorHandler,
 };

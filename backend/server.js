@@ -18,12 +18,14 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const appAnalyticsRoutes = require("./routes/appAnalyticsRoutes");
 const ttsRoutes = require("./routes/ttsRoutes");
+const { scheduleStartupAudioPrecache } = require("./controllers/ttsController");
 const notificationController = require("./controllers/notificationController");
 
 const {
   securityHeaders,
   noSqlSanitizer,
   generalApiLimiter,
+  ttsLimiter,
   corsOptions,
   secureErrorHandler,
 } = require("./middleware/securityMiddleware");
@@ -57,8 +59,13 @@ app.use(express.text({ type: ["text/plain", "application/json"], limit: "1mb" })
 // 5. NoSQL Injection Sanitizer (Strips any malicious $ and . keys from body, query, and params)
 app.use(noSqlSanitizer);
 
-// 6. Global API Rate Limiter (Protects against DDoS, brute force, and scraping bots)
-app.use("/api", generalApiLimiter);
+// 6. Global API Rate Limiter (Dedicated high-throughput limiter for TTS offline sync)
+app.use("/api", (req, res, next) => {
+  if (req.path === "/tts" || req.path.startsWith("/tts/")) {
+    return ttsLimiter(req, res, next);
+  }
+  return generalApiLimiter(req, res, next);
+});
 
 // =====================================================
 // ROUTES
@@ -144,4 +151,5 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running securely on http://localhost:${PORT}`);
+  scheduleStartupAudioPrecache();
 });
