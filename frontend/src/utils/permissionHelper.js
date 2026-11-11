@@ -143,6 +143,18 @@ export function isSuperAdminUser(user) {
 }
 
 /**
+ * Strictly checks whether the user is one of the 2 designated Super Admins
+ * (excludes all other admins / sub-admins and normal users).
+ */
+export function isExclusiveSuperAdmin(user) {
+  if (!user || user.role !== "admin" || !user.email) return false;
+  const normalizedEmail = String(user.email).trim().toLowerCase();
+  return SUPER_ADMIN_EMAILS.some(
+    (em) => em.toLowerCase() === normalizedEmail
+  );
+}
+
+/**
  * Checks if the user has a specific permission or any of multiple permissions
  */
 export function hasPermission(user, permissionKey) {

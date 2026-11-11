@@ -1,11 +1,11 @@
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Download, Maximize2, ShieldCheck, X } from "lucide-react";
+import { Check, ChevronDown, Crown, Download, Maximize2, X } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { SHARE_CARD_SIZE_PRESETS } from "../utils/shareCardSizes.js";
 import "./AdminShareSizeSelector.css";
 
 export default function AdminShareSizeSelector({
-  isAdmin,
+  isSuperAdmin,
   selectedSizeId,
   isSheetOpen,
   sheetMode = "select",
@@ -17,8 +17,8 @@ export default function AdminShareSizeSelector({
 }) {
   const { txt } = useLanguage();
 
-  // Strictly hidden for all non-admin users and guests
-  if (!isAdmin) return null;
+  // Strictly hidden for everyone except the 2 designated Super Admins
+  if (!isSuperAdmin) return null;
 
   const activePreset =
     SHARE_CARD_SIZE_PRESETS.find((p) => p.id === selectedSizeId) ||
@@ -42,15 +42,15 @@ export default function AdminShareSizeSelector({
           onClick={() => onOpenSheet && onOpenSheet("select")}
           disabled={disabled}
           title={txt(
-            "ઈમેજ ડાઉનલોડ સાઇઝ પસંદ કરો (Admin)",
-            "इमेज डाउनलोड साइज़ चुनें (Admin)",
-            "Select Image Export Size (Admin)"
+            "ઈમેજ ડાઉનલોડ સાઇઝ પસંદ કરો (Super Admin)",
+            "इमेज डाउनलोड साइज़ चुनें (Super Admin)",
+            "Select Image Export Size (Super Admin)"
           )}
         >
           <div className="admin-size-bar-left">
             <span className="admin-size-pill-badge">
-              <ShieldCheck size={12} />
-              <span>Admin</span>
+              <Crown size={12} />
+              <span>Super Admin</span>
             </span>
             <Maximize2 size={14} className="admin-size-icon" />
             <span className="admin-size-active-name">{activePreset.label}</span>
@@ -91,8 +91,8 @@ export default function AdminShareSizeSelector({
               <div className="admin-size-sheet-header">
                 <div className="admin-size-sheet-title">
                   <span className="admin-size-pill-badge">
-                    <ShieldCheck size={12} />
-                    <span>Admin</span>
+                    <Crown size={12} />
+                    <span>Super Admin</span>
                   </span>
                   <h4>
                     {sheetMode === "download"

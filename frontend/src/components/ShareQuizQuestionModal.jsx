@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { isExclusiveSuperAdmin } from "../utils/permissionHelper.js";
 import AdminShareSizeSelector from "./AdminShareSizeSelector.jsx";
 import {
   DEFAULT_SHARE_CARD_SIZE_ID,
@@ -261,7 +262,7 @@ export default function ShareQuizQuestionModal({
 }) {
   const { txt } = useLanguage();
   const { user, isLoggedIn } = useAuth();
-  const isAdmin = Boolean(isLoggedIn && user?.role === "admin");
+  const isSuperAdmin = Boolean(isLoggedIn && isExclusiveSuperAdmin(user));
 
   const canvasRef = useRef(null);
   const logoImageRef = useRef(null);
@@ -274,17 +275,17 @@ export default function ShareQuizQuestionModal({
   const [copiedText, setCopiedText] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const activeSizePreset = isAdmin
+  const activeSizePreset = isSuperAdmin
     ? getShareCardSizePreset(selectedSizeId)
     : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isSuperAdmin) {
       setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
       setSizeSheetOpen(false);
       setHasConfirmedSize(false);
     }
-  }, [isAdmin]);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -332,13 +333,13 @@ export default function ShareQuizQuestionModal({
     }, 16);
 
     return () => clearTimeout(timer);
-  }, [isOpen, questionData, selectedThemeId, activeSizePreset.id]);
+  }, [isOpen, questionData, selectedThemeId, activeSizePreset.id, isSuperAdmin]);
 
   const renderCanvasCard = (presetOverride = null) => {
     const canvas = canvasRef.current;
     if (!canvas || !questionData) return "";
 
-    const preset = isAdmin
+    const preset = isSuperAdmin
       ? presetOverride || activeSizePreset
       : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
@@ -1046,7 +1047,7 @@ export default function ShareQuizQuestionModal({
   };
 
   const triggerDownloadWithPreset = (preset) => {
-    const targetPreset = isAdmin
+    const targetPreset = isSuperAdmin
       ? preset || activeSizePreset
       : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
@@ -1057,7 +1058,7 @@ export default function ShareQuizQuestionModal({
     const ch = questionData.chapterNumber || "general";
     const shl = questionData.shlokaNumber ? `_Shl${questionData.shlokaNumber}` : "";
     const qNum = questionData.shlokaQuestionNumber || 1;
-    link.download = isAdmin
+    link.download = isSuperAdmin
       ? `Gita_Quiz_Question_Ch${ch}${shl}_Q${qNum}_${targetPreset.width}x${targetPreset.height}.png`
       : `Gita_Quiz_Question_Ch${ch}${shl}_Q${qNum}.png`;
     link.href = dataUrl;
@@ -1066,7 +1067,7 @@ export default function ShareQuizQuestionModal({
 
   const handleDownload = () => {
     if (!previewUrl) return;
-    if (isAdmin && !hasConfirmedSize) {
+    if (isSuperAdmin && !hasConfirmedSize) {
       setSizeSheetMode("download");
       setSizeSheetOpen(true);
       return;
@@ -1075,14 +1076,14 @@ export default function ShareQuizQuestionModal({
   };
 
   const handleSelectSize = (preset) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setSelectedSizeId(preset.id);
     setHasConfirmedSize(true);
     setSizeSheetOpen(false);
   };
 
   const handleDownloadSize = (preset) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setSelectedSizeId(preset.id);
     setHasConfirmedSize(true);
     setSizeSheetOpen(false);
@@ -1237,9 +1238,9 @@ export default function ShareQuizQuestionModal({
             </div>
           </div>
 
-          {/* Admin-Only Export Size Picker */}
+          {/* Super-Admin-Only Export Size Picker */}
           <AdminShareSizeSelector
-            isAdmin={isAdmin}
+            isSuperAdmin={isSuperAdmin}
             selectedSizeId={activeSizePreset.id}
             isSheetOpen={sizeSheetOpen}
             sheetMode={sizeSheetMode}

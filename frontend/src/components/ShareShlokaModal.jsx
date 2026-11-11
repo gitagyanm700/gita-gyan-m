@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { isExclusiveSuperAdmin } from "../utils/permissionHelper.js";
 import AdminShareSizeSelector from "./AdminShareSizeSelector.jsx";
 import {
   DEFAULT_SHARE_CARD_SIZE_ID,
@@ -357,7 +358,7 @@ export default function ShareShlokaModal({
 }) {
   const { isHindi, isEnglish, txt } = useLanguage();
   const { user, isLoggedIn } = useAuth();
-  const isAdmin = Boolean(isLoggedIn && user?.role === "admin");
+  const isSuperAdmin = Boolean(isLoggedIn && isExclusiveSuperAdmin(user));
 
   const canvasRef = useRef(null);
   const logoImageRef = useRef(null);
@@ -370,18 +371,18 @@ export default function ShareShlokaModal({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const activeSizePreset = isAdmin
+  const activeSizePreset = isSuperAdmin
     ? getShareCardSizePreset(selectedSizeId)
     : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
-  // Reset admin size state cleanly if user is not admin or modal closes
+  // Reset Super Admin size state cleanly if user is not one of the 2 Super Admins or modal closes
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isSuperAdmin) {
       setSelectedSizeId(DEFAULT_SHARE_CARD_SIZE_ID);
       setSizeSheetOpen(false);
       setHasConfirmedSize(false);
     }
-  }, [isAdmin]);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -429,13 +430,13 @@ export default function ShareShlokaModal({
     }, 16);
 
     return () => clearTimeout(timer);
-  }, [isOpen, shlokaData, selectedThemeId, activeSizePreset.id]);
+  }, [isOpen, shlokaData, selectedThemeId, activeSizePreset.id, isSuperAdmin]);
 
   const renderCanvasCard = (presetOverride = null) => {
     const canvas = canvasRef.current;
     if (!canvas || !shlokaData) return "";
 
-    const preset = isAdmin
+    const preset = isSuperAdmin
       ? presetOverride || activeSizePreset
       : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
@@ -1282,7 +1283,7 @@ export default function ShareShlokaModal({
   };
 
   const triggerDownloadWithPreset = (preset) => {
-    const targetPreset = isAdmin
+    const targetPreset = isSuperAdmin
       ? preset || activeSizePreset
       : getShareCardSizePreset(DEFAULT_SHARE_CARD_SIZE_ID);
 
@@ -1292,7 +1293,7 @@ export default function ShareShlokaModal({
     const link = document.createElement("a");
     const ch = shlokaData.chapterNumber || 1;
     const shl = shlokaData.shlokNumber || 1;
-    link.download = isAdmin
+    link.download = isSuperAdmin
       ? `Bhagavad_Gita_Adhyay_${ch}_Shlok_${shl}_${targetPreset.width}x${targetPreset.height}.png`
       : `Bhagavad_Gita_Adhyay_${ch}_Shlok_${shl}.png`;
     link.href = dataUrl;
@@ -1301,7 +1302,7 @@ export default function ShareShlokaModal({
 
   const handleDownload = () => {
     if (!previewUrl) return;
-    if (isAdmin && !hasConfirmedSize) {
+    if (isSuperAdmin && !hasConfirmedSize) {
       setSizeSheetMode("download");
       setSizeSheetOpen(true);
       return;
@@ -1310,14 +1311,14 @@ export default function ShareShlokaModal({
   };
 
   const handleSelectSize = (preset) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setSelectedSizeId(preset.id);
     setHasConfirmedSize(true);
     setSizeSheetOpen(false);
   };
 
   const handleDownloadSize = (preset) => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin) return;
     setSelectedSizeId(preset.id);
     setHasConfirmedSize(true);
     setSizeSheetOpen(false);
@@ -1523,9 +1524,9 @@ export default function ShareShlokaModal({
             </a>
           </div>
 
-          {/* ADMIN-ONLY EXPORT SIZE PICKER */}
+          {/* SUPER ADMIN ONLY EXPORT SIZE PICKER */}
           <AdminShareSizeSelector
-            isAdmin={isAdmin}
+            isSuperAdmin={isSuperAdmin}
             selectedSizeId={activeSizePreset.id}
             isSheetOpen={sizeSheetOpen}
             sheetMode={sizeSheetMode}
