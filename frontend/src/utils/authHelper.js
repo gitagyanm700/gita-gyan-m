@@ -29,7 +29,6 @@ export function clearAuthSession() {
   try {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("gita_18_chapters_downloaded");
     window.dispatchEvent(new CustomEvent("auth-token-expired"));
   } catch (e) {
     console.error("Error clearing auth session:", e);

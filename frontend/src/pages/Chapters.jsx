@@ -4,7 +4,13 @@ import { BookOpen, Download, CheckCircle2, Loader2, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getValidToken } from "../utils/authHelper.js";
 import { useLanguage } from "../context/LanguageContext.jsx";
-import { downloadAllChaptersOffline, getOfflineStatusSummary } from "../utils/offlineStorage.js";
+import {
+  downloadAllChaptersOffline,
+  getOfflineStatusSummary,
+  getOfflineStatusSummaryAsync,
+  isOfflineDownloadedSync,
+  markOfflineDownloadComplete,
+} from "../utils/offlineStorage.js";
 import { isRunningInStandaloneApp } from "../utils/pwaManager.js";
 import "./Chapters.css";
 
@@ -84,16 +90,52 @@ function Chapters() {
   const [isStandaloneApp, setIsStandaloneApp] = useState(() =>
     typeof window !== "undefined" ? isRunningInStandaloneApp() : false
   );
-  const [isDownloaded, setIsDownloaded] = useState(() =>
-    typeof localStorage !== "undefined" &&
-    localStorage.getItem("gita_18_chapters_downloaded") === "true"
-  );
+  const [isDownloaded, setIsDownloaded] = useState(() => isOfflineDownloadedSync());
 
   useEffect(() => {
     setIsStandaloneApp(isRunningInStandaloneApp());
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const syncDownloadState = async () => {
+      try {
+        const summary = await getOfflineStatusSummaryAsync();
+        if (!active) return;
+        setOfflineStatus(summary);
+        if (summary.isDownloaded || summary.isFullyCached) {
+          setIsDownloaded(true);
+        } else {
+          setIsDownloaded(false);
+        }
+      } catch (e) {}
+    };
+
+    syncDownloadState();
+
+    const handleDownloadComplete = () => {
+      if (!active) return;
+      setIsDownloaded(true);
+      setOfflineStatus((prev) => ({
+        ...prev,
+        isFullyCached: true,
+        isDownloaded: true,
+      }));
+    };
+
+    window.addEventListener("gita-offline-download-complete", handleDownloadComplete);
+    window.addEventListener("storage", syncDownloadState);
+    return () => {
+      active = false;
+      window.removeEventListener("gita-offline-download-complete", handleDownloadComplete);
+      window.removeEventListener("storage", syncDownloadState);
+    };
+  }, [user]);
+
   const handleDownloadOffline = async () => {
+    if (downloadingOffline) return;
+
     const token = getValidToken();
     if (!user || !token) {
       const redirectPath = "/chapters";
@@ -135,14 +177,22 @@ function Chapters() {
         setDownloadProgress(prog.percent);
       });
       if (res.success) {
-        try {
-          localStorage.setItem("gita_18_chapters_downloaded", "true");
-        } catch (e) {}
+        await markOfflineDownloadComplete(user?._id || user?.id || user?.email);
         setIsDownloaded(true);
-        const updated = getOfflineStatusSummary();
-        setOfflineStatus({ ...updated, isFullyCached: true });
+        const updated = await getOfflineStatusSummaryAsync();
+        setOfflineStatus({ ...updated, isFullyCached: true, isDownloaded: true });
       } else if (res.requireLogin) {
-        navigate("/login");
+        const redirectPath = "/chapters";
+        const redirectMsg = txt(
+          "બધા ૧૮ અધ્યાય ઑફલાઇન માટે ડાઉનલોડ કરવા માટે Login કરવું જરૂરી છે. કૃપા કરીને ફરી Login કરો.",
+          "सभी 18 अध्याय ऑफ़लाइन के लिए डाउनलोड करने के लिए Login करना आवश्यक है। कृपया फिर Login करें।",
+          "Login is required to download all 18 chapters for offline. Please login again."
+        );
+        navigate("/login", {
+          state: { from: redirectPath, message: redirectMsg },
+        });
+      } else if (res.error) {
+        alert(res.error);
       }
     } catch (e) {
       console.warn("Offline download error:", e);

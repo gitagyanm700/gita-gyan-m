@@ -14,7 +14,7 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { trackShlokaRead, getFirstUnreadShloka, getLocalProgress } from "../utils/readingTracker.js";
-import { saveChapterOffline, getChapterOffline } from "../utils/offlineStorage.js";
+import { saveChapterOffline, getChapterOffline, getChapterOfflineAsync } from "../utils/offlineStorage.js";
 import {
   saveAudioToCache,
   getAudioFromCache,
@@ -450,9 +450,12 @@ useEffect(() => {
       setActiveWordIndex(null);
       setError("");
 
-      // STEP 1: INSTANT DISPLAY (0ms) from Offline Storage or Bundled Data
+      // STEP 1: INSTANT DISPLAY (0ms) from Offline Storage (Memory / localStorage / IndexedDB) or Bundled Data
       let hasImmediateData = false;
-      const offlineData = getChapterOffline(currentChapterNumber);
+      let offlineData = getChapterOffline(currentChapterNumber);
+      if (!offlineData || !Array.isArray(offlineData.shlokas) || offlineData.shlokas.length === 0) {
+        offlineData = await getChapterOfflineAsync(currentChapterNumber);
+      }
       if (offlineData && Array.isArray(offlineData.shlokas) && offlineData.shlokas.length > 0) {
         applyLoadedShlokas(offlineData.shlokas, offlineData.chapterName, !navigator.onLine);
         setLoading(false);

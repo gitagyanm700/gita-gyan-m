@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { isTokenExpired } from "../utils/authHelper.js";
 import { clearAudioCache } from "../utils/audioCache.js";
+import { clearAllOfflineChapters } from "../utils/offlineStorage.js";
 
 // =====================================================
 // AUTH CONTEXT
@@ -101,12 +102,26 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   // ===================================================
+  // SESSION EXPIRATION (Preserves offline downloads)
+  // ===================================================
+
+  const expireSession = () => {
+    try {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("authRedirect");
+    } catch (e) {}
+    setUser(null);
+    setToken(null);
+  };
+
+  // ===================================================
   // LISTEN FOR GLOBAL AUTH EXPIRATION
   // ===================================================
 
   useEffect(() => {
     const handleExpiredEvent = () => {
-      logout();
+      expireSession();
     };
 
     window.addEventListener("auth-token-expired", handleExpiredEvent);
@@ -162,10 +177,8 @@ export function AuthProvider({ children }) {
     for (let ch = 1; ch <= 18; ch++) {
       sessionStorage.removeItem(`gita_last_shloka_ch_${ch}`);
       localStorage.removeItem(`gita_last_shloka_ch_${ch}`);
-      localStorage.removeItem(`gita_offline_ch_${ch}`);
     }
-    localStorage.removeItem("gita_offline_catalog");
-    localStorage.removeItem("gita_18_chapters_downloaded");
+    clearAllOfflineChapters();
     clearAudioCache();
 
     setUser(null);
@@ -190,6 +203,7 @@ export function AuthProvider({ children }) {
         isLoggedIn,
         login,
         logout,
+        expireSession,
         refreshProfile,
         setUser,
         setToken,

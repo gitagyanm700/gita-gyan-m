@@ -54,14 +54,18 @@ import { useLanguage } from "./context/LanguageContext.jsx";
 // =====================================================
 
 function ProtectedRoute({ children, message, messageHi, messageEn }) {
-  const { user, token, logout } = useAuth();
+  const { user, token, expireSession, logout } = useAuth();
   const { isHindi, isEnglish, txt } = useLanguage();
   const location = useLocation();
 
   const isExpired = isTokenExpired(token);
   if (!user || !token || isExpired) {
     if (isExpired && (token || user)) {
-      logout();
+      if (typeof expireSession === "function") {
+        expireSession();
+      } else {
+        logout();
+      }
     }
     const targetPath = location.pathname + location.search;
     let redirectMessage = message;
@@ -131,14 +135,18 @@ function ProtectedRoute({ children, message, messageHi, messageEn }) {
 // =====================================================
 
 function AdminRoute({ children, permission }) {
-  const { user, token, logout } = useAuth();
+  const { user, token, expireSession, logout } = useAuth();
   const { isHindi, isEnglish, txt } = useLanguage();
   const location = useLocation();
 
   const isExpired = isTokenExpired(token);
   if (!user || !token || isExpired) {
     if (isExpired && (token || user)) {
-      logout();
+      if (typeof expireSession === "function") {
+        expireSession();
+      } else {
+        logout();
+      }
     }
     const targetPath = location.pathname + location.search;
     const redirectMessage = txt(
