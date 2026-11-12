@@ -397,6 +397,13 @@ const downloadShlokAudio = async (req, res) => {
         : shlok.message;
     const plainMsg = extractCleanTextForSpeech(messageText);
 
+    const langLabel =
+      lang === "hi"
+        ? "hindi"
+        : lang === "en"
+        ? "english"
+        : "guj";
+
     let audioBuffer = null;
     let filename = "";
 
@@ -405,19 +412,19 @@ const downloadShlokAudio = async (req, res) => {
         return res.status(404).json({ success: false, message: "Sanskrit shloka text not found." });
       }
       audioBuffer = await synthesizeBuffer(plainSa, "sa", "-22%");
-      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sanskrit.mp3`;
+      filename = `adhyay ${chapterNumber}-${shlokNumber} sanskrit.mp3`;
     } else if (type === "translation") {
       if (!plainTr) {
         return res.status(404).json({ success: false, message: "Translation text not found." });
       }
       audioBuffer = await synthesizeBuffer(plainTr, lang, "-2%");
-      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Anuvad_${lang.toUpperCase()}.mp3`;
+      filename = `adhyay ${chapterNumber}-${shlokNumber} anuvad ${langLabel}.mp3`;
     } else if (type === "message") {
       if (!plainMsg) {
         return res.status(404).json({ success: false, message: "Message text not found." });
       }
       audioBuffer = await synthesizeBuffer(plainMsg, lang, "-2%");
-      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sandesh_${lang.toUpperCase()}.mp3`;
+      filename = `adhyay ${chapterNumber}-${shlokNumber} sandesh ${langLabel}.mp3`;
     } else {
       // type === "full" (Combine Sanskrit + Translation + Message in one continuous MP3)
       const [saBuf, trBuf, msgBuf] = await Promise.all([
@@ -432,7 +439,7 @@ const downloadShlokAudio = async (req, res) => {
       }
 
       audioBuffer = Buffer.concat(parts);
-      filename = `Gita_Adhyay_${chapterNumber}_Shlok_${shlokNumber}_Sampurna_${lang.toUpperCase()}.mp3`;
+      filename = `adhyay ${chapterNumber}-${shlokNumber} ${langLabel}.mp3`;
     }
 
     if (!audioBuffer || audioBuffer.length === 0) {

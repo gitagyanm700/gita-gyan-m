@@ -618,6 +618,27 @@ function ShlokManagement() {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, shlokNum: 0 });
   const batchAbortedRef = useRef(false);
 
+  const getShlokAudioFilename = (chapterNumber, shlokNumber, type = "full", lang = "gu") => {
+    const normalizedLang = String(lang || "gu").toLowerCase();
+    const langLabel =
+      normalizedLang === "hi"
+        ? "hindi"
+        : normalizedLang === "en"
+        ? "english"
+        : "guj";
+
+    if (type === "sanskrit") {
+      return `adhyay ${chapterNumber}-${shlokNumber} sanskrit.mp3`;
+    }
+    if (type === "translation") {
+      return `adhyay ${chapterNumber}-${shlokNumber} anuvad ${langLabel}.mp3`;
+    }
+    if (type === "message") {
+      return `adhyay ${chapterNumber}-${shlokNumber} sandesh ${langLabel}.mp3`;
+    }
+    return `adhyay ${chapterNumber}-${shlokNumber} ${langLabel}.mp3`;
+  };
+
   const downloadBlobAsFile = (blob, filename) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -741,15 +762,7 @@ function ShlokManagement() {
       }
 
       const blob = await res.blob();
-      const typeLabel =
-        type === "full"
-          ? "Sampurna"
-          : type === "sanskrit"
-          ? "Sanskrit"
-          : type === "translation"
-          ? "Anuvad"
-          : "Sandesh";
-      const filename = `Gita_Adhyay_${chNum}_Shlok_${sNum}_${typeLabel}_${lang.toUpperCase()}.mp3`;
+      const filename = getShlokAudioFilename(chNum, sNum, type, lang);
 
       downloadBlobAsFile(blob, filename);
     } catch (err) {
@@ -799,15 +812,12 @@ function ShlokManagement() {
 
           if (res.ok) {
             const blob = await res.blob();
-            const typeLabel =
-              batchFormat === "full"
-                ? "Sampurna"
-                : batchFormat === "sanskrit"
-                ? "Sanskrit"
-                : batchFormat === "translation"
-                ? "Anuvad"
-                : "Sandesh";
-            const filename = `Gita_Adhyay_${s.chapterNumber}_Shlok_${s.shlokNumber}_${typeLabel}_${batchLang.toUpperCase()}.mp3`;
+            const filename = getShlokAudioFilename(
+              s.chapterNumber,
+              s.shlokNumber,
+              batchFormat,
+              batchLang
+            );
             downloadBlobAsFile(blob, filename);
           }
         } catch (itemErr) {
