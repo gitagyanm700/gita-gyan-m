@@ -165,47 +165,21 @@ const generateOTP = () => {
 // MULTI-LANGUAGE OTP SUBJECT HELPER
 // =====================================================
 
-const getOTPSubject = (purpose, language = "gu", otp = "") => {
+const getOTPSubject = (purpose, language = "gu") => {
   const lang = ["gu", "hi", "en"].includes(language) ? language : "gu";
-  const cleanOtp = String(otp || "").trim();
-
   if (purpose === "registration") {
-    if (cleanOtp) {
-      return lang === "en"
-        ? `Your verification code: ${cleanOtp} - Bhagavad Gita`
-        : lang === "hi"
-        ? `आपका सत्यापन कोड: ${cleanOtp} - श्रीमद्भगवद्गीता`
-        : `તમારો વેરિફિકેશન કોડ: ${cleanOtp} - શ્રીમદ્ ભગવદ્ ગીતા`;
-    }
     return lang === "en"
       ? "Bhagavad Gita - Account Verification OTP"
       : lang === "hi"
       ? "श्रीमद्भगवद्गीता - खाता सत्यापन OTP"
       : "શ્રીમદ્ ભગવદ્ ગીતા - એકાઉન્ટ વેરિફિકેશન OTP";
   }
-
   if (purpose === "forgot_password") {
-    if (cleanOtp) {
-      return lang === "en"
-        ? `Your password reset code: ${cleanOtp} - Bhagavad Gita`
-        : lang === "hi"
-        ? `आपका पासवर्ड रीसेट कोड: ${cleanOtp} - श्रीमद्भगवद्गीता`
-        : `તમારો પાસવર્ડ રીસેટ કોડ: ${cleanOtp} - શ્રીમદ્ ભગવદ્ ગીતા`;
-    }
     return lang === "en"
       ? "Bhagavad Gita - Password Reset OTP"
       : lang === "hi"
       ? "श्रीमद्भगवद्गीता - पासवर्ड रीसेट OTP"
       : "શ્રીમદ્ ભગવદ્ ગીતા - પાસવર્ડ રીસેટ OTP";
-  }
-
-  // Profile update
-  if (cleanOtp) {
-    return lang === "en"
-      ? `Your profile update code: ${cleanOtp} - Bhagavad Gita`
-      : lang === "hi"
-      ? `आपका प्रोफ़ाइल अपडेट कोड: ${cleanOtp} - श्रीमद्भगवद्गीता`
-      : `તમારો પ્રોફાઇલ અપડેટ કોડ: ${cleanOtp} - શ્રીમદ્ ભગવદ્ ગીતા`;
   }
   return lang === "en"
     ? "Bhagavad Gita - Profile Update OTP"
@@ -227,23 +201,9 @@ const generateOTPEmailHtml = ({
 }) => {
   const lang = ["gu", "hi", "en"].includes(language) ? language : "gu";
   const safeName = (name || (lang === "gu" ? "ભક્ત" : lang === "hi" ? "भक्त" : "Devotee")).trim();
-  const cleanOtp = String(otp || "").trim();
-  const otpDigits = cleanOtp ? cleanOtp.split("") : [];
-  const otpDigitBoxesHtml = otpDigits.length > 0
-    ? otpDigits
-        .map(
-          (d) => `<td align="center" valign="middle" style="width: 44px; height: 50px; background-color: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Consolas', monospace; font-size: 28px; font-weight: 800; color: #0f172a; text-align: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); padding: 0;">${d}</td>`
-        )
-        .join('<td style="width: 6px; padding: 0;"></td>')
-    : `<td align="center" style="font-size: 28px; font-weight: 800; color: #0f172a;">${cleanOtp}</td>`;
 
   const content = {
     gu: {
-      topCardLabel: "કોડ વિનંતી (Code requested)",
-      topCardExpiry: "આ ૬-અંકનો સુરક્ષા કોડ ૧૦ મિનિટ માટે માન્ય છે.",
-      preheaderText: `તમારો વેરિફિકેશન કોડ (OTP): ${cleanOtp}`,
-      expirySnippet: "આ કોડ ૧૦ મિનિટ માટે માન્ય છે.",
-      useThisCodeText: "Use this code:",
       brandTitle: "શ્રીમદ્ ભગવદ્ ગીતા",
       brandTagline: "જીવનનું દિવ્ય માર્ગદર્શન અને અમૂલ્ય ઉપદેશ",
       purposeBadge:
@@ -269,11 +229,6 @@ const generateOTPEmailHtml = ({
       copyright: "© 2026 શ્રીમદ્ ભગવદ્ ગીતા. સર્વાધિકાર સુરક્ષિત.",
     },
     hi: {
-      topCardLabel: "अनुरोधित कोड (Code requested)",
-      topCardExpiry: "यह 6-अंकीय सुरक्षा कोड 10 मिनट के लिए मान्य है।",
-      preheaderText: `आपका सत्यापन कोड (OTP): ${cleanOtp}`,
-      expirySnippet: "यह कोड 10 मिनट के लिए मान्य है।",
-      useThisCodeText: "Use this code:",
       brandTitle: "श्रीमद्भगवद्गीता",
       brandTagline: "जीवन का दिव्य मार्गदर्शन एवं अमूल्य उपदेश",
       purposeBadge:
@@ -299,11 +254,6 @@ const generateOTPEmailHtml = ({
       copyright: "© 2026 श्रीमद्भगवद्गीता. सर्वाधिकार सुरक्षित।",
     },
     en: {
-      topCardLabel: "Code requested",
-      topCardExpiry: "This 6-digit security code is valid for 10 minutes only.",
-      preheaderText: `Your verification code (OTP): ${cleanOtp}`,
-      expirySnippet: "Valid for 10 minutes only.",
-      useThisCodeText: "Use this code:",
       brandTitle: "Bhagavad Gita",
       brandTagline: "Divine Wisdom & Spiritual Life Guidance",
       purposeBadge:
@@ -343,51 +293,12 @@ const generateOTPEmailHtml = ({
   <title>${t.brandTitle} - ${t.purposeBadge}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f4ede4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;">
-  
-  <!-- Hidden Preheader for Mobile Notification Snippet -->
-  <div style="display: none; max-height: 0px; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; opacity: 0;">
-    ${t.preheaderText} | ${t.expirySnippet}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
-  </div>
-
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4ede4; padding: 30px 10px;">
     <tr>
       <td align="center">
         <!-- Main Card Container -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); border: 1px solid #e7ded0;">
           
-          <!-- ================================================= -->
-          <!-- TOP QUICK-ACCESS OTP CARD (Image 2 Vercel-Style) -->
-          <!-- ================================================= -->
-          <tr>
-            <td style="padding: 24px 28px 20px 28px; background-color: #f1f5f9; border-bottom: 2px solid #e2e8f0; text-align: left;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td>
-                    <!-- Label -->
-                    <div style="font-size: 13px; font-weight: 700; color: #475569; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 12px;">
-                      ${t.topCardLabel}
-                    </div>
-
-                    <!-- 6 Boxed Digits -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 12px 0;">
-                      <tr>
-                        ${otpDigitBoxesHtml}
-                      </tr>
-                    </table>
-
-                    <!-- Micro-text for Expiry and Gmail AI Trigger -->
-                    <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
-                      <span>⏱️ ${t.topCardExpiry}</span>
-                      <span style="display: block; margin-top: 4px; color: #334155; font-size: 12px;">
-                        ${t.useThisCodeText} <strong style="font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; color: #0f172a; letter-spacing: 1px;">${cleanOtp}</strong>
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
           <!-- Spiritual Gradient Header -->
           <tr>
             <td align="center" style="background: linear-gradient(135deg, #0f2b48 0%, #173f73 50%, #b45309 100%); padding: 36px 24px 28px 24px; text-align: center;">
@@ -518,7 +429,7 @@ const sendProfileEmailOTP = async (
   type,
   language = "gu"
 ) => {
-  const subject = getOTPSubject("profile_update", language, otp);
+  const subject = getOTPSubject("profile_update", language);
   const html = generateOTPEmailHtml({
     name: user.name,
     otp,
@@ -715,7 +626,7 @@ const sendOTP = async (
     // SEND REGISTRATION OTP
     // =================================================
 
-    const subject = getOTPSubject("registration", language, otp);
+    const subject = getOTPSubject("registration", language);
     const html = generateOTPEmailHtml({
       name: cleanName,
       otp,
@@ -2348,7 +2259,7 @@ const sendForgotPasswordOTP = async (
     // SEND EMAIL
     // =================================================
 
-    const subject = getOTPSubject("forgot_password", language, otp);
+    const subject = getOTPSubject("forgot_password", language);
     const html = generateOTPEmailHtml({
       name: user.name,
       otp,
