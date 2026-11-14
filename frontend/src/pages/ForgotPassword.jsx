@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Mail, KeyRound, Lock, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import OtpBoxInput from "../components/OtpBoxInput.jsx";
 import "./ForgotPassword.css";
 
 const isLocal =
@@ -107,23 +108,27 @@ const [showConfirmPassword, setShowConfirmPassword] =
   };
 
   // =====================================================
-  // VERIFY OTP
+  // VERIFY OTP (AUTO OR SUBMIT)
   // =====================================================
 
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault();
+  const handleVerifyOTP = async (otpToVerify, e) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+
+    const code = (typeof otpToVerify === "string" ? otpToVerify : otp).trim();
 
     setMessage("");
     setError("");
 
-    if (!otp.trim()) {
+    if (!code) {
       setError(
         txt("કૃપા કરીને 6 અંકનો OTP નાખો.", "कृपया 6 अंकों का OTP दर्ज करें।", "Please enter the 6-digit OTP.")
       );
       return;
     }
 
-    if (!/^[0-9]{6}$/.test(otp.trim())) {
+    if (!/^[0-9]{6}$/.test(code)) {
       setError(
         txt("યોગ્ય 6 અંકનો OTP નાખો.", "मान्य 6 अंकों का OTP दर्ज करें।", "Please enter a valid 6-digit OTP.")
       );
@@ -146,7 +151,7 @@ const [showConfirmPassword, setShowConfirmPassword] =
             email:
               email.trim().toLowerCase(),
 
-            otp: otp.trim(),
+            otp: code,
           }),
         }
       );
@@ -438,14 +443,14 @@ const [showConfirmPassword, setShowConfirmPassword] =
 
         {/* =================================================
             STEP 2
-            OTP
+            OTP (6-BOX AUTO-VERIFY)
         ================================================= */}
 
         {step === 2 && (
 
           <form
             className="forgot-password-form"
-            onSubmit={handleVerifyOTP}
+            onSubmit={(e) => handleVerifyOTP(otp, e)}
           >
 
             <div className="forgot-form-icon">
@@ -466,40 +471,33 @@ const [showConfirmPassword, setShowConfirmPassword] =
               {txt("પર મોકલવામાં આવેલ 6 અંકનો OTP નાખો.", "पर भेजा गया 6 अंकों का OTP दर्ज करें।", "Enter the 6-digit OTP sent to this email.")}
             </p>
 
-
-            <label>
+            <label style={{ textAlign: "center", marginBottom: "4px" }}>
               OTP
             </label>
 
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder={txt("6 અંકનો OTP", "6 अंकों का OTP", "6-digit OTP")}
+            {/* 6-DIGIT OTP BOX INPUT */}
+            <OtpBoxInput
+              length={6}
               value={otp}
-              onChange={(e) =>
-                setOtp(
-                  e.target.value.replace(
-                    /\D/g,
-                    ""
-                  )
-                )
-              }
-              autoComplete="one-time-code"
+              onChange={(newOtp) => {
+                setOtp(newOtp);
+                if (error) setError("");
+              }}
+              onComplete={(completedOtp) => {
+                handleVerifyOTP(completedOtp);
+              }}
               disabled={loading}
+              hasError={Boolean(error)}
+              autoFocus={true}
             />
 
-
-            <button
-              type="submit"
-              className="forgot-primary-button"
-              disabled={loading}
-            >
-              {loading
-                ? <><Loader2 size={16} className="spinner btn-icon" /> {txt("Verify થઈ રહ્યું છે...", "Verify हो रहा है...", "Verifying...")}</>
-                : <><CheckCircle size={16} className="btn-icon" /> {txt("OTP Verify કરો", "OTP Verify करें", "Verify OTP")}</>}
-            </button>
-
+            {/* AUTO-VERIFYING FEEDBACK */}
+            {loading && (
+              <div className="otp-auto-verifying-status">
+                <Loader2 size={18} className="spinner btn-icon" />
+                <span>{txt("OTP Verify થઈ રહ્યો છે...", "OTP Verify हो रहा है...", "Verifying OTP...")}</span>
+              </div>
+            )}
 
             <button
               type="button"
