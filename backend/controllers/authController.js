@@ -165,18 +165,9 @@ const generateOTP = () => {
 // MULTI-LANGUAGE OTP SUBJECT HELPER
 // =====================================================
 
-const getOTPSubject = (purpose, language = "gu", otp = "") => {
+const getOTPSubject = (purpose, language = "gu") => {
   const lang = ["gu", "hi", "en"].includes(language) ? language : "gu";
-  const cleanOtp = String(otp || "").trim();
-
   if (purpose === "registration") {
-    if (cleanOtp) {
-      return lang === "en"
-        ? `${cleanOtp} - Account Verification OTP (Bhagavad Gita)`
-        : lang === "hi"
-        ? `${cleanOtp} - खाता सत्यापन OTP (श्रीमद्भगवद्गीता)`
-        : `${cleanOtp} - એકાઉન્ટ વેરિફિકેશન OTP (શ્રીમદ્ ભગવદ્ ગીતા)`;
-    }
     return lang === "en"
       ? "Bhagavad Gita - Account Verification OTP"
       : lang === "hi"
@@ -184,25 +175,11 @@ const getOTPSubject = (purpose, language = "gu", otp = "") => {
       : "શ્રીમદ્ ભગવદ્ ગીતા - એકાઉન્ટ વેરિફિકેશન OTP";
   }
   if (purpose === "forgot_password") {
-    if (cleanOtp) {
-      return lang === "en"
-        ? `${cleanOtp} - Password Reset OTP (Bhagavad Gita)`
-        : lang === "hi"
-        ? `${cleanOtp} - पासवर्ड रीसेट OTP (श्रीमद्भगवद्गीता)`
-        : `${cleanOtp} - પાસવર્ડ રીસેટ OTP (શ્રીમદ્ ભગવદ્ ગીતા)`;
-    }
     return lang === "en"
       ? "Bhagavad Gita - Password Reset OTP"
       : lang === "hi"
       ? "श्रीमद्भगवद्गीता - पासवर्ड रीसेट OTP"
       : "શ્રીમદ્ ભગવદ્ ગીતા - પાસવર્ડ રીસેટ OTP";
-  }
-  if (cleanOtp) {
-    return lang === "en"
-      ? `${cleanOtp} - Profile Update OTP (Bhagavad Gita)`
-      : lang === "hi"
-      ? `${cleanOtp} - प्रोफ़ाइल अपडेट OTP (श्रीमद्भगवद्गीता)`
-      : `${cleanOtp} - પ્રોફાઇલ અપડેટ OTP (શ્રીમદ્ ભગવદ્ ગીતા)`;
   }
   return lang === "en"
     ? "Bhagavad Gita - Profile Update OTP"
@@ -452,7 +429,7 @@ const sendProfileEmailOTP = async (
   type,
   language = "gu"
 ) => {
-  const subject = getOTPSubject("profile_update", language, otp);
+  const subject = getOTPSubject("profile_update", language);
   const html = generateOTPEmailHtml({
     name: user.name,
     otp,
@@ -649,7 +626,7 @@ const sendOTP = async (
     // SEND REGISTRATION OTP
     // =================================================
 
-    const subject = getOTPSubject("registration", language, otp);
+    const subject = getOTPSubject("registration", language);
     const html = generateOTPEmailHtml({
       name: cleanName,
       otp,
@@ -2282,7 +2259,7 @@ const sendForgotPasswordOTP = async (
     // SEND EMAIL
     // =================================================
 
-    const subject = getOTPSubject("forgot_password", language, otp);
+    const subject = getOTPSubject("forgot_password", language);
     const html = generateOTPEmailHtml({
       name: user.name,
       otp,
