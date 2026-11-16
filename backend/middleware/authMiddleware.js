@@ -24,10 +24,10 @@ const protect = async (req, res, next) => {
     );
 
     // =====================================================
-    // USER ID
+    // USER ID (SUPPORT BOTH userId AND id CLAIMS)
     // =====================================================
 
-    req.userId = decoded.userId;
+    req.userId = decoded.userId || decoded.id;
 
     // =====================================================
     // GET USER
@@ -123,17 +123,13 @@ const optionalAuth = async (req, res, next) => {
 };
 
 
-const SUPER_ADMIN_EMAILS = [
-  "gitagyanm700@gmail.com",
-  "aambaliyamanav@gmail.com",
-];
+const {
+  SUPER_ADMIN_EMAILS,
+  isSuperAdminEmail,
+  isSuperAdminUser,
+} = require("../config/constants");
 
-const isSuperAdmin = (user) => {
-  if (!user) return false;
-  if (user.isSuperAdmin === true) return true;
-  if (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
-  return false;
-};
+const isSuperAdmin = isSuperAdminUser;
 
 const hasPermission = (user, permissionKey) => {
   if (!user || user.role !== "admin") return false;
@@ -267,7 +263,7 @@ const superAdminOnly = async (req, res, next) => {
 
 /**
  * Strict Super Admin Only Middleware
- * Grants access exclusively to Master Super Admins (gitagyanm700@gmail.com / aambaliyamanav@gmail.com)
+ * Grants access exclusively to Master Super Admins (gitagyanm700@gmail.com / 250230107002manav@gmail.com)
  * Sub-admins or regular users are strictly blocked.
  */
 const strictSuperAdminOnly = async (req, res, next) => {

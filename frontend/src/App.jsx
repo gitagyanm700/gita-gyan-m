@@ -1,6 +1,6 @@
 
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { hasPermission } from "./utils/permissionHelper.js";
 
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
@@ -42,6 +42,7 @@ import AppNotificationPrompt from "./components/AppNotificationPrompt.jsx";
 import MobileLanguageModal from "./components/MobileLanguageModal.jsx";
 import AppSplashScreen from "./components/AppSplashScreen.jsx";
 import About from "./pages/About.jsx";
+import MoreMenu from "./pages/MoreMenu.jsx";
 import { trackVisit } from "./utils/visitorTracker.js";
 import { autoSyncOfflineChaptersQuietly } from "./utils/offlineStorage.js";
 
@@ -375,6 +376,15 @@ function AnimatedRoutes() {
             <Route
               path="/about-us"
               element={<About />}
+            />
+
+            {/* =================================================
+                MORE MENU (વધુ સુવિધાઓ - NATIVE HUB)
+            ================================================= */}
+
+            <Route
+              path="/more"
+              element={<MoreMenu />}
             />
 
 

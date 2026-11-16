@@ -11,7 +11,6 @@ import {
   Clock,
   Sun,
   Star,
-  Flower2,
   CheckCircle2,
   Award,
   HelpCircle,
@@ -576,7 +575,6 @@ function About() {
         ===================================================== */}
         <header className="compact-header-centered">
           <div className="compact-title-wrap">
-            <Flower2 size={24} className="compact-logo-flower" />
             <h1>
               {txt("શ્રીમદ્ ભગવદ્ ગીતા", "श्रीमद्भगवद्गीता", "Shrimad Bhagavad Gita")}{" "}
               <span className="title-sep">•</span>{" "}

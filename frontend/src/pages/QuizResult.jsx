@@ -299,17 +299,35 @@ function QuizResult() {
     if (chapterNumber) {
       const chapterTitle = (isEnglish ? chapterNamesEn[chapterNumber] : isHindi ? chapterNamesHi[chapterNumber] : chapterNames[chapterNumber]) || "";
       const prefix = txt("અધ્યાય", "अध्याय", "Chapter");
+      const shlokaLabel = txt("શ્લોક", "श्लोक", "Verse");
+
+      let shlokaSuffix = "";
+      let shlokaBadge = "";
+      if (result.shlokaRange && result.shlokaRange !== "all") {
+        const parts = String(result.shlokaRange).split("-");
+        if (parts.length === 2 && parts[0] === parts[1]) {
+          shlokaSuffix = ` • ${shlokaLabel} ${parts[0]}`;
+          shlokaBadge = ` (${shlokaLabel} ${parts[0]})`;
+        } else if (parts.length === 2) {
+          shlokaSuffix = ` • ${shlokaLabel} ${parts[0]}-${parts[1]}`;
+          shlokaBadge = ` (${shlokaLabel} ${parts[0]}-${parts[1]})`;
+        } else {
+          shlokaSuffix = ` • ${shlokaLabel} ${result.shlokaRange}`;
+          shlokaBadge = ` (${shlokaLabel} ${result.shlokaRange})`;
+        }
+      }
+
       return {
         isChapter: true,
         chapterNumber,
-        shortTitle: `${prefix} ${chapterNumber}`,
-        title: `${prefix} ${chapterNumber}: ${chapterTitle}`,
-        badge: `${prefix} ${chapterNumber} • ${chapterTitle}`,
-        shortBadge: `${prefix} ${chapterNumber}`,
+        shortTitle: `${prefix} ${chapterNumber}${shlokaBadge}`,
+        title: `${prefix} ${chapterNumber}: ${chapterTitle}${shlokaSuffix}`,
+        badge: `${prefix} ${chapterNumber} • ${chapterTitle}${shlokaBadge}`,
+        shortBadge: `${prefix} ${chapterNumber}${shlokaBadge}`,
         subtitle: txt(
-          `શ્રીમદ્ ભગવદ્ ગીતા • અધ્યાય ${chapterNumber}`,
-          `श्रीमद्भगवद्गीता • अध्याय ${chapterNumber}`,
-          `Srimad Bhagavad Gita • Chapter ${chapterNumber}`
+          `શ્રીમદ્ ભગવદ્ ગીતા • અધ્યાય ${chapterNumber}${shlokaSuffix}`,
+          `श्रीमद्भगवद्गीता • अध्याय ${chapterNumber}${shlokaSuffix}`,
+          `Srimad Bhagavad Gita • Chapter ${chapterNumber}${shlokaSuffix}`
         ),
       };
     }
@@ -377,6 +395,18 @@ function QuizResult() {
 
     const count = Number(result.totalQuestions) || 10;
     params.set("count", String(count));
+
+    try {
+      // Clear completed guard for retaking
+      const keysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.includes("quiz_completed") && (chapterNumber ? k.includes(String(chapterNumber)) : true)) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+    } catch (e) {}
 
     navigate(`/quiz/play?${params.toString()}`);
   };
@@ -572,17 +602,6 @@ function QuizResult() {
       ================================================= */}
 
       <div className="quiz-result-actions">
-
-        <button
-          type="button"
-          className="quiz-result-back-btn"
-          onClick={() =>
-            navigate("/quiz")
-          }
-        >
-          <ArrowLeft size={15} className="btn-icon" /> {txt("Quiz પર પાછા જાઓ", "Quiz पर वापस जाएं", "Back to Quiz")}
-        </button>
-
         <button
           type="button"
           className="quiz-result-achievements-btn"
@@ -590,10 +609,9 @@ function QuizResult() {
             navigate("/quiz-achievements")
           }
         >
-          <Award size={16} className="btn-icon" />
+          <Award size={18} className="btn-icon" />
           <span>{txt("ક્વિઝ સિદ્ધિઓ જુઓ", "क्विज़ उपलब्धियां देखें", "View Quiz Achievements")}</span>
         </button>
-
       </div>
 
 

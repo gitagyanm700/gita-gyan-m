@@ -2474,9 +2474,10 @@ function QuizManagement() {
                 className="quiz-refresh-button"
                 onClick={loadQuestions}
                 disabled={deletingAll}
-                title={txt("Refresh Questions", "Refresh Questions", "Refresh Questions")}
+                title={txt("પ્રશ્નો રિફ્રેશ કરો", "प्रश्न रीफ्रेश करें", "Refresh Questions")}
               >
-                <RefreshCw className="btn-icon" size={15} /> Refresh
+                <RefreshCw className="btn-icon" size={15} />
+                <span>{txt("રિફ્રેશ", "रीफ्रेश", "Refresh")}</span>
               </button>
 
               {canDeleteQuiz && (
@@ -2498,13 +2499,17 @@ function QuizManagement() {
                 {deletingAll ? (
                   <>
                     <Loader2 className="btn-icon animate-spin" size={15} />
-                    <span>{txt("Deleting...", "Deleting...", "Deleting...")}</span>
+                    <span>{txt("કાઢી રહ્યા છે...", "हटा रहे हैं...", "Deleting...")}</span>
                   </>
                 ) : (
                   <>
                     <Trash2 className="btn-icon" size={15} />
-                    <span>
-                      {txt("Delete All Questions", "Delete All Questions", "Delete All Questions")}
+                    <span className="quiz-del-text-full">
+                      {txt("બધા પ્રશ્નો Delete કરો", "सभी प्रश्न Delete करें", "Delete All Questions")}
+                      {filteredQuestions.length > 0 && ` (${filteredQuestions.length})`}
+                    </span>
+                    <span className="quiz-del-text-short">
+                      {txt("બધા Delete", "सभी Delete", "Delete All")}
                       {filteredQuestions.length > 0 && ` (${filteredQuestions.length})`}
                     </span>
                   </>
@@ -2703,11 +2708,17 @@ function QuizManagement() {
                       }
                     >
                       <span className="quiz-question-title-text">
-                        <HelpCircle className="btn-icon question-help-icon" size={18} />
                         <span className="quiz-shloka-q-badge" title={`શ્લોક સંબંધિત પ્રશ્ન ક્રમ: ${shlokaQNum}`}>
-                          {item.shlokaNumber ? `શ્લોક ${item.shlokaNumber} • Q#${shlokaQNum}` : `Q#${shlokaQNum}`}
+                          {item.shlokaNumber ? (
+                            <>
+                              <span className="quiz-shloka-num-tag">શ્લોક {item.shlokaNumber}</span>
+                              <span className="quiz-badge-dot">•</span>
+                              <span className="quiz-q-num-tag">Q#{shlokaQNum}</span>
+                            </>
+                          ) : (
+                            <span className="quiz-q-num-tag">Q#{shlokaQNum}</span>
+                          )}
                         </span>
-                        <span className="quiz-question-text-actual">{item.question}</span>
                       </span>
                       <span className="quiz-card-header-right-tools">
                         {canShareQuiz && (
@@ -2756,52 +2767,35 @@ function QuizManagement() {
                           </span>
 
                           {item.questionHi ? (
-                            <span style={{
-                              marginLeft: "8px",
-                              padding: "3px 8px",
-                              borderRadius: "6px",
-                              background: "#e0e7ff",
-                              color: "#4338ca",
-                              fontSize: "11.5px",
-                              fontWeight: "700",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}>
+                            <span className="quiz-card-lang-badge hindi">
                               हिन्दी ઉપલબ્ધ
                             </span>
                           ) : (
-                            <span style={{
-                              marginLeft: "8px",
-                              padding: "3px 8px",
-                              borderRadius: "6px",
-                              background: "#fef3c7",
-                              color: "#92400e",
-                              fontSize: "11px",
-                              fontWeight: "600"
-                            }}>
+                            <span className="quiz-card-lang-badge gujarati-only">
                               માત્ર ગુજરાતી
                             </span>
                           )}
 
                         </div>
 
+                        {/* =================================================
+                            FULL QUESTION TEXT (GUJARATI)
+                        ================================================= */}
+                        <div className="quiz-expanded-question-text">
+                          <HelpCircle className="btn-icon question-help-icon" size={18} />
+                          <span>{item.question}</span>
+                        </div>
+
                         {item.questionHi && (
-                          <div style={{
-                            margin: "10px 0 14px",
-                            padding: "10px 14px",
-                            background: "#f5f7ff",
-                            borderRadius: "10px",
-                            borderLeft: "3.5px solid #6366f1"
-                          }}>
-                            <div style={{ fontSize: "12px", color: "#4f46e5", fontWeight: "750", marginBottom: "3px" }}>
+                          <div className="quiz-expanded-hindi-box">
+                            <div className="quiz-expanded-hindi-label">
                               हिन्दी प्रश्न (Auto-Translated / Hindi):
                             </div>
-                            <div style={{ fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>
+                            <div className="quiz-expanded-hindi-question">
                               {item.questionHi}
                             </div>
                             {item.explanationHi && (
-                              <div style={{ marginTop: "5px", fontSize: "12.5px", color: "#475569" }}>
+                              <div className="quiz-expanded-hindi-explanation">
                                 <b>हिन्दी व्याख्या:</b> {item.explanationHi}
                               </div>
                             )}
@@ -2819,7 +2813,7 @@ function QuizManagement() {
                             <BookOpen className="btn-icon" size={14} /> Chapter{" "}
                             {item.chapterNumber}
                             {item.shlokaNumber && (
-                              <span style={{ marginLeft: "8px", background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: "6px", fontWeight: "600", fontSize: "11.5px" }}>
+                              <span className="quiz-question-shloka-pill">
                                 શ્લોક: {item.shlokaNumber}
                               </span>
                             )}

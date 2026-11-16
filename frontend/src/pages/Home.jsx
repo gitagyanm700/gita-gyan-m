@@ -1159,13 +1159,22 @@ useEffect(() => {
 
         {/* SACRED TITLE */}
 
-        <p className="subtitle">
+        <p
+          className="subtitle"
+          onClick={() => navigate("/chapters")}
+          style={{ cursor: "pointer" }}
+          title={txt("18 અધ્યાય", "18 अध्याय", "18 Chapters")}
+        >
           ॥ श्रीमद्भगवद्गीता ॥
         </p>
 
         {/* MAIN TITLE */}
 
-        <h1>
+        <h1
+          onClick={() => navigate("/chapters")}
+          style={{ cursor: "pointer" }}
+          title={txt("18 અધ્યાય", "18 अध्याय", "18 Chapters")}
+        >
           {txt("ભગવદ્ ગીતા", "भगवद् गीता", "Bhagavad Gita")}
         </h1>
 
@@ -1215,10 +1224,10 @@ useEffect(() => {
         </div>
 
         {/* =================================================
-            ADVANCED SEARCH
+            ADVANCED SEARCH (DESKTOP ONLY ON LOCALHOST MOBILE)
         ================================================= */}
 
-        <div className="home-search">
+        <div className="home-search home-search-desktop-only">
 
           {/* SEARCH TITLE */}
 

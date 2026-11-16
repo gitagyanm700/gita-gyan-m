@@ -1,10 +1,11 @@
 import { getValidToken, handleAuth401, clearAuthSession } from "../utils/authHelper.js";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   useNavigate,
   useSearchParams,
+  useLocation,
 } from "react-router-dom";
-import { ArrowLeft, Star, Loader2, BookOpen, AlertCircle, RefreshCw, Trophy, Lightbulb, ChevronLeft, ChevronRight, Award } from "lucide-react";
+import { ArrowLeft, Star, Loader2, BookOpen, AlertCircle, RefreshCw, Trophy, Lightbulb, ChevronLeft, ChevronRight, Award, ClipboardList } from "lucide-react";
 import SudarshanShimmerLoader from "../components/SudarshanShimmerLoader.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import "./Quiz.css";
@@ -12,6 +13,7 @@ import "./Quiz.css";
 
 function Quiz() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { isHindi, isEnglish, isGujarati, txt } = useLanguage();
 
@@ -41,6 +43,9 @@ function Quiz() {
   const [error, setError] =
     useState("");
 
+  const [retryCount, setRetryCount] =
+    useState(0);
+
   const [quizCompleted, setQuizCompleted] =
     useState(false);
 
@@ -58,13 +63,13 @@ function Quiz() {
   // =====================================================
 
   const categoryParam =
-    searchParams.get("category");
+    searchParams.get("category") || location.state?.category;
 
   const chapterParam =
-    searchParams.get("chapter");
+    searchParams.get("chapter") || (location.state?.chapterNumber ? String(location.state.chapterNumber) : null);
 
   const shlokaRangeParam =
-    searchParams.get("shlokaRange");
+    searchParams.get("shlokaRange") || location.state?.shlokaRange;
 
   // IMPORTANT:
   // QuizCategory.jsx માંથી પસંદ કરેલો count
@@ -78,17 +83,38 @@ function Quiz() {
   const sessionKey = `gita_active_quiz_${categoryParam || "all"}_${chapterParam || ""}_${shlokaRangeParam || "all"}_${questionCount}`;
 
   // =====================================================
-  // API
+  // API (WITH RESILIENT MULTI-ENDPOINT FALLBACK)
   // =====================================================
 
-  const isLocal =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1");
+  const hostname =
+    typeof window !== "undefined" ? window.location.hostname : "";
+  const isLocalHost =
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  const isLanIp =
+    /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
 
-  const API_URL = isLocal
-    ? "http://localhost:5000/api/quiz"
-    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz";
+  const apiCandidates = useMemo(() => {
+    if (isLocalHost) {
+      return [
+        "http://localhost:5000/api/quiz",
+        `http://${hostname}:5000/api/quiz`,
+        "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz",
+      ];
+    }
+    if (isLanIp) {
+      return [
+        `http://${hostname}:5000/api/quiz`,
+        "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz",
+        "http://localhost:5000/api/quiz",
+      ];
+    }
+    return [
+      "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz",
+      "http://localhost:5000/api/quiz",
+    ];
+  }, [hostname, isLocalHost, isLanIp]);
+
+  const API_URL = apiCandidates[0];
 
   // =====================================================
   // TOKEN
@@ -176,6 +202,42 @@ function Quiz() {
         setError("");
 
         // =================================================
+        // PREVENT RETURNING TO ALREADY COMPLETED QUIZ VIA BACK BUTTON
+        // If user navigates Back into a completed quiz, DO NOT show it!
+        // Immediately redirect them away.
+        // =================================================
+        const isAlreadyCompleted =
+          sessionStorage.getItem(`gita_quiz_completed_${sessionKey}`) === "true";
+
+        if (isAlreadyCompleted) {
+          const isFromReader =
+            searchParams.get("from") === "reader" ||
+            Boolean(location.state?.fromShlokaReader) ||
+            Boolean(shlokaRangeParam && shlokaRangeParam !== "all");
+
+          const ch =
+            chapterParam ||
+            (categoryParam && categoryParam.startsWith("chapter-")
+              ? categoryParam.replace("chapter-", "")
+              : "1");
+
+          const targetShloka =
+            searchParams.get("shlokaNumber") ||
+            searchParams.get("shloka") ||
+            location.state?.shlokaNumber ||
+            (shlokaRangeParam && shlokaRangeParam !== "all"
+              ? shlokaRangeParam.split("-")[1] || shlokaRangeParam.split("-")[0]
+              : "1");
+
+          if (isFromReader && ch) {
+            navigate(`/chapter/${ch}?shloka=${targetShloka}`, { replace: true });
+          } else {
+            navigate("/quiz-results", { replace: true });
+          }
+          return;
+        }
+
+        // =================================================
         // RESTORE SAVED QUIZ SESSION ON PAGE REFRESH
         // =================================================
         try {
@@ -249,10 +311,14 @@ function Quiz() {
         // =================================================
 
         const selectedChapter =
-          Number(chapterParam);
+          Number(chapterParam) ||
+          (categoryParam && categoryParam.startsWith("chapter-")
+            ? Number(categoryParam.replace("chapter-", ""))
+            : null);
 
         const isChapterQuiz =
-          categoryParam === "chapter" &&
+          (categoryParam === "chapter" ||
+            (categoryParam && categoryParam.startsWith("chapter-"))) &&
           selectedChapter >= 1 &&
           selectedChapter <= 18;
 
@@ -361,32 +427,57 @@ function Quiz() {
         );
 
         // =================================================
-        // API REQUEST
+        // API REQUEST (WITH MULTI-ENDPOINT FALLBACK)
         // =================================================
 
-        const response =
-          await fetch(
-            url,
-            {
+        let response = null;
+        let data = null;
+        let lastError = null;
+
+        for (const candidateBase of apiCandidates) {
+          const candidateUrl = queryString
+            ? `${candidateBase}/questions?${queryString}`
+            : `${candidateBase}/questions`;
+
+          try {
+            console.log("Trying Quiz API endpoint:", candidateUrl);
+            const res = await fetch(candidateUrl, {
               method: "GET",
-
               headers: {
-                Authorization:
-                  `Bearer ${token}`,
-
-                "Content-Type":
-                  "application/json",
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
               },
+            });
+
+            if (res.ok) {
+              const resJson = await res.json();
+              response = res;
+              data = resJson;
+              console.log("Quiz API Response from", candidateBase, ":", data);
+              break; // Successfully got an HTTP 200 response
+            } else if (res.status === 401) {
+              response = res;
+              data = await res.json().catch(() => null);
+              break; // Handle auth expired
+            } else {
+              console.warn(`Quiz endpoint ${candidateBase} returned status ${res.status}`);
+              lastError = new Error(`HTTP ${res.status}`);
             }
+          } catch (netErr) {
+            console.warn(`Connection failed for ${candidateBase}:`, netErr.message);
+            lastError = netErr;
+          }
+        }
+
+        if (!response) {
+          throw new Error(
+            txt(
+              "સર્વર સાથે કનેક્શન થઈ શક્યું નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
+              "सर्वर से कनेक्ट नहीं हो सका। कृपया पुनः प्रयास करें।",
+              "Could not connect to server. Please try again."
+            )
           );
-
-        const data =
-          await response.json();
-
-        console.log(
-          "Quiz API Response:",
-          data
-        );
+        }
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -394,7 +485,7 @@ function Quiz() {
             return;
           }
           throw new Error(
-            data.message ||
+            data?.message ||
               txt("Quiz questions load થઈ શક્યા નથી.", "Quiz प्रश्न लोड नहीं हो सके।", "Could not load quiz questions.")
           );
         }
@@ -506,11 +597,28 @@ function Quiz() {
         if (
           fetchedQuestions.length === 0
         ) {
-          setError(
-            isChapterQuiz
-              ? txt(`અધ્યાય ${selectedChapter} માટે હાલમાં કોઈ quiz question ઉપલબ્ધ નથી.`, `अध्याय ${selectedChapter} के लिए वर्तमान में कोई quiz question उपलब्ध नहीं है।`, `Currently no quiz questions available for Chapter ${selectedChapter}.`)
-              : txt("આ category માટે હાલમાં કોઈ quiz question ઉપલબ્ધ નથી.", "इस category के लिए वर्तमान में कोई quiz question उपलब्ध नहीं है।", "Currently no quiz questions available for this category.")
-          );
+          let noQuestionsMsg = "";
+          if (isChapterQuiz && shlokaRangeParam && shlokaRangeParam !== "all") {
+            const cleanRange = String(shlokaRangeParam).replace(/^(\d+)-\1$/, "$1");
+            noQuestionsMsg = txt(
+              `અધ્યાય ${selectedChapter}, શ્લોક ${cleanRange} માટે હાલમાં કોઈ quiz question ઉપલબ્ધ નથી.`,
+              `अध्याय ${selectedChapter}, श्लोक ${cleanRange} के लिए वर्तमान में कोई quiz question उपलब्ध नहीं है।`,
+              `Currently no quiz questions available for Chapter ${selectedChapter}, Shloka ${cleanRange}.`
+            );
+          } else if (isChapterQuiz) {
+            noQuestionsMsg = txt(
+              `અધ્યાય ${selectedChapter} માટે હાલમાં કોઈ quiz question ઉપલબ્ધ નથી.`,
+              `अध्याय ${selectedChapter} के लिए वर्तमान में कोई quiz question उपलब्ध नहीं है।`,
+              `Currently no quiz questions available for Chapter ${selectedChapter}.`
+            );
+          } else {
+            noQuestionsMsg = txt(
+              "આ category માટે હાલમાં કોઈ quiz question ઉપલબ્ધ નથી.",
+              "इस category के लिए वर्तमान में कोई quiz question उपलब्ध नहीं है।",
+              "Currently no quiz questions available for this category."
+            );
+          }
+          setError(noQuestionsMsg);
 
           return;
         }
@@ -563,9 +671,20 @@ function Quiz() {
           err
         );
 
+        const isNetworkErr =
+          !err.message ||
+          err.message === "Failed to fetch" ||
+          err.message.includes("NetworkError") ||
+          err.message.includes("Failed to fetch");
+
         setError(
-          err.message ||
-            txt("Quiz load કરવામાં error આવ્યો.", "Quiz लोड करने में त्रुटि आई।", "Error loading quiz.")
+          isNetworkErr
+            ? txt(
+                "સર્વર સાથે કનેક્શન થઈ શક્યું નથી. કૃપા કરીને તમારું ઇન્ટરનેટ કનેક્શન ચકાસો અને ફરી પ્રયાસ કરો.",
+                "सर्वर से कनेक्ट नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।",
+                "Could not connect to server. Please check your connection and try again."
+              )
+            : err.message
         );
 
       } finally {
@@ -581,6 +700,7 @@ function Quiz() {
     shlokaRangeParam,
     questionCount,
     sessionKey,
+    retryCount,
     navigate,
   ]);
 
@@ -1042,7 +1162,7 @@ function Quiz() {
         category: resultCategory,
         chapter: resultChapter,
         shlokaRange:
-          categoryParam === "chapter" && shlokaRangeParam
+          (categoryParam === "chapter" || (categoryParam && categoryParam.startsWith("chapter-"))) && shlokaRangeParam
             ? shlokaRangeParam
             : "",
         answers: finalAnswers
@@ -1064,27 +1184,36 @@ function Quiz() {
 
       if (token) {
         try {
-          const response = await fetch(`${API_URL}/submit`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(submitData),
-          });
+          let response = null;
+          let data = null;
+          for (const candidateBase of apiCandidates) {
+            try {
+              const res = await fetch(`${candidateBase}/submit`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(submitData),
+              });
+              response = res;
+              if (res.ok) {
+                data = await res.json();
+                break;
+              }
+            } catch (err) {
+              console.warn(`Submit failed on ${candidateBase}:`, err.message);
+            }
+          }
 
-          if (response.ok) {
-            const data = await response.json();
+          if (response && response.ok && data) {
             console.log("Quiz Submit Success:", data);
             const backendScore = Number(data.result?.score);
             if (Number.isFinite(backendScore)) {
               finalResultScore = backendScore;
             }
-          } else {
-            console.warn("Quiz submit returned non-OK status:", response.status);
-            if (response.status === 401) {
-              clearAuthSession();
-            }
+          } else if (response && response.status === 401) {
+            clearAuthSession();
           }
         } catch (apiErr) {
           console.warn("Quiz submit network/API error (using local scoring):", apiErr);
@@ -1146,15 +1275,23 @@ function Quiz() {
       setEarnedBadges(triggered);
 
       // =================================================
-      // COMPLETE QUIZ
+      // COMPLETE QUIZ & LOCK SESSION TO PREVENT RE-ENTRY
       // =================================================
 
       setQuizCompleted(true);
+      try {
+        sessionStorage.setItem(`gita_quiz_completed_${sessionKey}`, "true");
+        sessionStorage.removeItem(sessionKey);
+      } catch (e) {}
 
     } catch (err) {
       console.error("Submit Quiz Error:", err);
       // Fallback: still show quiz results rather than locking user out
       setQuizCompleted(true);
+      try {
+        sessionStorage.setItem(`gita_quiz_completed_${sessionKey}`, "true");
+        sessionStorage.removeItem(sessionKey);
+      } catch (e) {}
     } finally {
       setSubmitting(false);
     }
@@ -1269,7 +1406,7 @@ function Quiz() {
       category: resultCategory,
       chapter: resultChapter,
       shlokaRange:
-        categoryParam === "chapter" && shlokaRangeParam
+        (categoryParam === "chapter" || (categoryParam && categoryParam.startsWith("chapter-"))) && shlokaRangeParam
           ? shlokaRangeParam
           : "",
       answers: fullQuizAnswers,
@@ -1332,8 +1469,11 @@ function Quiz() {
   const retryQuiz = () => {
     try {
       sessionStorage.removeItem(sessionKey);
+      sessionStorage.removeItem(`gita_quiz_completed_${sessionKey}`);
     } catch (e) {}
-    window.location.reload();
+    setError("");
+    setLoading(true);
+    setRetryCount((prev) => prev + 1);
   };
 
   // =====================================================
@@ -1347,8 +1487,81 @@ function Quiz() {
     try {
       sessionStorage.removeItem(sessionKey);
     } catch (e) {}
-    navigate("/quiz");
+
+    const isFromReader =
+      searchParams.get("from") === "reader" ||
+      Boolean(location.state?.fromShlokaReader) ||
+      Boolean(shlokaRangeParam && shlokaRangeParam !== "all");
+
+    const ch =
+      chapterParam ||
+      (categoryParam && categoryParam.startsWith("chapter-")
+        ? categoryParam.replace("chapter-", "")
+        : "1");
+
+    const targetShloka =
+      searchParams.get("shlokaNumber") ||
+      searchParams.get("shloka") ||
+      location.state?.shlokaNumber ||
+      (shlokaRangeParam && shlokaRangeParam !== "all"
+        ? shlokaRangeParam.split("-")[1] || shlokaRangeParam.split("-")[0]
+        : "1");
+
+    if (isFromReader && ch) {
+      const returnUrl = `/chapter/${ch}?shloka=${targetShloka}`;
+      // When launched from shloka reader, navigate(-1) pops the quiz cleanly from history:
+      // 1. User returns to the exact shloka they started from (e.g. Shloka 5)
+      // 2. From that shloka, pressing back directly returns to the page before reading (e.g. /chapters)
+      if (location.state?.fromShlokaReader && window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate(returnUrl, { replace: true });
+      }
+    } else {
+      navigate("/quiz", { replace: true });
+    }
   };
+
+  // =====================================================
+  // PREVENT BACK NAVIGATION INTO COMPLETED QUIZ (BFCACHE & POPSTATE)
+  // =====================================================
+  useEffect(() => {
+    const handlePageShow = (e) => {
+      if (e.persisted || sessionStorage.getItem(`gita_quiz_completed_${sessionKey}`) === "true") {
+        if (sessionStorage.getItem(`gita_quiz_completed_${sessionKey}`) === "true") {
+          const isFromReader =
+            searchParams.get("from") === "reader" ||
+            Boolean(location.state?.fromShlokaReader) ||
+            Boolean(shlokaRangeParam && shlokaRangeParam !== "all");
+
+          const ch =
+            chapterParam ||
+            (categoryParam && categoryParam.startsWith("chapter-")
+              ? categoryParam.replace("chapter-", "")
+              : "1");
+
+          const targetShloka =
+            searchParams.get("shlokaNumber") ||
+            searchParams.get("shloka") ||
+            location.state?.shlokaNumber ||
+            (shlokaRangeParam && shlokaRangeParam !== "all"
+              ? shlokaRangeParam.split("-")[1] || shlokaRangeParam.split("-")[0]
+              : "1");
+
+          if (isFromReader && ch) {
+            navigate(`/chapter/${ch}?shloka=${targetShloka}`, { replace: true });
+          } else {
+            navigate("/quiz-results", { replace: true });
+          }
+        }
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [sessionKey, searchParams, location.state, shlokaRangeParam, chapterParam, categoryParam, navigate]);
 
   // =====================================================
   // LOADING
@@ -1407,7 +1620,11 @@ function Quiz() {
               type="button"
               onClick={exitQuiz}
             >
-              <ArrowLeft size={15} className="btn-icon" /> {txt("ક્વિઝ શ્રેણીઓ", "क्विज़ श्रेणियां", "Quiz Categories")}
+              <ArrowLeft size={15} className="btn-icon" /> {
+                (searchParams.get("from") === "reader" || location.state?.fromShlokaReader || (shlokaRangeParam && shlokaRangeParam !== "all"))
+                  ? txt("શ્લોક પર પાછા જાઓ", "श्लोक पर वापस जाएं", "Back to Shloka")
+                  : txt("ક્વિઝ શ્રેણીઓ", "क्विज़ श्रेणियां", "Quiz Categories")
+              }
             </button>
 
           </div>
@@ -1650,18 +1867,35 @@ function Quiz() {
 
             <button
               type="button"
-              className="quiz-achievements-btn"
-              onClick={() => navigate("/quiz-achievements")}
+              className="quiz-results-history-btn"
+              onClick={() => navigate("/quiz-results", { replace: true })}
             >
-              <Award size={15} className="btn-icon" /> {txt("ક્વિઝ સિદ્ધિઓ જુઓ", "क्विज़ उपलब्धियां देखें", "View Quiz Achievements")}
+              <ClipboardList size={15} className="btn-icon" /> {txt("ક્વિઝ ઇતિહાસ જુઓ", "क्विज़ इतिहास देखें", "View Quiz History")}
             </button>
 
             <button
               type="button"
-              onClick={exitQuiz}
+              className="quiz-achievements-btn"
+              onClick={() => navigate("/quiz-achievements", { replace: true })}
             >
-              <BookOpen size={15} className="btn-icon" /> {txt("ક્વિઝ શ્રેણીઓ", "क्विज़ श्रेणियां", "Quiz Categories")}
+              <Award size={15} className="btn-icon" /> {txt("ક્વિઝ સિદ્ધિઓ જુઓ", "क्विज़ उपलब्धियां देखें", "View Quiz Achievements")}
             </button>
+
+            {(searchParams.get("from") === "reader" || location.state?.fromShlokaReader || (shlokaRangeParam && shlokaRangeParam !== "all")) ? (
+              <button
+                type="button"
+                onClick={exitQuiz}
+              >
+                <BookOpen size={15} className="btn-icon" /> {txt("શ્લોક પર પાછા જાઓ", "श्लोक पर वापस जाएं", "Back to Shloka")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={exitQuiz}
+              >
+                <BookOpen size={15} className="btn-icon" /> {txt("ક્વિઝ શ્રેણીઓ", "क्विज़ श्रेणियां", "Quiz Categories")}
+              </button>
+            )}
 
           </div>
 
@@ -1689,10 +1923,10 @@ function Quiz() {
     txt("બધા અધ્યાયો", "सभी अध्याय", "All Chapters");
 
   if (
-    categoryParam ===
-      "chapter" &&
-    chapterParam
+    (categoryParam === "chapter" || (categoryParam && categoryParam.startsWith("chapter-"))) &&
+    (chapterParam || (categoryParam && categoryParam.startsWith("chapter-")))
   ) {
+    const chNum = chapterParam || categoryParam.replace("chapter-", "");
     const cleanRange = shlokaRangeParam
       ? String(shlokaRangeParam).replace(/^(\d+)-\1$/, "$1")
       : "";
@@ -1700,7 +1934,7 @@ function Quiz() {
       shlokaRangeParam && shlokaRangeParam !== "all"
         ? ` (${txt("શ્લોક", "श्लोक", "Verse")} ${cleanRange})`
         : "";
-    quizTitle = `${txt(`અધ્યાય ${chapterParam}`, `अध्याय ${chapterParam}`, `Chapter ${chapterParam}`)}${rangeSuffix}`;
+    quizTitle = `${txt(`અધ્યાય ${chNum}`, `अध्याय ${chNum}`, `Chapter ${chNum}`)}${rangeSuffix}`;
   }
 
   if (

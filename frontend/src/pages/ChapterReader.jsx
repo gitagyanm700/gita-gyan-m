@@ -1,9 +1,31 @@
 import { getValidToken } from "../utils/authHelper.js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Heart, Mic, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Share2, Volume2, Square, Play, CheckCircle2, Loader2, ChevronDown, Gauge } from "lucide-react";
+import { createPortal } from "react-dom";
+import { BookOpen, Heart, Mic, Sparkles, AlertCircle, ChevronLeft, ChevronRight, Share2, Volume2, Square, Play, CheckCircle2, Loader2, ChevronDown, Gauge, LayoutGrid, X, Trophy, PlayCircle, Hash } from "lucide-react";
 import "./ChapterReader.css";
 import ShareShlokaModal from "../components/ShareShlokaModal.jsx";
 import SudarshanShimmerLoader from "../components/SudarshanShimmerLoader.jsx";
+
+const CHAPTER_VERSES = {
+  1: 47,
+  2: 72,
+  3: 43,
+  4: 42,
+  5: 29,
+  6: 47,
+  7: 30,
+  8: 28,
+  9: 34,
+  10: 42,
+  11: 55,
+  12: 20,
+  13: 35,
+  14: 27,
+  15: 20,
+  16: 24,
+  17: 28,
+  18: 78,
+};
 
 import {
   useParams,
@@ -88,6 +110,22 @@ const [sanskritFontSize, setSanskritFontSize] = useState(21);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // =====================================================
+  // SHLOKA SELECTOR POPUP MODAL
+  // =====================================================
+
+  const [shlokaModalOpen, setShlokaModalOpen] = useState(false);
+
+  // =====================================================
+  // MILESTONE QUIZ MODAL STATE (SHLOKA 5, 10, 15... & LAST SHLOKA)
+  // =====================================================
+
+  const [milestoneModalOpen, setMilestoneModalOpen] = useState(false);
+  const [loadingMilestoneCount, setLoadingMilestoneCount] = useState(false);
+  const [milestoneAvailableCount, setMilestoneAvailableCount] = useState(null);
+  const [selectedMilestoneCount, setSelectedMilestoneCount] = useState(10);
+  const milestoneCountsCacheRef = useRef({});
+
+  // =====================================================
   // TEXT-TO-SPEECH (AUDIO) STATE
   // =====================================================
   const [speakingType, setSpeakingType] = useState(null); // null | 'sanskrit' | 'translation' | 'message'
@@ -169,6 +207,10 @@ const [sanskritFontSize, setSanskritFontSize] = useState(21);
   const CONTINUE_READING_API_URL = isLocal
     ? "http://localhost:5000/api/continue-reading"
     : "https://bhagavad-gita-backend-jy1a.onrender.com/api/continue-reading";
+
+  const QUIZ_API_URL = isLocal
+    ? "http://localhost:5000/api/quiz"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz";
 
   // =====================================================
   // CHAPTER NUMBER
@@ -991,6 +1033,44 @@ useEffect(() => {
   };
 
   // =====================================================
+  // SHLOKA QUIZ HANDLER (FOR THIS SHLOKA ONLY)
+  // =====================================================
+  const handleOpenShlokaQuiz = () => {
+    if (!shloka) return;
+    const sNum = Number(shloka.shlokNumber) || 1;
+    try {
+      // Clear prior completion guard for this shloka to allow fresh start
+      const keysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.includes("quiz_completed") && k.includes(String(currentChapterNumber)) && k.includes(String(sNum))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+    } catch (e) {}
+
+    // Ensure current URL query explicitly reflects this shloka in history
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `/chapter/${currentChapterNumber}?shloka=${sNum}`
+    );
+
+    const targetUrl = `/quiz/play?category=chapter&chapter=${currentChapterNumber}&shlokaRange=${sNum}-${sNum}&shlokaNumber=${sNum}&shloka=${sNum}&count=10&from=reader`;
+    navigate(targetUrl, {
+      state: {
+        category: `chapter-${currentChapterNumber}`,
+        chapterNumber: currentChapterNumber,
+        shlokaNumber: sNum,
+        shlokaRange: `${sNum}-${sNum}`,
+        fromShlokaReader: true,
+        readerUrl: `/chapter/${currentChapterNumber}?shloka=${sNum}`,
+      },
+    });
+  };
+
+  // =====================================================
   // SELECT SHLOK
   // =====================================================
 
@@ -1114,8 +1194,14 @@ if (
   const wrapHtmlWithSpans = (htmlString) => {
     if (!htmlString || typeof htmlString !== "string") return "";
     try {
+      // Clean any hardcoded black font color tags or inline dark color styles so dark mode is crisp
+      const cleanedHtml = htmlString
+        .replace(/<font\s+[^>]*color=["']?(?:#000000|#000|black|rgb\(0,\s*0,\s*0\))["']?[^>]*>/gi, "")
+        .replace(/<\/font>/gi, "")
+        .replace(/color:\s*(?:#000000|#000|black|rgb\(0,\s*0,\s*0\));?/gi, "");
+
       let wordIdx = 0;
-      return htmlString.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+      return cleanedHtml.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
         if (tag) return tag;
         if (text) {
           return text.replace(/([^\s]+)/g, (word) => {
@@ -1972,6 +2058,136 @@ if (
         ? (shloka.chapterNameHi || chapterNamesHi[currentChapterNumber] || chapterName)
         : (chapterName || chapterNames[currentChapterNumber] || `અધ્યાય ${currentChapterNumber}`));
 
+  // =====================================================
+  // MILESTONE QUIZ HELPERS (SHLOKA 5, 10, 15... & LAST SHLOKA)
+  // =====================================================
+  const sNum = shloka ? Number(shloka.shlokNumber) : 0;
+  const totalShlokasInChapter =
+    shlokas.length > 0
+      ? Number(shlokas[shlokas.length - 1].shlokNumber)
+      : CHAPTER_VERSES[currentChapterNumber] || 47;
+
+  const isMultipleOf5 = sNum > 0 && sNum % 5 === 0;
+  const isLastShloka = sNum > 0 && sNum === totalShlokasInChapter;
+  const isMilestone = isMultipleOf5 || isLastShloka;
+
+  const milestoneRange = isLastShloka ? "all" : `1-${sNum}`;
+  const milestoneLabel = isLastShloka
+    ? (isMultipleOf5
+        ? txt(
+            `સમગ્ર અધ્યાય ${currentChapterNumber} ની ક્વિઝ (શ્લોક ૧-${sNum})`,
+            `सम्पूर्ण अध्याय ${currentChapterNumber} की क्विज़ (श्लोक १-${sNum})`,
+            `Full Chapter ${currentChapterNumber} Quiz (1-${sNum})`
+          )
+        : txt(
+            `સમગ્ર અધ્યાય ${currentChapterNumber} ની ક્વિઝ`,
+            `सम्पूर्ण अध्याय ${currentChapterNumber} की क्विज़`,
+            `Full Chapter ${currentChapterNumber} Quiz`
+          ))
+    : txt(
+        `શ્લોક ૧-${sNum} ની ક્વિઝ`,
+        `श्लोक १-${sNum} की क्विज़`,
+        `Quiz for Shlokas 1-${sNum}`
+      );
+
+  const MILESTONE_COUNT_OPTIONS = [5, 10, 15, 20, 30, 50, 70, 100];
+
+  const getMilestoneCountOptions = (available) => {
+    return MILESTONE_COUNT_OPTIONS.map((count) => ({
+      key: `count-${count}`,
+      count,
+      disabled: available !== null && available !== undefined && count > available,
+    }));
+  };
+
+  const handleOpenMilestoneModal = async () => {
+    setMilestoneModalOpen(true);
+    const cacheKey = `${currentChapterNumber}_${milestoneRange}`;
+
+    const applyCountSelection = (count) => {
+      setMilestoneAvailableCount(count);
+      const enabled = MILESTONE_COUNT_OPTIONS.filter((c) => c <= count);
+      if (enabled.length > 0) {
+        setSelectedMilestoneCount((prev) => {
+          if (prev && enabled.includes(prev)) return prev;
+          if (enabled.includes(10)) return 10;
+          return enabled[0];
+        });
+      } else {
+        setSelectedMilestoneCount(5);
+      }
+    };
+
+    if (milestoneCountsCacheRef.current[cacheKey] !== undefined) {
+      applyCountSelection(milestoneCountsCacheRef.current[cacheKey]);
+      return;
+    }
+
+    setLoadingMilestoneCount(true);
+    try {
+      let url = `${QUIZ_API_URL}/questions/count?category=chapter&chapter=${currentChapterNumber}`;
+      if (milestoneRange && milestoneRange !== "all") {
+        url += `&shlokaRange=${milestoneRange}`;
+      }
+      const token = getValidToken();
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const count = Number(data.count ?? data.totalQuestions ?? 0);
+        milestoneCountsCacheRef.current[cacheKey] = count;
+        applyCountSelection(count);
+      } else {
+        setMilestoneAvailableCount(0);
+        setSelectedMilestoneCount(10);
+      }
+    } catch (err) {
+      console.error("Error fetching milestone count:", err);
+      setMilestoneAvailableCount(0);
+      setSelectedMilestoneCount(10);
+    } finally {
+      setLoadingMilestoneCount(false);
+    }
+  };
+
+  const handleStartMilestoneQuiz = () => {
+    if (!selectedMilestoneCount || selectedMilestoneCount <= 0) return;
+    const sNum = shloka ? Number(shloka.shlokNumber) : 1;
+    try {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (
+          key.startsWith("gita_active_quiz_") ||
+          (key.includes("quiz_completed") &&
+            key.includes(String(currentChapterNumber)) &&
+            key.includes(String(milestoneRange)))
+        ) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
+
+    // Ensure current URL query explicitly reflects this shloka in history
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `/chapter/${currentChapterNumber}?shloka=${sNum}`
+    );
+
+    const targetUrl = `/quiz/play?category=chapter&chapter=${currentChapterNumber}&shlokaRange=${milestoneRange}&shlokaNumber=${sNum}&shloka=${sNum}&count=${selectedMilestoneCount}&from=reader`;
+    setMilestoneModalOpen(false);
+    navigate(targetUrl, {
+      state: {
+        category: `chapter-${currentChapterNumber}`,
+        chapterNumber: currentChapterNumber,
+        shlokaNumber: sNum,
+        shlokaRange: milestoneRange,
+        fromShlokaReader: true,
+        readerUrl: `/chapter/${currentChapterNumber}?shloka=${sNum}`,
+      },
+    });
+  };
+
 
 
   // =====================================================
@@ -2547,53 +2763,10 @@ const prepareSanskritLines = () => {
       </section>
 
       {/* =================================================
-          PROGRESS
-      ================================================= */}
-
-      <section className="reader-progress">
-        <div className="progress-info">
-          <span>
-            {txt("શ્લોક ", "श्लोक ", "Shloka ")}
-            {shloka.shlokNumber}
-            {" / "}
-            {shlokas.length}
-          </span>
-
-          <span>
-            {Math.round(progress)}%
-          </span>
-        </div>
-
-        <div className="progress-bar">
-          <div
-            className="progress-fill"
-            style={{
-              width: `${progress}%`,
-            }}
-          />
-        </div>
-      </section>
-
-      {/* =================================================
           CURRENT SHLOKA CARD
       ================================================= */}
 
       <section className="shloka-card">
-
-        {/* PREVIOUS SHLOK */}
-
-        <button
-          type="button"
-          className="shloka-side-button shloka-prev-button"
-          onClick={previousShloka}
-          disabled={
-            currentShloka === 0
-          }
-          aria-label={txt("પાછલો શ્લોક", "पिछला श्लोक", "Previous Shloka")}
-          title={txt("પાછલો શ્લોક", "पिछला श्लोक", "Previous Shloka")}
-        >
-          <ChevronLeft size={28} />
-        </button>
 
         {/* MAIN CONTENT */}
 
@@ -2604,49 +2777,8 @@ const prepareSanskritLines = () => {
           <div className="shloka-number">
             {txt("શ્લોક ", "श्लोक ", "Shloka ")}
             {shloka.shlokNumber}
+            {shlokas.length > 0 && ` / ${shlokas.length}`}
           </div>
-
-          {/* TOP ACTIONS: SHARE CARD & FAVOURITE BUTTON */}
-
-          <div className="shloka-top-actions">
-            <button
-              type="button"
-              className="share-shloka-button"
-              onClick={() => setShareModalOpen(true)}
-              aria-label={txt("શ્લોક કાર્ડ શેર કરો", "श्लोक कार्ड शेयर करें", "Share Shloka Card")}
-              title={txt("શ્લોક કાર્ડ શેર કરો / ડાઉનલોડ કરો", "श्लोक कार्ड शेयर / डाउनलोड करें", "Share / Download Shloka Card")}
-            >
-              <Share2 size={20} />
-            </button>
-
-            <button
-              type="button"
-              className={
-                isFavorite(shloka)
-                  ? "favorite-shloka-button favorited active"
-                  : "favorite-shloka-button"
-              }
-              onClick={
-                toggleFavorite
-              }
-              disabled={favoriteLoading}
-              aria-label={
-                isFavorite(shloka)
-                  ? txt("Favouriteમાંથી દૂર કરો", "पसंदीदा से हटाएं", "Remove from Favorites")
-                  : txt("Favouriteમાં ઉમેરો", "पसंदीदा में जोड़ें", "Add to Favorites")
-              }
-              title={
-                isFavorite(shloka)
-                  ? txt("Favouriteમાંથી દૂર કરો", "पसंदीदा से हटाएं", "Remove from Favorites")
-                  : txt("Favouriteમાં ઉમેરો", "पसंदीदा में जोड़ें", "Add to Favorites")
-              }
-            >
-              {isFavorite(shloka)
-                ? <Heart fill="#ef4444" color="#ef4444" size={20} />
-                : <Heart size={20} />}
-            </button>
-          </div>
-
 
           {/* SPEAKER */}
 
@@ -2666,8 +2798,6 @@ const prepareSanskritLines = () => {
               </h3>
 
               <div className="content-box-header-actions">
-                {renderSpeedDropdown("sanskrit")}
-
                 <button
                   type="button"
                   className={`shloka-speech-btn ${
@@ -2714,6 +2844,8 @@ const prepareSanskritLines = () => {
                     </>
                   )}
                 </button>
+
+                {renderSpeedDropdown("sanskrit")}
               </div>
             </div>
 
@@ -2752,8 +2884,6 @@ const prepareSanskritLines = () => {
               </h3>
 
               <div className="content-box-header-actions">
-                {renderSpeedDropdown("translation")}
-
                 <button
                   type="button"
                   className={`shloka-speech-btn ${
@@ -2800,6 +2930,8 @@ const prepareSanskritLines = () => {
                     </>
                   )}
                 </button>
+
+                {renderSpeedDropdown("translation")}
               </div>
             </div>
 
@@ -2825,8 +2957,6 @@ const prepareSanskritLines = () => {
               </h3>
 
               <div className="content-box-header-actions">
-                {renderSpeedDropdown("message")}
-
                 <button
                   type="button"
                   className={`shloka-speech-btn ${
@@ -2873,6 +3003,8 @@ const prepareSanskritLines = () => {
                     </>
                   )}
                 </button>
+
+                {renderSpeedDropdown("message")}
               </div>
             </div>
 
@@ -2888,97 +3020,86 @@ const prepareSanskritLines = () => {
 
         </div>
 
-        {/* NEXT SHLOK */}
 
-        <button
-          type="button"
-          className="shloka-side-button shloka-next-button"
-          onClick={nextShloka}
-          disabled={
-            currentShloka ===
-            shlokas.length - 1
-          }
-          aria-label={txt("આગળનો શ્લોક", "अगला श्लोक", "Next Shloka")}
-          title={txt("આગળનો શ્લોક", "अगला श्लोक", "Next Shloka")}
-        >
-          <ChevronRight size={28} />
-        </button>
 
       </section>
 
       {/* =====================================================
-          CHAPTER NAVIGATION
+          MILESTONE QUIZ BANNER (CELEBRATORY IN-PAGE CARD)
       ===================================================== */}
-
-      <section className="chapter-navigation">
-
-        {/* PREVIOUS CHAPTER */}
-
-        <button
-          type="button"
-          className="chapter-nav-button previous-chapter-button"
-          onClick={
-            previousChapter
-          }
-          disabled={
-            currentChapterNumber ===
-            1
-          }
-        >
-          <ChevronLeft size={26} style={{ marginRight: '10px' }} />
-          <span className="chapter-nav-text">
-            <h3>
-              {txt("પાછલો અધ્યાય", "पिछला अध्याय", "Previous Chapter")}
-            </h3>
-
-            {currentChapterNumber >
-              1 && (
-              <strong>
-                {txt(`અધ્યાય ${currentChapterNumber - 1}`, `अध्याय ${currentChapterNumber - 1}`, `Chapter ${currentChapterNumber - 1}`)}
-              </strong>
-            )}
-          </span>
-        </button>
-
-        {/* CURRENT CHAPTER */}
-
-        <div className="chapter-nav-center">
-          <span>
-            {txt(`અધ્યાય ${currentChapterNumber}`, `अध्याय ${currentChapterNumber}`, `Chapter ${currentChapterNumber}`)}
-          </span>
-
-          <div>
-            {currentChapterTitle}
+      {isMilestone && (
+        <section className="shloka-milestone-banner-card">
+          <div className="milestone-banner-inner">
+            <div className="milestone-banner-icon-box">
+              <Trophy size={28} className="milestone-banner-trophy" />
+            </div>
+            <div className="milestone-banner-text">
+              <h4>{milestoneLabel}</h4>
+            </div>
+            <button
+              type="button"
+              className="milestone-banner-action-btn"
+              onClick={handleOpenMilestoneModal}
+            >
+              <Trophy size={16} />
+              <span>{txt("ક્વિઝ રમો", "क्विज़ खेलें", "Play Quiz")}</span>
+              <ChevronRight size={16} />
+            </button>
           </div>
-        </div>
+        </section>
+      )}
 
-        {/* NEXT CHAPTER */}
-
+      {/* =====================================================
+          INLINE PREV / NEXT SHLOKA PILL BUTTONS (Matching Mobile Design)
+      ===================================================== */}
+      <div className="shloka-inline-nav-pills">
         <button
           type="button"
-          className="chapter-nav-button next-chapter-button"
-          onClick={nextChapter}
-          disabled={
-            currentChapterNumber ===
-            18
-          }
+          className="shloka-pill-nav-btn prev"
+          onClick={previousShloka}
+          disabled={currentShloka === 0}
+          aria-label={txt("પાછલો શ્લોક", "पिछला श्लोक", "Previous Shloka")}
         >
-          <span className="chapter-nav-text">
-            <h3>
-              {txt("આગળનો અધ્યાય", "अगला अध्याय", "Next Chapter")}
-            </h3>
-
-            {currentChapterNumber <
-              18 && (
-              <strong>
-                {txt(`અધ્યાય ${currentChapterNumber + 1}`, `अध्याय ${currentChapterNumber + 1}`, `Chapter ${currentChapterNumber + 1}`)}
-              </strong>
-            )}
-          </span>
-          <ChevronRight size={26} style={{ marginLeft: '10px' }} />
+          <ChevronLeft size={20} />
+          <span>{txt("પાછલો શ્લોક", "पिछला श्लोक", "Previous Shloka")}</span>
         </button>
+        <button
+          type="button"
+          className="shloka-pill-nav-btn next"
+          onClick={nextShloka}
+          disabled={currentShloka === shlokas.length - 1}
+          aria-label={txt("આગલો શ્લોક", "अगला श्लोक", "Next Shloka")}
+        >
+          <span>{txt("આગલો શ્લોક", "अगला श्लोक", "Next Shloka")}</span>
+          <ChevronRight size={20} />
+        </button>
+      </div>
 
-      </section>
+      {/* =====================================================
+          CHAPTER NAVIGATION (Pill buttons matching Image 3)
+      ===================================================== */}
+      <div className="chapter-inline-nav-pills">
+        <button
+          type="button"
+          className="chapter-pill-nav-btn prev"
+          onClick={previousChapter}
+          disabled={currentChapterNumber === 1}
+          aria-label={txt("પાછલો અધ્યાય", "पिछला अध्याय", "Previous Chapter")}
+        >
+          <ChevronLeft size={20} />
+          <span>{txt("પાછલો અધ્યાય", "पिछला अध्याय", "Previous Chapter")}</span>
+        </button>
+        <button
+          type="button"
+          className="chapter-pill-nav-btn next"
+          onClick={nextChapter}
+          disabled={currentChapterNumber === 18}
+          aria-label={txt("આગળનો અધ્યાય", "अगला अध्याय", "Next Chapter")}
+        >
+          <span>{txt("આગળનો અધ્યાય", "अगला अध्याय", "Next Chapter")}</span>
+          <ChevronRight size={20} />
+        </button>
+      </div>
 
       {/* =====================================================
           ALL SHLOK BUTTONS
@@ -3094,6 +3215,268 @@ const prepareSanskritLines = () => {
           {audioToast}
         </div>
       )}
+
+      {/* =====================================================
+          SHLOKA READING BOTTOM ACTION BAR (4 BUTTONS + MILESTONE)
+          Portaled to document.body for permanent mobile footer docking
+      ===================================================== */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <nav className="shloka-reading-bottom-bar" aria-label="Shloka Navigation Actions">
+            {/* BUTTON 1: FAVORITE (RED HEART) */}
+            <button
+              type="button"
+              className={`shloka-bar-btn ${isFavorite(shloka) ? "active favorited" : ""}`}
+              onClick={toggleFavorite}
+              disabled={favoriteLoading}
+              aria-label={
+                isFavorite(shloka)
+                  ? txt("ફેવરિટમાંથી દૂર કરો", "पसंदीदा से हटाएं", "Remove from Favorites")
+                  : txt("ફેવરિટમાં ઉમેરો", "पसंदीदा में जोड़ें", "Add to Favorites")
+              }
+            >
+              <Heart
+                size={22}
+                className={isFavorite(shloka) ? "heart-filled" : ""}
+                fill={isFavorite(shloka) ? "#ef4444" : "none"}
+                color={isFavorite(shloka) ? "#ef4444" : "currentColor"}
+              />
+              <span>
+                {isFavorite(shloka)
+                  ? txt("ફેવરિટ", "पसंदीदा", "Favorited")
+                  : txt("ફેવરિટ", "पसंदीदा", "Favorite")}
+              </span>
+            </button>
+
+            {/* BUTTON 2: SHARE */}
+            <button
+              type="button"
+              className="shloka-bar-btn"
+              onClick={() => setShareModalOpen(true)}
+              aria-label={txt("શેર કરો", "शेयर करें", "Share")}
+            >
+              <Share2 size={22} />
+              <span>{txt("શેર કરો", "शेयर करें", "Share")}</span>
+            </button>
+
+            {/* BUTTON 3: QUIZ (FOR THIS SHLOKA ONLY - PROFESSIONAL TROPHY ICON) */}
+            <button
+              type="button"
+              className="shloka-bar-btn"
+              onClick={handleOpenShlokaQuiz}
+              aria-label={txt("ક્વિઝ રમો", "क्विज़ खेलें", "Play Quiz")}
+            >
+              <Trophy size={21} />
+              <span>{txt("ક્વિઝ રમો", "क्विज़ खेलें", "Play Quiz")}</span>
+            </button>
+
+            {/* BUTTON 4: SHLOKA LIST POPUP */}
+            <button
+              type="button"
+              className={`shloka-bar-btn ${shlokaModalOpen ? "active" : ""}`}
+              onClick={() => setShlokaModalOpen(true)}
+              aria-label={txt("શ્લોક સૂચી", "श्लोक सूची", "Shloka List")}
+            >
+              <LayoutGrid size={22} />
+              <span>{txt("શ્લોક સૂચી", "श्लोक सूची", "Shloka List")}</span>
+            </button>
+          </nav>,
+          document.body
+        )}
+
+      {/* =====================================================
+          SHLOKA SELECTOR POPUP MODAL SHEET
+      ===================================================== */}
+      {shlokaModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="shloka-popup-backdrop"
+            onClick={() => setShlokaModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="shloka-popup-sheet"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="shloka-popup-header">
+                <div className="shloka-popup-header-info">
+                  <BookOpen size={20} className="shloka-popup-header-icon" />
+                  <div>
+                    <h3 id="shloka-popup-title">
+                      {txt(`અધ્યાય ${currentChapterNumber} ના શ્લોક`, `अध्याय ${currentChapterNumber} के श्लोक`, `Chapter ${currentChapterNumber} Shlokas`)}
+                    </h3>
+                    <p className="shloka-popup-sub">
+                      {shlokas.length} {txt("શ્લોક ઉપલબ્ધ", "श्लोक उपलब्ध", "Shlokas available")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="shloka-popup-close-btn"
+                  onClick={() => setShlokaModalOpen(false)}
+                  aria-label={txt("બંધ કરો", "बंद करें", "Close")}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="shloka-popup-grid">
+                {shlokas.map((item, index) => {
+                  const isActive = index === currentShloka;
+                  return (
+                    <button
+                      key={item._id || `${item.shlokNumber}-${index}`}
+                      type="button"
+                      className={`shloka-popup-num-btn ${isActive ? "active" : ""}`}
+                      onClick={() => {
+                        selectShloka(index);
+                        setShlokaModalOpen(false);
+                      }}
+                      aria-label={txt(`શ્લોક ${item.shlokNumber}`, `श्लोक ${item.shlokNumber}`, `Shloka ${item.shlokNumber}`)}
+                      aria-current={isActive ? "true" : undefined}
+                    >
+                      <span className="popup-shlok-num">{item.shlokNumber}</span>
+                      {isActive && <span className="popup-active-dot">●</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* =====================================================
+          MILESTONE QUESTION COUNT SELECTION MODAL SHEET
+      ===================================================== */}
+      {milestoneModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="milestone-modal-backdrop"
+            onClick={() => setMilestoneModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="milestone-modal-title"
+          >
+            <div
+              className="milestone-modal-sheet"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* HEADER */}
+              <div className="milestone-modal-header">
+                <div className="milestone-modal-header-info">
+                  <div className="milestone-modal-trophy-wrap">
+                    <Trophy size={22} className="milestone-modal-trophy-icon" />
+                  </div>
+                  <div>
+                    <h3 id="milestone-modal-title">{milestoneLabel}</h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="milestone-modal-close-btn"
+                  onClick={() => setMilestoneModalOpen(false)}
+                  aria-label={txt("બંધ કરો", "बंद करें", "Close")}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* BODY */}
+              <div className="milestone-modal-body">
+                {loadingMilestoneCount ? (
+                  <div className="milestone-modal-loader">
+                    <Loader2 size={32} className="milestone-spinner" />
+                    <p>{txt("પ્રશ્નોની સંખ્યા લોડ થઈ રહી છે...", "प्रश्नों की संख्या लोड हो रही है...", "Loading available questions...")}</p>
+                  </div>
+                ) : milestoneAvailableCount === 0 ? (
+                  <div className="milestone-modal-empty">
+                    <AlertCircle size={32} color="#f59e0b" />
+                    <p>
+                      {txt(
+                        "આ શ્લોકો માટે હાલમાં કોઈ પ્રશ્નો ઉપલબ્ધ નથી.",
+                        "इन श्लोकों के लिए वर्तमान में कोई प्रश्न उपलब्ध नहीं हैं।",
+                        "Currently no quiz questions available for these shlokas."
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="milestone-count-prompt">
+                      <Hash size={16} className="prompt-icon" />
+                      <span>{txt("કેટલા પ્રશ્નો રમવા છે? (સંખ્યા પસંદ કરો)", "कितने प्रश्न खेलने हैं? (संख्या चुनें)", "How many questions to play? (Select count)")}</span>
+                    </div>
+
+                    {/* COUNT CARDS GRID */}
+                    <div className="milestone-count-grid">
+                      {getMilestoneCountOptions(milestoneAvailableCount).map((opt) => {
+                        const isSelected = selectedMilestoneCount === opt.count;
+                        const isDisabled = opt.disabled;
+
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            disabled={isDisabled}
+                            className={`milestone-count-card ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}`}
+                            onClick={() => {
+                              if (!isDisabled) {
+                                setSelectedMilestoneCount(opt.count);
+                              }
+                            }}
+                            title={
+                              isDisabled
+                                ? txt(
+                                    `આટલા પ્રશ્નો ઉપલબ્ધ નથી`,
+                                    `इतने प्रश्न उपलब्ध नहीं हैं`,
+                                    `Not enough questions available`
+                                  )
+                                : ""
+                            }
+                          >
+                            <span className="milestone-count-val">{opt.count}</span>
+                            <span className="milestone-count-text">
+                              {txt("પ્રશ્નો", "प्रश्न", "Questions")}
+                            </span>
+                            {isSelected && !isDisabled && (
+                              <CheckCircle2 size={16} className="milestone-selected-check" />
+                            )}
+                            {isDisabled && (
+                              <span className="milestone-disabled-pill">
+                                {txt("અનુપલબ્ધ", "अनुपलब्ध", "N/A")}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* START QUIZ BUTTON */}
+                    <button
+                      type="button"
+                      className="milestone-start-quiz-btn"
+                      onClick={handleStartMilestoneQuiz}
+                      disabled={!selectedMilestoneCount || milestoneAvailableCount <= 0}
+                    >
+                      <PlayCircle size={20} />
+                      <span>
+                        {txt(
+                          `ક્વિઝ શરૂ કરો (${selectedMilestoneCount} પ્રશ્નો)`,
+                          `क्विज़ शुरू करें (${selectedMilestoneCount} प्रश्न)`,
+                          `Start Quiz (${selectedMilestoneCount} Questions)`
+                        )}
+                      </span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
     </main>
   );

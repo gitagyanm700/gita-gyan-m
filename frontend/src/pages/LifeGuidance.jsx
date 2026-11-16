@@ -14,7 +14,6 @@ import {
   Sunrise,
   Users,
   Sparkles,
-  BookOpen,
   ChevronRight
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
@@ -558,54 +557,6 @@ function LifeGuidance() {
                         }}
                       />
                     </div>
-
-                    <div className="card-meaning-block">
-                      <h4>
-                        <BookOpen size={16} />{" "}
-                        {txt(
-                          "અર્થ / ભાવાર્થ",
-                          "सरल अर्थ / भावार्थ",
-                          "Meaning / Translation"
-                        )}
-                      </h4>
-                      <div
-                        className="card-meaning-text formatted-content"
-                        dangerouslySetInnerHTML={{
-                          __html: isEnglish
-                            ? (foundShlok.translationEn || foundShlok.translation || foundShlok.messageEn || foundShlok.message || "")
-                            : isHindi
-                            ? (foundShlok.translationHi || foundShlok.translation || foundShlok.messageHi || foundShlok.message || "")
-                            : (foundShlok.translation || foundShlok.message || "")
-                        }}
-                      />
-                    </div>
-
-                    {(foundShlok.message || foundShlok.messageHi || foundShlok.messageEn) && (
-                      <div
-                        className="card-lesson-block"
-                        style={{
-                          borderColor: `${currentTopic.color}45`,
-                          background: currentTopic.bgColor
-                        }}
-                      >
-                        <span
-                          className="lesson-header-tag"
-                          style={{ color: currentTopic.color }}
-                        >
-                          💡 {txt("ગીતા સંદેશ / માર્ગદર્શન:", "गीता संदेश / मार्गदर्शन:", "Gita Guidance:")}
-                        </span>
-                        <div
-                          className="card-lesson-text formatted-content"
-                          dangerouslySetInnerHTML={{
-                            __html: isEnglish
-                              ? (foundShlok.messageEn || foundShlok.message || "")
-                              : isHindi
-                              ? (foundShlok.messageHi || foundShlok.message || "")
-                              : (foundShlok.message || "")
-                          }}
-                        />
-                      </div>
-                    )}
 
                     <button
                       type="button"

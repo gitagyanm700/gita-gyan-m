@@ -45,6 +45,9 @@ import {
   enableAppNotifications,
 } from "../utils/appPushNotification.js";
 import { trackAppInstallOrOpen } from "../utils/appAnalytics.js";
+import MobileBottomNav from "./MobileBottomNav.jsx";
+import MobileTopHeader from "./MobileTopHeader.jsx";
+import SearchModal from "./SearchModal.jsx";
 
 import "./Navbar.css";
 
@@ -89,6 +92,15 @@ function Navbar() {
   // =====================================================
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenSearch = () => setSearchModalOpen(true);
+    window.addEventListener("open-gita-search-modal", handleOpenSearch);
+    return () => {
+      window.removeEventListener("open-gita-search-modal", handleOpenSearch);
+    };
+  }, []);
 
   // =====================================================
   // SCROLL STATE
@@ -719,6 +731,11 @@ function Navbar() {
 
   return (
     <>
+      {/* =====================================================
+          MOBILE TOP HEADER (NATIVE APP UI)
+      ===================================================== */}
+      <MobileTopHeader onOpenSearch={() => setSearchModalOpen(true)} />
+
       {/* =================================================
           NAVBAR
       ================================================= */}
@@ -779,7 +796,7 @@ function Navbar() {
         >
           <img
             id="navbar-gita-logo"
-            src="/icons/icon-192x192.png"
+            src="/icons/logo-circle.png"
             alt={txt("ભગવદ્ ગીતા", "भगवद् गीता", "Bhagavad Gita")}
             className="logo-icon-img"
           />
@@ -1526,6 +1543,22 @@ function Navbar() {
         </div>
 
       </aside>
+
+      {/* =====================================================
+          SEARCH POPUP MODAL (OPENED VIA TOP HEADER SEARCH ICON)
+      ===================================================== */}
+      <SearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
+
+      {/* =====================================================
+          MOBILE BOTTOM NAVIGATION
+      ===================================================== */}
+      <MobileBottomNav
+        handleProtectedNavigation={handleProtectedNavigation}
+        handleNormalNavigation={handleNormalNavigation}
+      />
     </>
   );
 }

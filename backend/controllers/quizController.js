@@ -139,8 +139,16 @@ const getQuizQuestions = async (req, res) => {
       category &&
       category !== "all"
     ) {
-      query.category =
-        category;
+      if (category === "chapter" && query.chapterNumber) {
+        query.$or = [
+          { category: `chapter-${query.chapterNumber}` },
+          { category: "chapter" },
+          { category: "gita" },
+        ];
+      } else {
+        query.category =
+          category;
+      }
     }
 
     // =================================================

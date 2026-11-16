@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Download, CheckCircle2, Loader2, Lock } from "lucide-react";
+import { Download, CheckCircle2, Loader2, Lock, ChevronRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getValidToken } from "../utils/authHelper.js";
 import { useLanguage } from "../context/LanguageContext.jsx";
@@ -57,24 +57,24 @@ const chapterNamesEn = {
 };
 
 const chapters = [
-  { number: 1, name: "અર્જુનવિષાદ યોગ", verses: 47 },
-  { number: 2, name: "સાંખ્ય યોગ", verses: 72 },
-  { number: 3, name: "કર્મ યોગ", verses: 43 },
-  { number: 4, name: "જ્ઞાનકર્મસંન્યાસ યોગ", verses: 42 },
-  { number: 5, name: "કર્મસંન્યાસ યોગ", verses: 29 },
-  { number: 6, name: "આત્મસંયમ યોગ", verses: 47 },
-  { number: 7, name: "જ્ઞાનવિજ્ઞાન યોગ", verses: 30 },
-  { number: 8, name: "અક્ષરબ્રહ્મ યોગ", verses: 28 },
-  { number: 9, name: "રાજવિદ્યા રાજગુહ્ય યોગ", verses: 34 },
-  { number: 10, name: "વિભૂતિ યોગ", verses: 42 },
-  { number: 11, name: "વિશ્વરૂપદર્શન યોગ", verses: 55 },
-  { number: 12, name: "ભક્તિ યોગ", verses: 20 },
-  { number: 13, name: "ક્ષેત્રક્ષેત્રજ્ઞ વિભાગ યોગ", verses: 35 },
-  { number: 14, name: "ગુણત્રય વિભાગ યોગ", verses: 27 },
-  { number: 15, name: "પુરુષોત્તમ યોગ", verses: 20 },
-  { number: 16, name: "દૈવાસુર સંપદ્વિભાગ યોગ", verses: 24 },
-  { number: 17, name: "શ્રદ્ધાત્રય વિભાગ યોગ", verses: 28 },
-  { number: 18, name: "મોક્ષસંન્યાસ યોગ", verses: 78 },
+  { number: 1, name: "અર્જુનવિષાદ યોગ", verses: 47, image: "/images/chapter-1.jpg" },
+  { number: 2, name: "સાંખ્ય યોગ", verses: 72, image: "/images/chapter-2.jpg" },
+  { number: 3, name: "કર્મ યોગ", verses: 43, image: "/images/chapter-3.jpg" },
+  { number: 4, name: "જ્ઞાનકર્મસંન્યાસ યોગ", verses: 42, image: "/images/chapter-4.jpg" },
+  { number: 5, name: "કર્મસંન્યાસ યોગ", verses: 29, image: "/images/chapter-5.jpg" },
+  { number: 6, name: "આત્મસંયમ યોગ", verses: 47, image: "/images/chapter-6.jpg" },
+  { number: 7, name: "જ્ઞાનવિજ્ઞાન યોગ", verses: 30, image: "/images/chapter-7.jpg" },
+  { number: 8, name: "અક્ષરબ્રહ્મ યોગ", verses: 28, image: "/images/chapter-8.jpg" },
+  { number: 9, name: "રાજવિદ્યા રાજગુહ્ય યોગ", verses: 34, image: "/images/chapter-9.jpg" },
+  { number: 10, name: "વિભૂતિ યોગ", verses: 42, image: "/images/chapter-10.jpg" },
+  { number: 11, name: "વિશ્વરૂપદર્શન યોગ", verses: 55, image: "/images/chapter-11.jpg" },
+  { number: 12, name: "ભક્તિ યોગ", verses: 20, image: "/images/chapter-12.jpg" },
+  { number: 13, name: "ક્ષેત્રક્ષેત્રજ્ઞ વિભાગ યોગ", verses: 35, image: "/images/chapter-13.jpg" },
+  { number: 14, name: "ગુણત્રય વિભાગ યોગ", verses: 27, image: "/images/chapter-14.jpg" },
+  { number: 15, name: "પુરુષોત્તમ યોગ", verses: 20, image: "/images/chapter-15.jpg" },
+  { number: 16, name: "દૈવાસુર સંપદ્વિભાગ યોગ", verses: 24, image: "/images/chapter-16.jpg" },
+  { number: 17, name: "શ્રદ્ધાત્રય વિભાગ યોગ", verses: 28, image: "/images/chapter-17.jpg" },
+  { number: 18, name: "મોક્ષસંન્યાસ યોગ", verses: 78, image: "/images/chapter-18.jpg" },
 ];
 
 function Chapters() {
@@ -344,30 +344,34 @@ function Chapters() {
             <div
               className="chapter-card"
               key={chapter.number}
+              onClick={() => openChapter(chapter.number)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  openChapter(chapter.number);
+                }
+              }}
             >
-
-              <div className="chapter-number">
-                {txt(`અધ્યાય ${chapter.number}`, `अध्याय ${chapter.number}`, `Chapter ${chapter.number}`)}
+              <div className="chapter-card-thumb">
+                <img
+                  src={chapter.image || "/images/gita-background-mobile.jpg"}
+                  alt={`અધ્યાય ${chapter.number}`}
+                  loading="lazy"
+                />
               </div>
 
-              <h2>
-                {getChapterName(chapter)}
-              </h2>
+              <div className="chapter-card-info">
+                <span className="chapter-card-num">
+                  {txt(`અધ્યાય ${chapter.number}`, `अध्याय ${chapter.number}`, `Chapter ${chapter.number}`)}
+                </span>
+                <h2>{getChapterName(chapter)}</h2>
+                <span className="chapter-card-count">
+                  {databaseCount > 0 ? databaseCount : chapter.verses} {txt("શ્લોક", "श्लोक", "Shlokas")}
+                </span>
+              </div>
 
-              <p>
-                {databaseCount > 0 ? databaseCount : chapter.verses} {txt("શ્લોક", "श्लोक", "Shlokas")}
-              </p>
-
-              <button
-                onClick={() =>
-                  openChapter(
-                    chapter.number
-                  )
-                }
-              >
-                <BookOpen className="btn-icon" size={14} /> {txt("અધ્યાય વાંચો", "अध्याय पढ़ें", "Read Chapter")}
-              </button>
-
+              <ChevronRight className="chapter-card-arrow" size={20} />
             </div>
           );
         })}

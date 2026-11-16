@@ -3,7 +3,7 @@
    AUTO-UPDATE • OFFLINE CAPABLE • FAST CACHE • ZERO LATENCY
    ========================================================= */
 
-const CACHE_NAME = "bhagavad-gita-cache-v19";
+const CACHE_NAME = "bhagavad-gita-cache-v43";
 
 // Essential core shell assets to pre-cache on install
 const PRECACHE_ASSETS = [
@@ -52,6 +52,9 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests and browser extensions / external analytics
   if (request.method !== "GET") return;
   if (!url.protocol.startsWith("http")) return;
+
+  // Let cross-origin requests (e.g. backend APIs on port 5000, Render, CDNs) pass directly through browser network stack
+  if (url.origin !== self.location.origin) return;
 
   // Chapter Shlokas API: Network-first with automatic offline cache
   if (url.pathname.includes("/api/shloks/chapter/")) {

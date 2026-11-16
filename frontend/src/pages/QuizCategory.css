@@ -906,6 +906,45 @@
       rgba(37, 99, 235, 0.2);
 }
 
+/* Dark Mode Vedic Effect for Quiz Start Button */
+[data-theme="dark"] .quiz-start-button,
+.dark .quiz-start-button {
+  background: linear-gradient(135deg, #0b1a3a 0%, #152754 100%) !important;
+  border: 1.5px solid rgba(212, 175, 55, 0.65) !important;
+  color: #fbbf24 !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 12px rgba(245, 158, 11, 0.22) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .quiz-start-button svg,
+.dark .quiz-start-button svg {
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .quiz-start-button:hover:not(:disabled),
+.dark .quiz-start-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #132759 0%, #1c3674 100%) !important;
+  border-color: #f59e0b !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  color: #fef08a !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.38), 0 0 16px rgba(59, 130, 246, 0.35) !important;
+  transform: translateY(-2px) !important;
+}
+
+[data-theme="dark"] .quiz-start-button:focus:not(:disabled),
+.dark .quiz-start-button:focus:not(:disabled) {
+  outline: 2px solid rgba(80, 140, 255, 0.95) !important;
+  outline-offset: 3.5px !important;
+}
+
+[data-theme="dark"] .quiz-start-button:hover:not(:disabled) svg,
+.dark .quiz-start-button:hover:not(:disabled) svg {
+  color: #fef08a !important;
+}
+
 
 .quiz-start-button:disabled {
   opacity: 0.5;
@@ -1027,8 +1066,10 @@
 @media (max-width: 600px) {
 
   .quiz-category-page {
-    padding:
-      15px 12px 40px;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: 40px;
   }
 
 

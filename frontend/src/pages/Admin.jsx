@@ -511,34 +511,46 @@ function Admin() {
       return;
     }
 
-    try {
-      const response = await fetch(
-        "https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users",
-        {
+    const candidateEndpoints =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? [
+            "http://localhost:5000/api/admin/users",
+            "https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users",
+          ]
+        : ["https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users"];
+
+    let lastError = null;
+    for (const url of candidateEndpoints) {
+      try {
+        const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Access denied.");
+          setLoading(false);
+          return;
         }
-      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(data.message || "Access denied.");
+        setUsers(data.users || []);
+        setMessage("");
         setLoading(false);
         return;
+      } catch (error) {
+        lastError = error;
       }
-
-      setUsers(data.users || []);
-      setMessage("");
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
-      setMessage(
-        "Server સાથે connection થઈ શક્યું નથી."
-      );
-      setLoading(false);
     }
+
+    console.error(lastError);
+    setMessage(
+      "Server સાથે connection થઈ શક્યું નથી."
+    );
+    setLoading(false);
   };
 
   const fetchFeedbacks = async (isRefresh = false) => {
@@ -728,24 +740,39 @@ function Admin() {
 
     const token = getValidToken();
 
+    const candidateEndpoints =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? [
+            `http://localhost:5000/api/admin/users/${userId}`,
+            `https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users/${userId}`,
+          ]
+        : [`https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users/${userId}`];
+
     try {
       setDeletingId(userId);
 
-      const response = await fetch(
-        `https://bhagavad-gita-backend-jy1a.onrender.com/api/admin/users/${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      let response = null;
+      let data = null;
+
+      for (const url of candidateEndpoints) {
+        try {
+          response = await fetch(url, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          data = await response.json();
+          break;
+        } catch (e) {
+          // try next
         }
-      );
+      }
 
-      const data = await response.json();
-
-      if (!response.ok) {
+      if (!response || !response.ok) {
         alert(
-          data.message ||
+          (data && data.message) ||
             "User delete થઈ શક્યો નથી."
         );
 
@@ -782,8 +809,7 @@ function Admin() {
   const getSuperAdminRank = (user) => {
     const email = (user?.email || "").toLowerCase().trim();
     if (email === "gitagyanm700@gmail.com") return 1;
-    if (email === "aambaliyamanav@gmail.com") return 2;
-    if (isSuperAdminUser(user)) return 3;
+    if (email === "250230107002manav@gmail.com") return 2;
     return 99;
   };
 
@@ -820,7 +846,7 @@ function Admin() {
       const rankA = getSuperAdminRank(a);
       const rankB = getSuperAdminRank(b);
 
-      // 1. Super Admins always come first in fixed order (#1 gitagyanm700, #2 aambaliyamanav)
+      // 1. Super Admins always come first in fixed order (#1 gitagyanm700, #2 250230107002manav)
       if (rankA !== rankB) {
         return rankA - rankB;
       }
@@ -2313,7 +2339,7 @@ function Admin() {
                       const isSuper = isSuperAdminUser(user);
                       const isSubAdmin = user.role === "admin" && !isSuper;
                       const isMainSuper = (user.email || "").toLowerCase() === "gitagyanm700@gmail.com";
-                      const isCoSuper = (user.email || "").toLowerCase() === "aambaliyamanav@gmail.com";
+                      const isCoSuper = (user.email || "").toLowerCase() === "250230107002manav@gmail.com";
 
                       return (
                         <tr

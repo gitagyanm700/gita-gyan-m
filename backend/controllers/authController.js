@@ -2,6 +2,12 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const {
+  SUPER_ADMIN_EMAILS,
+  isSuperAdminEmail,
+  isSuperAdminUser,
+  ALL_PERMISSIONS: ALL_SUPER_ADMIN_PERMISSIONS,
+} = require("../config/constants");
 
 // =====================================================
 // EMAIL TRANSPORTER (GMAIL SMTP FALLBACK)
@@ -1025,27 +1031,11 @@ const registerUser = async (
 
         isSuperAdmin:
           user.isSuperAdmin ||
-          (user.email && ["gitagyanm700@gmail.com", "aambaliyamanav@gmail.com"].includes(user.email.toLowerCase())),
+          (user.email && isSuperAdminEmail(user.email)),
 
         permissions:
-          (user.isSuperAdmin || (user.email && ["gitagyanm700@gmail.com", "aambaliyamanav@gmail.com"].includes(user.email.toLowerCase())))
-            ? [
-                "add_shloks",
-                "edit_shloks",
-                "delete_shloks",
-                "manage_shloks",
-                "add_quiz",
-                "edit_quiz",
-                "manage_quiz",
-                "delete_quiz",
-                "share_quiz",
-                "view_analytics",
-                "manage_feedbacks",
-                "delete_feedbacks",
-                "manage_users",
-                "delete_users",
-                "manage_admins",
-              ]
+          (user.isSuperAdmin || (user.email && isSuperAdminEmail(user.email)))
+            ? ALL_SUPER_ADMIN_PERMISSIONS
             : Array.isArray(user.permissions)
             ? user.permissions
             : (user.role === "admin"
@@ -1192,27 +1182,11 @@ const loginUser = async (
 
         isSuperAdmin:
           user.isSuperAdmin ||
-          (user.email && ["gitagyanm700@gmail.com", "aambaliyamanav@gmail.com"].includes(user.email.toLowerCase())),
+          (user.email && isSuperAdminEmail(user.email)),
 
         permissions:
-          (user.isSuperAdmin || (user.email && ["gitagyanm700@gmail.com", "aambaliyamanav@gmail.com"].includes(user.email.toLowerCase())))
-            ? [
-                "add_shloks",
-                "edit_shloks",
-                "delete_shloks",
-                "manage_shloks",
-                "add_quiz",
-                "edit_quiz",
-                "manage_quiz",
-                "delete_quiz",
-                "share_quiz",
-                "view_analytics",
-                "manage_feedbacks",
-                "delete_feedbacks",
-                "manage_users",
-                "delete_users",
-                "manage_admins",
-              ]
+          (user.isSuperAdmin || (user.email && isSuperAdminEmail(user.email)))
+            ? ALL_SUPER_ADMIN_PERMISSIONS
             : Array.isArray(user.permissions)
             ? user.permissions
             : (user.role === "admin"
@@ -1274,7 +1248,7 @@ const getProfile = async (
 
     const isSuper =
       user.isSuperAdmin ||
-      (user.email && user.email.toLowerCase() === "gitagyanm700@gmail.com");
+      (user.email && isSuperAdminEmail(user.email));
 
     const userObj = user.toObject ? user.toObject() : user;
 
@@ -1282,21 +1256,22 @@ const getProfile = async (
       user: {
         ...userObj,
         isSuperAdmin: isSuper,
-        permissions:
-          user.permissions ||
-          (user.role === "admin"
-            ? [
-                "add_shloks",
-                "edit_shloks",
-                "add_quiz",
-                "edit_quiz",
-                "share_quiz",
-                "view_analytics",
-                "manage_feedbacks",
-                "manage_users",
-                "manage_admins",
-              ]
-            : []),
+        permissions: isSuper
+          ? ALL_SUPER_ADMIN_PERMISSIONS
+          : user.permissions ||
+            (user.role === "admin"
+              ? [
+                  "add_shloks",
+                  "edit_shloks",
+                  "add_quiz",
+                  "edit_quiz",
+                  "share_quiz",
+                  "view_analytics",
+                  "manage_feedbacks",
+                  "manage_users",
+                  "manage_admins",
+                ]
+              : []),
       },
     });
 

@@ -182,9 +182,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
-  padding: 1px 0 2px;
+  max-width: 440px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
 }
 
 .theme-color-btn {

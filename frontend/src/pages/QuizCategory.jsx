@@ -250,7 +250,7 @@ function QuizCategory() {
     }
   }, [selectedChapter, quizSummary, quizType, selectedShlokaRange]);
 
-  // Synchronize category preferences with sessionStorage, localStorage, and URL for refresh persistence
+  // Synchronize category preferences with sessionStorage and localStorage for refresh persistence
   useEffect(() => {
     try {
       const prefs = {
@@ -261,26 +261,6 @@ function QuizCategory() {
       };
       sessionStorage.setItem("gita_quiz_category_prefs", JSON.stringify(prefs));
       localStorage.setItem("gita_quiz_category_prefs", JSON.stringify(prefs));
-
-      const params = new URLSearchParams(window.location.search);
-      params.set("category", quizType);
-      if (quizType === "chapter" && selectedChapter) {
-        params.set("chapter", selectedChapter);
-        if (selectedShlokaRange && selectedShlokaRange !== "all") {
-          params.set("shlokaRange", selectedShlokaRange);
-        } else {
-          params.delete("shlokaRange");
-        }
-      } else {
-        params.delete("chapter");
-        params.delete("shlokaRange");
-      }
-      if (questionCount) {
-        params.set("count", String(questionCount));
-      }
-
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState(window.history.state, "", newUrl);
     } catch (e) {}
   }, [quizType, selectedChapter, selectedShlokaRange, questionCount]);
 

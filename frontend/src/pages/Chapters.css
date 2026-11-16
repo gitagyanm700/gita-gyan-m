@@ -72,8 +72,8 @@
   position: relative;
   text-align: center;
   max-width: 1180px;
-  margin: 38px auto 0;
-  padding: 48px 25px 38px;
+  margin: 8px auto 0;
+  padding: 16px 20px 24px;
   border-radius: 0;
   background: transparent !important;
   border: none !important;
@@ -285,6 +285,47 @@ body.dark .offline-downloading-box {
     box-shadow 0.3s ease,
     border-color 0.3s ease,
     background 0.3s ease;
+  cursor: pointer;
+}
+
+.chapter-card-thumb {
+  width: 100%;
+  height: 120px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.chapter-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.chapter-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.chapter-card-num {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.chapter-card-count {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.chapter-card-arrow {
+  display: none;
 }
 
 
@@ -365,72 +406,6 @@ body.dark .offline-downloading-box {
 
 
 /* =========================================================
-   CHAPTER NUMBER
-   ========================================================= */
-
-.chapter-number {
-  position: relative;
-  z-index: 2;
-
-  display: inline-flex;
-
-  align-items: center;
-  justify-content: center;
-
-  min-width: 82px;
-  height: 36px;
-
-  margin-bottom: 20px;
-
-  padding: 0 14px;
-
-  border-radius: 11px;
-
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff 0%,
-      #e7f3ff 100%
-    );
-
-  border: 1px solid #c5ddf3;
-
-  color: #1769aa;
-
-  font-family:
-    "Noto Sans Gujarati",
-    "Noto Sans",
-    sans-serif;
-
-  font-size: 13px;
-
-  font-weight: 800;
-
-  box-shadow:
-    0 5px 0 #b7d2e9,
-    0 8px 15px rgba(25, 91, 145, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    background 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease;
-}
-
-
-.chapter-card:hover .chapter-number {
-  transform: translateY(-3px);
-
-  box-shadow:
-    0 7px 0 #abcbe6,
-    0 12px 20px rgba(25, 91, 145, 0.17),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-}
-
-
-/* =========================================================
    CHAPTER TITLE
    ========================================================= */
 
@@ -440,14 +415,12 @@ body.dark .offline-downloading-box {
 
   width: 100%;
 
-  min-height: 58px;
-
   display: flex;
 
   align-items: center;
   justify-content: center;
 
-  margin: 0 0 10px;
+  margin: 0;
 
   color: #245a8d;
 
@@ -468,150 +441,6 @@ body.dark .offline-downloading-box {
     0 1px 2px rgba(30, 80, 125, 0.10);
 
   transition: color 0.3s ease;
-}
-
-
-/* =========================================================
-   SHLOKA COUNT
-   ========================================================= */
-
-.chapter-card p {
-  position: relative;
-  z-index: 2;
-
-  margin: 0 0 18px;
-
-  color: #6d849c;
-
-  font-family:
-    "Noto Sans Gujarati",
-    "Noto Sans",
-    sans-serif;
-
-  font-size: 13px;
-
-  line-height: 1.5;
-
-  font-weight: 600;
-
-  transition: color 0.3s ease;
-}
-
-
-/* =========================================================
-   READ CHAPTER BUTTON
-   ========================================================= */
-
-.chapter-card button {
-  position: relative;
-  z-index: 3;
-
-  width: 150px;
-
-  min-height: 40px;
-
-  margin-top: auto;
-
-  padding: 10px 17px;
-
-  border: none;
-
-  border-radius: 11px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #0d47a1 0%,
-      #1565c0 48%,
-      #1976d2 100%
-    );
-
-  color: #ffffff;
-
-  font-family:
-    "Noto Sans Gujarati",
-    "Noto Sans",
-    sans-serif;
-
-  font-size: 13px;
-
-  font-weight: 800;
-
-  letter-spacing: 0.1px;
-
-  cursor: pointer;
-
-  overflow: hidden;
-
-  box-shadow:
-    0 5px 0 #084080,
-    0 10px 18px rgba(13, 71, 161, 0.23),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
-
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease;
-}
-
-
-/* =========================================================
-   BUTTON SHINE
-   ========================================================= */
-
-.chapter-card button::before {
-  content: "";
-
-  position: absolute;
-
-  top: 0;
-  left: -120%;
-
-  width: 65%;
-  height: 100%;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.48),
-      transparent
-    );
-
-  transform: skewX(-25deg);
-
-  transition: left 0.6s ease;
-}
-
-
-/* =========================================================
-   BUTTON HOVER
-   ========================================================= */
-
-.chapter-card button:hover {
-  transform: translateY(-4px);
-
-  box-shadow:
-    0 8px 0 #084080,
-    0 16px 27px rgba(13, 71, 161, 0.31),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
-}
-
-
-.chapter-card button:hover::before {
-  left: 135%;
-}
-
-
-/* =========================================================
-   BUTTON ACTIVE
-   ========================================================= */
-
-.chapter-card button:active {
-  transform: translateY(2px);
-
-  box-shadow:
-    0 2px 0 #084080,
-    0 6px 12px rgba(13, 71, 161, 0.18);
 }
 
 
@@ -768,34 +597,6 @@ body.dark .offline-downloading-box {
    DARK CHAPTER NUMBER
 ========================================================= */
 
-[data-theme="dark"] .chapter-number {
-  background:
-    linear-gradient(
-      145deg,
-      #29445a 0%,
-      #1c3448 100%
-    );
-
-  border-color:
-    rgba(144, 202, 249, 0.24);
-
-  color: #b9ddff;
-
-  box-shadow:
-    0 5px 0 #142b3e,
-    0 8px 15px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-
-[data-theme="dark"] .chapter-card:hover .chapter-number {
-  box-shadow:
-    0 7px 0 #12283a,
-    0 12px 20px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-
 /* =========================================================
    DARK CHAPTER TITLE
 ========================================================= */
@@ -805,50 +606,6 @@ body.dark .offline-downloading-box {
 
   text-shadow:
     0 1px 3px rgba(0, 0, 0, 0.25);
-}
-
-
-/* =========================================================
-   DARK SHLOKA COUNT
-========================================================= */
-
-[data-theme="dark"] .chapter-card p {
-  color: #9dbbd2;
-}
-
-
-/* =========================================================
-   DARK BUTTON
-========================================================= */
-
-[data-theme="dark"] .chapter-card button {
-  background:
-    linear-gradient(
-      135deg,
-      #1565c0 0%,
-      #1976d2 48%,
-      #42a5f5 100%
-    );
-
-  box-shadow:
-    0 5px 0 #0b3c70,
-    0 10px 18px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
-
-
-[data-theme="dark"] .chapter-card button:hover {
-  box-shadow:
-    0 8px 0 #0b3c70,
-    0 16px 27px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
-}
-
-
-[data-theme="dark"] .chapter-card button:active {
-  box-shadow:
-    0 2px 0 #0b3c70,
-    0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 
@@ -872,7 +629,7 @@ body.dark .offline-downloading-box {
   }
 
   .chapter-card {
-    min-height: 220px;
+    min-height: auto;
   }
 
   .chapter-card h2 {
@@ -912,45 +669,134 @@ body.dark .offline-downloading-box {
   }
 
   .chapters-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-
-    gap: 16px;
-
-    margin-top: 28px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 540px !important;
+    margin: 16px auto 0 !important;
+    padding: 0 14px 24px !important;
+    grid-template-columns: none !important;
   }
 
   .chapter-card {
-    min-height: 215px;
-
-    padding: 21px 15px 18px;
-
-    border-radius: 19px;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    text-align: left !important;
+    padding: 10px 14px 10px 10px !important;
+    border-radius: 16px !important;
+    gap: 14px !important;
+    cursor: pointer !important;
+    background: rgba(10, 24, 52, 0.82) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(80, 140, 255, 0.22) !important;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
   }
 
-  .chapter-card h2 {
-    font-size: 18px;
+  .chapter-card:hover,
+  .chapter-card:active {
+    transform: translateY(-2px) !important;
+    border-color: rgba(245, 158, 11, 0.5) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55), 0 0 12px rgba(245, 158, 11, 0.2) !important;
   }
 
-  .chapter-number {
-    min-width: 78px;
-    height: 34px;
-
-    margin-bottom: 17px;
-
-    font-size: 12px;
+  .chapter-card-thumb {
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    border: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25) !important;
+    background: #0a1f4b !important;
   }
 
-  .chapter-card p {
-    font-size: 12px;
+  .chapter-card-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
   }
 
-  .chapter-card button {
-    width: 140px;
+  .chapter-card-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    text-align: left !important;
+  }
 
-    min-height: 39px;
+  .chapter-card-info .chapter-card-num {
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    color: #fbbf24 !important;
+    letter-spacing: 0.3px !important;
+  }
 
-    font-size: 12px;
+  .chapter-card-info h2 {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.3 !important;
+  }
+
+  .chapter-card-info .chapter-card-count {
+    font-size: 0.74rem !important;
+    color: #94a3b8 !important;
+    font-weight: 500 !important;
+  }
+
+  .chapter-card-arrow {
+    display: block !important;
+    color: rgba(245, 158, 11, 0.6) !important;
+    flex-shrink: 0 !important;
+    transition: transform 0.2s ease, color 0.2s ease !important;
+  }
+
+  .chapter-card:hover .chapter-card-arrow,
+  .chapter-card:active .chapter-card-arrow {
+    color: #fbbf24 !important;
+    transform: translateX(3px) !important;
+  }
+
+  /* Light Theme Variant for Mobile Chapter Card */
+  html[data-theme="light"] .chapter-card,
+  .light .chapter-card {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border: 1.5px solid rgba(200, 220, 245, 0.9) !important;
+    box-shadow: 0 4px 16px rgba(25, 80, 160, 0.08) !important;
+  }
+
+  html[data-theme="light"] .chapter-card-info .chapter-card-num,
+  .light .chapter-card-info .chapter-card-num {
+    color: #d97706 !important;
+  }
+
+  html[data-theme="light"] .chapter-card-info h2,
+  .light .chapter-card-info h2 {
+    color: #0f172a !important;
+  }
+
+  html[data-theme="light"] .chapter-card-info .chapter-card-count,
+  .light .chapter-card-info .chapter-card-count {
+    color: #64748b !important;
+  }
+
+  html[data-theme="light"] .chapter-card-arrow,
+  .light .chapter-card-arrow {
+    color: #1565c0 !important;
   }
 }
 
@@ -993,82 +839,6 @@ body.dark .offline-downloading-box {
     line-height: 1.65;
   }
 
-  .chapters-grid {
-    width: calc(100% - 20px);
-
-    margin-top: 22px;
-
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-
-    gap: 12px;
-  }
-
-  .chapter-card {
-    min-height: 205px;
-
-    padding: 18px 10px 15px;
-
-    border-radius: 17px;
-  }
-
-  .chapter-number {
-    min-width: 70px;
-
-    height: 32px;
-
-    margin-bottom: 14px;
-
-    padding: 0 9px;
-
-    border-radius: 9px;
-
-    font-size: 11px;
-
-    box-shadow:
-      0 4px 0 #b7d2e9,
-      0 7px 12px rgba(25, 91, 145, 0.11);
-  }
-
-  .chapter-card h2 {
-    min-height: 57px;
-
-    margin-bottom: 7px;
-
-    font-size: 16px;
-
-    line-height: 1.4;
-  }
-
-  .chapter-card p {
-    margin-bottom: 13px;
-
-    font-size: 11px;
-  }
-
-  .chapter-card button {
-    width: 125px;
-
-    min-height: 36px;
-
-    padding: 8px 10px;
-
-    border-radius: 9px;
-
-    font-size: 11px;
-
-    box-shadow:
-      0 4px 0 #084080,
-      0 8px 14px rgba(13, 71, 161, 0.21);
-  }
-
-  .chapter-card:hover {
-    transform: translateY(-5px);
-  }
-
-  .chapter-card button:hover {
-    transform: translateY(-3px);
-  }
 }
 
 
@@ -1087,45 +857,6 @@ body.dark .offline-downloading-box {
     font-size: 24px;
   }
 
-  .chapters-grid {
-    width: calc(100% - 16px);
-
-    gap: 9px;
-  }
-
-  .chapter-card {
-    min-height: 195px;
-
-    padding: 16px 8px 13px;
-
-    border-radius: 15px;
-  }
-
-  .chapter-number {
-    min-width: 65px;
-
-    height: 30px;
-
-    font-size: 10px;
-  }
-
-  .chapter-card h2 {
-    font-size: 14px;
-
-    min-height: 54px;
-  }
-
-  .chapter-card p {
-    font-size: 10px;
-  }
-
-  .chapter-card button {
-    width: 112px;
-
-    min-height: 34px;
-
-    font-size: 10px;
-  }
 }
 
 

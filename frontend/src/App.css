@@ -191,3 +191,197 @@ body[data-theme="dark"] .home-fixed-bg {
   }
 }
 
+/* ==========================================================================
+   ROYAL VEDIC DARK MODE BUTTON EFFECT (SITE-WIDE)
+   Matches the iconic Reader Nav Button in Dark Mode:
+   - Deep spiritual midnight-navy gradient background (#0b1a3a -> #152754)
+   - Luminous gold inner border (1.5px solid rgba(212, 175, 55, 0.65))
+   - Radiant golden-yellow bold text & icons (#fbbf24)
+   - Distinctive Concentric Outer Halo Ring (outline: 2px solid rgba(80, 140, 255, 0.55); outline-offset: 3.5px)
+   - Soft spiritual golden & celestial blue ambient drop shadow
+   ========================================================================== */
+
+html[data-theme="dark"] .hero > button,
+html[data-theme="dark"] .continue-reading-button,
+html[data-theme="dark"] .today-shlok-button,
+html[data-theme="dark"] .today-share-button,
+html[data-theme="dark"] .quiz-button,
+html[data-theme="dark"] .tracker-hero-btn,
+html[data-theme="dark"] .search-button,
+html[data-theme="dark"] .search-stepper-btn,
+html[data-theme="dark"] .chapter-card button,
+html[data-theme="dark"] .card-navigate-btn,
+html[data-theme="dark"] .quiz-start-button,
+html[data-theme="dark"] .quiz-next-btn,
+html[data-theme="dark"] .quiz-prev-btn,
+html[data-theme="dark"] .quiz-complete-actions button,
+html[data-theme="dark"] .quiz-error-actions button,
+html[data-theme="dark"] .quiz-empty button,
+html[data-theme="dark"] .quiz-result-actions button,
+html[data-theme="dark"] .quiz-result-new-btn,
+html[data-theme="dark"] .quiz-history-retake-btn,
+html[data-theme="dark"] .rt-start-btn,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn):not(.theme-color-btn),
+html[data-theme="dark"] .share-quiz-action-btn:not(.share-quiz-whatsapp-btn):not(.theme-color-btn),
+html[data-theme="dark"] .feedback-submit-btn,
+body.dark .hero > button,
+body.dark .continue-reading-button,
+body.dark .today-shlok-button,
+body.dark .today-share-button,
+body.dark .quiz-button,
+body.dark .tracker-hero-btn,
+body.dark .search-button,
+body.dark .card-navigate-btn,
+body.dark .quiz-start-button,
+body.dark .quiz-next-btn,
+body.dark .quiz-prev-btn,
+body.dark .quiz-complete-actions button,
+body.dark .quiz-result-actions button,
+body.dark .action-btn:not(.whatsapp-btn):not(.theme-color-btn),
+body.dark .feedback-submit-btn {
+  background: linear-gradient(135deg, #0b1a3a 0%, #152754 100%) !important;
+  color: #fbbf24 !important;
+  border: 1.5px solid rgba(212, 175, 55, 0.65) !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 12px rgba(245, 158, 11, 0.22) !important;
+  font-weight: 700 !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Icons inside dark buttons */
+html[data-theme="dark"] .hero > button svg,
+html[data-theme="dark"] .continue-reading-button svg,
+html[data-theme="dark"] .today-shlok-button svg,
+html[data-theme="dark"] .today-share-button svg,
+html[data-theme="dark"] .quiz-button svg,
+html[data-theme="dark"] .tracker-hero-btn svg,
+html[data-theme="dark"] .search-button svg,
+html[data-theme="dark"] .chapter-card button svg,
+html[data-theme="dark"] .card-navigate-btn svg,
+html[data-theme="dark"] .quiz-start-button svg,
+html[data-theme="dark"] .quiz-next-btn svg,
+html[data-theme="dark"] .quiz-prev-btn svg,
+html[data-theme="dark"] .quiz-complete-actions button svg,
+html[data-theme="dark"] .quiz-result-actions button svg,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn) svg,
+html[data-theme="dark"] .feedback-submit-btn svg,
+body.dark .hero > button svg,
+body.dark .continue-reading-button svg,
+body.dark .today-shlok-button svg,
+body.dark .quiz-button svg,
+body.dark .tracker-hero-btn svg,
+body.dark .card-navigate-btn svg,
+body.dark .quiz-start-button svg,
+body.dark .action-btn:not(.whatsapp-btn) svg {
+  color: #fbbf24 !important;
+}
+
+/* Hover and Focus effect across all dark buttons */
+html[data-theme="dark"] .hero > button:hover,
+html[data-theme="dark"] .continue-reading-button:hover,
+html[data-theme="dark"] .today-shlok-button:hover,
+html[data-theme="dark"] .today-share-button:hover,
+html[data-theme="dark"] .quiz-button:hover,
+html[data-theme="dark"] .tracker-hero-btn:hover,
+html[data-theme="dark"] .search-button:hover:not(:disabled),
+html[data-theme="dark"] .chapter-card button:hover,
+html[data-theme="dark"] .card-navigate-btn:hover,
+html[data-theme="dark"] .quiz-start-button:hover:not(:disabled),
+html[data-theme="dark"] .quiz-next-btn:hover:not(:disabled),
+html[data-theme="dark"] .quiz-prev-btn:hover:not(:disabled),
+html[data-theme="dark"] .quiz-complete-actions button:hover,
+html[data-theme="dark"] .quiz-result-actions button:hover,
+html[data-theme="dark"] .quiz-result-new-btn:hover,
+html[data-theme="dark"] .quiz-history-retake-btn:hover,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn):hover:not(:disabled),
+html[data-theme="dark"] .feedback-submit-btn:hover:not(:disabled),
+body.dark .hero > button:hover,
+body.dark .continue-reading-button:hover,
+body.dark .today-shlok-button:hover,
+body.dark .quiz-button:hover,
+body.dark .card-navigate-btn:hover,
+body.dark .quiz-start-button:hover:not(:disabled),
+body.dark .action-btn:not(.whatsapp-btn):hover:not(:disabled) {
+  background: linear-gradient(135deg, #132759 0%, #1c3674 100%) !important;
+  border-color: #f59e0b !important;
+  outline: none !important;
+  outline-offset: 0 !important;
+  color: #fef08a !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.38), 0 0 16px rgba(59, 130, 246, 0.35) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Blue Halo Ring ONLY on Click / Focus across all dark buttons */
+html[data-theme="dark"] .hero > button:focus,
+html[data-theme="dark"] .continue-reading-button:focus,
+html[data-theme="dark"] .today-shlok-button:focus,
+html[data-theme="dark"] .today-share-button:focus,
+html[data-theme="dark"] .quiz-button:focus,
+html[data-theme="dark"] .tracker-hero-btn:focus,
+html[data-theme="dark"] .search-button:focus,
+html[data-theme="dark"] .chapter-card button:focus,
+html[data-theme="dark"] .card-navigate-btn:focus,
+html[data-theme="dark"] .quiz-start-button:focus,
+html[data-theme="dark"] .quiz-next-btn:focus,
+html[data-theme="dark"] .quiz-prev-btn:focus,
+html[data-theme="dark"] .quiz-complete-actions button:focus,
+html[data-theme="dark"] .quiz-error-actions button:focus,
+html[data-theme="dark"] .quiz-empty button:focus,
+html[data-theme="dark"] .quiz-result-actions button:focus,
+html[data-theme="dark"] .quiz-result-new-btn:focus,
+html[data-theme="dark"] .quiz-history-retake-btn:focus,
+html[data-theme="dark"] .rt-start-btn:focus,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn):not(.theme-color-btn):focus,
+html[data-theme="dark"] .share-quiz-action-btn:not(.share-quiz-whatsapp-btn):not(.theme-color-btn):focus,
+html[data-theme="dark"] .feedback-submit-btn:focus,
+body.dark .hero > button:focus,
+body.dark .continue-reading-button:focus,
+body.dark .today-shlok-button:focus,
+body.dark .today-share-button:focus,
+body.dark .quiz-button:focus,
+body.dark .tracker-hero-btn:focus,
+body.dark .search-button:focus,
+body.dark .card-navigate-btn:focus,
+body.dark .quiz-start-button:focus,
+body.dark .quiz-next-btn:focus,
+body.dark .quiz-prev-btn:focus,
+body.dark .quiz-complete-actions button:focus,
+body.dark .quiz-result-actions button:focus,
+body.dark .action-btn:not(.whatsapp-btn):not(.theme-color-btn):focus,
+body.dark .feedback-submit-btn:focus {
+  outline: 2px solid rgba(80, 140, 255, 0.95) !important;
+  outline-offset: 3.5px !important;
+}
+
+/* Stepper button compact focus ring on Click */
+html[data-theme="dark"] .search-stepper-btn:focus,
+body.dark .search-stepper-btn:focus {
+  outline: 1.5px solid rgba(80, 140, 255, 0.95) !important;
+  outline-offset: 1px !important;
+}
+
+/* Hover icons */
+html[data-theme="dark"] .hero > button:hover svg,
+html[data-theme="dark"] .continue-reading-button:hover svg,
+html[data-theme="dark"] .today-shlok-button:hover svg,
+html[data-theme="dark"] .quiz-button:hover svg,
+html[data-theme="dark"] .card-navigate-btn:hover svg,
+html[data-theme="dark"] .quiz-start-button:hover svg,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn):hover svg {
+  color: #fef08a !important;
+}
+
+/* Active / Pressed */
+html[data-theme="dark"] .hero > button:active,
+html[data-theme="dark"] .continue-reading-button:active,
+html[data-theme="dark"] .today-shlok-button:active,
+html[data-theme="dark"] .quiz-button:active,
+html[data-theme="dark"] .card-navigate-btn:active,
+html[data-theme="dark"] .quiz-start-button:active,
+html[data-theme="dark"] .action-btn:not(.whatsapp-btn):active,
+body.dark button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.25) !important;
+}
+

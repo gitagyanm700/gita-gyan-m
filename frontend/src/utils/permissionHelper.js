@@ -4,7 +4,7 @@
 
 export const SUPER_ADMIN_EMAILS = [
   "gitagyanm700@gmail.com",
-  "aambaliyamanav@gmail.com",
+  "250230107002manav@gmail.com",
 ];
 
 export const SUPER_ADMIN_EMAIL = "gitagyanm700@gmail.com";
@@ -126,20 +126,14 @@ export const ALL_PERMISSIONS = [
 ];
 
 /**
- * Checks if the user is the primary Super Admin (Master Admin)
+ * Strictly checks whether the user is one of the 2 designated Super Admins
  */
 export function isSuperAdminUser(user) {
-  if (!user) return false;
-  if (user.isSuperAdmin === true) return true;
-  if (
-    user.email &&
-    SUPER_ADMIN_EMAILS.some(
-      (em) => em.toLowerCase() === user.email.toLowerCase()
-    )
-  ) {
-    return true;
-  }
-  return false;
+  if (!user || !user.email) return false;
+  const normalizedEmail = String(user.email).trim().toLowerCase();
+  return SUPER_ADMIN_EMAILS.some(
+    (em) => em.toLowerCase() === normalizedEmail
+  );
 }
 
 /**

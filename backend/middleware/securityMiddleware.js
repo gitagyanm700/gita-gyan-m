@@ -181,16 +181,21 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:5173",
 ];
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith(".vercel.app") || origin.endsWith(".onrender.com")) return true;
+  // Allow all localhost, 127.0.0.1, [::1], and private LAN IPs (192.168.*, 10.*, 172.16-31.*) with any port
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+  return false;
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow mobile apps, curl, or standalone PWA where origin might be undefined or localhost
-    if (!origin) return callback(null, true);
-
-    if (
-      ALLOWED_ORIGINS.includes(origin) ||
-      origin.endsWith(".vercel.app") ||
-      origin.endsWith(".onrender.com")
-    ) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 

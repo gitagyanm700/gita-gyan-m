@@ -1,15 +1,11 @@
 const User = require("../models/User");
 const Visitor = require("../models/Visitor");
-
-const SUPER_ADMIN_EMAILS = [
-  "gitagyanm700@gmail.com",
-  "aambaliyamanav@gmail.com",
-];
-
-const isSuperAdminEmail = (email) => {
-  if (!email) return false;
-  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
-};
+const {
+  SUPER_ADMIN_EMAILS,
+  isSuperAdminEmail,
+  isSuperAdminUser,
+  ALL_PERMISSIONS,
+} = require("../config/constants");
 
 // =====================================================
 // GET ALL USERS
@@ -44,28 +40,10 @@ const getAllUsers = async (req, res) => {
       }
     });
 
-    const ALL_PERMS = [
-      "add_shloks",
-      "edit_shloks",
-      "delete_shloks",
-      "manage_shloks",
-      "add_quiz",
-      "edit_quiz",
-      "delete_quiz",
-      "share_quiz",
-      "manage_quiz",
-      "view_analytics",
-      "manage_feedbacks",
-      "delete_feedbacks",
-      "manage_users",
-      "delete_users",
-      "manage_admins",
-    ];
+    const ALL_PERMS = ALL_PERMISSIONS;
 
     const usersWithVisits = users.map((u) => {
-      const isSuper =
-        u.isSuperAdmin ||
-        isSuperAdminEmail(u.email);
+      const isSuper = isSuperAdminEmail(u.email);
 
       return {
         ...u,
@@ -78,8 +56,7 @@ const getAllUsers = async (req, res) => {
     const getSuperAdminRank = (u) => {
       const email = (u.email || "").toLowerCase().trim();
       if (email === "gitagyanm700@gmail.com") return 1;
-      if (email === "aambaliyamanav@gmail.com") return 2;
-      if (u.isSuperAdmin) return 3;
+      if (email === "250230107002manav@gmail.com") return 2;
       return 99;
     };
 
@@ -87,7 +64,7 @@ const getAllUsers = async (req, res) => {
       const rankA = getSuperAdminRank(a);
       const rankB = getSuperAdminRank(b);
 
-      // 1. Super Admins always come first in fixed order (#1 gitagyanm700, #2 aambaliyamanav)
+      // 1. Super Admins always come first in fixed order (#1 gitagyanm700, #2 250230107002manav)
       if (rankA !== rankB) {
         return rankA - rankB;
       }
@@ -144,7 +121,6 @@ const deleteUser = async (req, res) => {
 
     // Super Admin cannot be deleted
     if (
-      targetUser.isSuperAdmin ||
       isSuperAdminEmail(targetUser.email)
     ) {
       return res.status(403).json({
@@ -214,7 +190,6 @@ const updateUserRole = async (req, res) => {
 
     // Target is Super Admin -> Nobody can demote or alter their permissions
     if (
-      targetUser.isSuperAdmin ||
       isSuperAdminEmail(targetUser.email)
     ) {
       return res.status(403).json({
@@ -258,23 +233,7 @@ const updateUserRole = async (req, res) => {
       }
     }
 
-    const validPermissions = [
-      "add_shloks",
-      "edit_shloks",
-      "delete_shloks",
-      "manage_shloks",
-      "add_quiz",
-      "edit_quiz",
-      "delete_quiz",
-      "share_quiz",
-      "manage_quiz",
-      "view_analytics",
-      "manage_feedbacks",
-      "delete_feedbacks",
-      "manage_users",
-      "delete_users",
-      "manage_admins",
-    ];
+    const validPermissions = ALL_PERMISSIONS;
 
     let cleanPermissions = [];
     if (role === "admin") {

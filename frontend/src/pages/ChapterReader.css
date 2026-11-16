@@ -124,7 +124,7 @@
 .chapter-reader {
   width: 100%;
   min-height: 100vh;
-  padding: 35px 20px 60px;
+  padding: 35px 20px 95px;
   box-sizing: border-box;
 
   background: var(--reader-bg);
@@ -263,100 +263,14 @@
 
 
 /* =========================================================
-   PROGRESS
-   ========================================================= */
-
-.reader-progress {
-  width: min(650px, 72%);
-  margin: 0 auto 25px;
-  padding: 14px 18px;
-  background: var(--reader-card-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--reader-border);
-  border-radius: 15px;
-  box-shadow: var(--reader-shadow);
-  box-sizing: border-box;
-  transition:
-    background 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
-  animation: fadeUp 0.8s ease-out 0.2s forwards;
-  opacity: 0;
-}
-
-
-/* Dark progress handled by variables */
-
-
-.progress-info {
-  display: flex;
-
-  justify-content: space-between;
-
-  align-items: center;
-
-  margin-bottom: 8px;
-
-  font-size: 14px;
-
-  font-weight: 700;
-
-  color: #35659d;
-}
-
-
-.dark .progress-info,
-[data-theme="dark"] .progress-info {
-  color: #a9c9ec;
-}
-
-
-.progress-bar {
-  width: 100%;
-
-  height: 9px;
-
-  overflow: hidden;
-
-  border-radius: 20px;
-
-  background: var(--reader-progress-bg);
-}
-
-
-.progress-fill {
-  height: 100%;
-
-  border-radius: inherit;
-
-  background:
-    linear-gradient(
-      90deg,
-      #60a5fa,
-      #3b82f6,
-      #2563eb
-    );
-
-  box-shadow:
-    0 2px 8px rgba(37, 99, 235, 0.3);
-
-  transition: width 0.35s ease;
-}
-
-
-/* =========================================================
    MAIN SHLOKA CARD
    ========================================================= */
 
 .shloka-card {
-  width: min(950px, 94%);
+  width: min(850px, 94%);
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 58px;
-  align-items: center;
-  gap: 14px;
-  padding: 22px;
+  display: block;
+  padding: 24px;
   box-sizing: border-box;
   background: var(--reader-card-bg-2);
   backdrop-filter: blur(24px) saturate(180%);
@@ -439,28 +353,55 @@
 
 
 /* =========================================================
-   CONTENT BOX
+   CONTENT SECTIONS (Direct in main card, no nested cards)
    ========================================================= */
 
 .content-box {
   width: 100%;
-  margin: 0 auto 18px;
-  padding: 20px;
+  margin: 0 0 16px 0;
+  padding: 14px 0;
   box-sizing: border-box;
-  border-radius: 18px;
-  border: 1px solid rgba(59, 130, 246, 0.16);
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 8px 20px rgba(30, 64, 175, 0.05);
+  border-radius: 0;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   position: relative;
-  transition:
-    background 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
 }
 
 [data-theme="dark"] .content-box {
-  background: rgba(10, 25, 55, 0.45);
-  border: 1px solid rgba(96, 165, 250, 0.15);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.content-box.sanskrit-box {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding-top: 0;
+}
+
+.content-box.translation-box {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-top: 1.5px dashed rgba(59, 130, 246, 0.22) !important;
+  padding-top: 20px !important;
+}
+
+.content-box.message-box {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-top: 1.5px dashed rgba(59, 130, 246, 0.22) !important;
+  padding-top: 20px !important;
+}
+
+.dark .content-box.translation-box,
+[data-theme="dark"] .content-box.translation-box,
+.dark .content-box.message-box,
+[data-theme="dark"] .content-box.message-box {
+  border-top-color: rgba(96, 165, 250, 0.22) !important;
 }
 
 
@@ -479,29 +420,7 @@
 }
 
 
-/* =========================================================
-   SANSKRIT BOX
-   ========================================================= */
 
-.sanskrit-box {
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #edf6ff
-    );
-}
-
-
-.dark .sanskrit-box,
-[data-theme="dark"] .sanskrit-box {
-  background:
-    linear-gradient(
-      145deg,
-      #122842,
-      #0d2038
-    );
-}
 
 
 /* =========================================================
@@ -932,27 +851,6 @@
    TRANSLATION
    ========================================================= */
 
-.translation-box {
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #f4f9ff
-    );
-}
-
-
-.dark .translation-box,
-[data-theme="dark"] .translation-box {
-  background:
-    linear-gradient(
-      145deg,
-      #112842,
-      #0d2139
-    );
-}
-
-
 .gujarati-meaning {
   font-size: 18px;
 
@@ -967,33 +865,58 @@
   overflow-wrap: anywhere;
 }
 
+/* =========================================================
+   SPEAKER & BOLD TEXT VISIBILITY (DARK & LIGHT THEMES)
+   Guarantees 'ધૃતરાષ્ટ્રે કહ્યું :' and key phrases stand out
+   ========================================================= */
+
+.dark .gujarati-meaning b,
+.dark .gujarati-meaning strong,
+[data-theme="dark"] .gujarati-meaning b,
+[data-theme="dark"] .gujarati-meaning strong,
+.dark .formatted-content b,
+.dark .formatted-content strong,
+[data-theme="dark"] .formatted-content b,
+[data-theme="dark"] .formatted-content strong,
+.dark .message-text b,
+.dark .message-text strong,
+[data-theme="dark"] .message-text b,
+[data-theme="dark"] .message-text strong {
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+}
+
+.dark .gujarati-meaning font,
+[data-theme="dark"] .gujarati-meaning font,
+.dark .formatted-content font,
+[data-theme="dark"] .formatted-content font,
+.dark .gujarati-meaning [color],
+[data-theme="dark"] .gujarati-meaning [color],
+.dark .formatted-content [color],
+[data-theme="dark"] .formatted-content [color],
+.dark .gujarati-meaning [style*="color"],
+[data-theme="dark"] .gujarati-meaning [style*="color"],
+.dark .formatted-content [style*="color"],
+[data-theme="dark"] .formatted-content [style*="color"] {
+  color: #dbeafe !important;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .gujarati-meaning b,
+:root:not(.dark):not([data-theme="dark"]) .gujarati-meaning strong,
+html[data-theme="light"] .gujarati-meaning b,
+html[data-theme="light"] .gujarati-meaning strong,
+:root:not(.dark):not([data-theme="dark"]) .formatted-content b,
+:root:not(.dark):not([data-theme="dark"]) .formatted-content strong,
+html[data-theme="light"] .formatted-content b,
+html[data-theme="light"] .formatted-content strong {
+  color: #1e3a8a !important;
+  font-weight: 700 !important;
+}
+
 
 /* =========================================================
    MESSAGE
    ========================================================= */
-
-.message-box {
-  margin-bottom: 0;
-
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #eef7ff
-    );
-}
-
-
-.dark .message-box,
-[data-theme="dark"] .message-box {
-  background:
-    linear-gradient(
-      145deg,
-      #122a45,
-      #0e233b
-    );
-}
-
 
 .message-text {
   font-size: 17px;
@@ -1043,369 +966,13 @@
 }
 
 
-/* =========================================================
-   SIDE SHLOKA BUTTONS
-   ========================================================= */
 
-.shloka-side-button {
-  width: 52px;
 
-  height: 72px;
 
-  border: none;
 
-  border-radius: 16px;
 
-  display: flex;
 
-  align-items: center;
 
-  justify-content: center;
-
-  font-size: 29px;
-
-  font-weight: 800;
-
-  color: #ffffff;
-
-  background:
-    linear-gradient(
-      145deg,
-      #60a5fa,
-      #3b82f6
-    );
-
-  cursor: pointer;
-
-  box-shadow:
-    0 8px 16px rgba(37, 99, 235, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -4px 0 rgba(30, 64, 175, 0.18);
-
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    filter 0.22s ease;
-
-  position: relative;
-
-  overflow: hidden;
-}
-
-
-/* Shine */
-
-.shloka-side-button::before {
-  content: "";
-
-  position: absolute;
-
-  top: -80%;
-
-  left: -100%;
-
-  width: 55%;
-
-  height: 250%;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.45),
-      transparent
-    );
-
-  transform: rotate(20deg);
-
-  transition: left 0.5s ease;
-}
-
-
-.shloka-side-button:hover:not(:disabled)::before {
-  left: 150%;
-}
-
-
-/* Hover */
-
-.shloka-side-button:hover:not(:disabled) {
-  transform:
-    translateY(-4px)
-    scale(1.04);
-
-  filter: brightness(1.05);
-
-  box-shadow:
-    0 13px 25px rgba(37, 99, 235, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -4px 0 rgba(30, 64, 175, 0.18);
-}
-
-
-/* Click */
-
-.shloka-side-button:active:not(:disabled) {
-  transform:
-    translateY(1px)
-    scale(0.98);
-
-  box-shadow:
-    0 5px 10px rgba(37, 99, 235, 0.20);
-}
-
-
-/* Disabled */
-
-.shloka-side-button:disabled {
-  opacity: 0.42;
-
-  cursor: not-allowed;
-
-  background:
-    linear-gradient(
-      145deg,
-      #a9cdf7,
-      #8db9ed
-    );
-
-  box-shadow:
-    0 4px 10px rgba(37, 99, 235, 0.10);
-
-  transform: none;
-}
-
-
-/* =========================================================
-   CHAPTER NAVIGATION
-   ========================================================= */
-
-.chapter-navigation {
-  width: min(950px, 94%);
-
-  margin: 32px auto 42px;
-
-  display: grid;
-
-  grid-template-columns: 1fr auto 1fr;
-
-  align-items: stretch;
-
-  gap: 15px;
-}
-
-
-/* =========================================================
-   CHAPTER NAV BUTTON
-   ========================================================= */
-
-.chapter-nav-button {
-  min-height: 78px;
-
-  border: none;
-
-  border-radius: 17px;
-
-  padding: 13px 20px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  cursor: pointer;
-
-  color: #ffffff;
-
-  background:
-    linear-gradient(
-      145deg,
-      #60a5fa,
-      #3b82f6
-    );
-
-  box-shadow:
-    0 8px 18px rgba(37, 99, 235, 0.23),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -4px 0 rgba(30, 64, 175, 0.16);
-
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    filter 0.22s ease;
-
-  position: relative;
-
-  overflow: hidden;
-}
-
-
-/* Shine */
-
-.chapter-nav-button::before {
-  content: "";
-
-  position: absolute;
-
-  top: -100%;
-
-  left: -120%;
-
-  width: 60%;
-
-  height: 300%;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.35),
-      transparent
-    );
-
-  transform: rotate(20deg);
-
-  transition: left 0.55s ease;
-}
-
-
-.chapter-nav-button:hover:not(:disabled)::before {
-  left: 150%;
-}
-
-
-/* Hover */
-
-.chapter-nav-button:hover:not(:disabled) {
-  transform: translateY(-4px);
-
-  filter: brightness(1.05);
-
-  box-shadow:
-    0 13px 27px rgba(37, 99, 235, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -4px 0 rgba(30, 64, 175, 0.18);
-}
-
-
-/* Active */
-
-.chapter-nav-button:active:not(:disabled) {
-  transform: translateY(1px);
-
-  box-shadow:
-    0 5px 12px rgba(37, 99, 235, 0.22);
-}
-
-
-/* =========================================================
-   DISABLED CHAPTER BUTTON
-   ========================================================= */
-
-.chapter-nav-button:disabled {
-  opacity: 0.45;
-
-  cursor: not-allowed;
-
-  background:
-    linear-gradient(
-      145deg,
-      #a9cdf7,
-      #8db9ed
-    );
-
-  box-shadow:
-    0 5px 12px rgba(37, 99, 235, 0.10);
-
-  transform: none;
-}
-
-
-/* =========================================================
-   CHAPTER NAV TEXT
-   ========================================================= */
-
-.chapter-nav-text {
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap: 4px;
-
-  text-align: center;
-
-  position: relative;
-
-  z-index: 2;
-}
-
-
-.chapter-nav-text h3 {
-  margin: 0;
-
-  font-size: 16px;
-
-  font-weight: 800;
-
-  line-height: 1.25;
-}
-
-
-.chapter-nav-text strong {
-  margin: 0;
-
-  font-size: 13px;
-
-  font-weight: 600;
-
-  opacity: 0.92;
-}
-
-
-/* =========================================================
-   CURRENT CHAPTER CENTER
-   ========================================================= */
-
-.chapter-nav-center {
-  min-width: 230px;
-  padding: 13px 24px;
-  border-radius: 17px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  
-  background: var(--reader-card-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(59, 130, 246, 0.20);
-  box-shadow: 0 8px 20px rgba(15, 70, 120, 0.16);
-  
-  transition:
-    background 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
-}
-
-.chapter-nav-center span {
-  margin-bottom: 4px;
-  color: var(--reader-primary);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.chapter-nav-center div {
-  color: var(--reader-heading);
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.3;
-}
 
 /* =========================================================
    ALL SHLOK SELECTOR
@@ -1966,11 +1533,6 @@
   }
 
   .shloka-card {
-    grid-template-columns:
-      50px minmax(0, 1fr) 50px;
-
-    gap: 10px;
-
     padding: 17px;
   }
 
@@ -2036,36 +1598,7 @@
 
   .shloka-card {
     width: 96%;
-
-    grid-template-columns:
-      1fr;
-
-    gap: 12px;
-
     padding: 16px;
-  }
-
-
-  .shloka-main-content {
-    order: 1;
-  }
-
-
-  .shloka-prev-button {
-    order: 2;
-
-    width: 100%;
-
-    height: 48px;
-  }
-
-
-  .shloka-next-button {
-    order: 3;
-
-    width: 100%;
-
-    height: 48px;
   }
 
 
@@ -2124,28 +1657,35 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    flex-wrap: nowrap !important;
     width: 100% !important;
     margin-bottom: 12px !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .content-box-header h3 {
     margin: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    font-size: 15px !important;
+    gap: 6px !important;
+    font-size: 14.5px !important;
     font-weight: 700 !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .content-box.message-box .content-box-header {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    flex-wrap: nowrap !important;
     position: static !important;
     width: 100% !important;
     margin-bottom: 12px !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .content-box.message-box .content-box-header h3,
@@ -2154,8 +1694,8 @@
     align-items: center !important;
     justify-content: flex-start !important;
     text-align: left !important;
-    gap: 8px !important;
-    font-size: 15px !important;
+    gap: 6px !important;
+    font-size: 14.5px !important;
     font-weight: 700 !important;
     color: var(--reader-primary) !important;
     margin: 0 !important;
@@ -2165,6 +1705,11 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     width: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .content-box.message-box .content-box-header .shloka-speech-btn {
@@ -2175,13 +1720,25 @@
   .content-box-header-actions {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
     flex-shrink: 0 !important;
+    margin-left: auto !important;
   }
 
   .shloka-speech-btn {
-    padding: 4px 10px !important;
-    font-size: 12px !important;
+    padding: 3px 8px !important;
+    font-size: 11.5px !important;
+    height: 30px !important;
+    border-radius: 15px !important;
+    white-space: nowrap !important;
+  }
+
+  .cr-speed-btn {
+    padding: 3px 7px !important;
+    font-size: 11px !important;
+    height: 30px !important;
+    border-radius: 15px !important;
+    white-space: nowrap !important;
   }
 
   [data-theme="dark"] .content-box.message-box h3,
@@ -2211,33 +1768,6 @@
     margin-bottom: 12px !important;
     line-height: 1.75 !important;
     padding-left: 2px !important;
-  }
-
-
-  /* Chapter navigation */
-
-  .chapter-navigation {
-    width: 96%;
-
-    grid-template-columns: 1fr;
-
-    gap: 10px;
-  }
-
-
-  .chapter-nav-center {
-    order: -1;
-
-    min-width: 0;
-
-    width: 100%;
-
-    box-sizing: border-box;
-  }
-
-
-  .chapter-nav-button {
-    min-height: 65px;
   }
 
 
@@ -2500,9 +2030,7 @@ button:focus-visible {
 }
 
 
-.chapter-shloka-button:focus-visible,
-.chapter-nav-button:focus-visible,
-.shloka-side-button:focus-visible {
+.chapter-shloka-button:focus-visible {
   outline: 3px solid rgba(59, 130, 246, 0.35);
 
   outline-offset: 3px;
@@ -2515,348 +2043,38 @@ button:focus-visible {
 
 
 /* =========================================================
-   ⭐ TOP ACTIONS (SHARE & FAVOURITE)
-   ========================================================= */
-
-.shloka-top-actions {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 20;
-}
-
-.shloka-top-actions .favorite-shloka-button,
-.shloka-top-actions .share-shloka-button {
-  position: relative;
-  top: auto;
-  right: auto;
-}
-
-/* =========================================================
-   SHARE SHLOKA BUTTON
-   ========================================================= */
-
-.share-shloka-button {
-  width: 48px;
-  height: 48px;
-  border: 2px solid #60a5fa;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: linear-gradient(145deg, #ffffff, #edf6ff);
-  color: #2563eb;
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: transform 0.22s ease,
-              box-shadow 0.22s ease,
-              background 0.22s ease,
-              color 0.22s ease,
-              border-color 0.22s ease;
-}
-
-.share-shloka-button:hover {
-  transform: translateY(-3px) scale(1.06);
-  color: #d4af37;
-  border-color: #d4af37;
-  background: linear-gradient(145deg, #ffffff, #fffdf2);
-  box-shadow: 0 10px 22px rgba(212, 175, 55, 0.25);
-}
-
-.share-shloka-button:active {
-  transform: translateY(1px) scale(0.96);
-}
-
-.dark .share-shloka-button,
-[data-theme="dark"] .share-shloka-button {
-  background: linear-gradient(145deg, #173455, #122b48);
-  border-color: rgba(96, 165, 250, 0.28);
-  color: #93c5fd;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
-}
-
-.dark .share-shloka-button:hover,
-[data-theme="dark"] .share-shloka-button:hover {
-  background: linear-gradient(145deg, #1d406a, #153254);
-  border-color: #ffd54f;
-  color: #ffd54f;
-  box-shadow: 0 0 18px rgba(255, 213, 79, 0.35);
-}
-
-/* =========================================================
-   FAVOURITE BUTTON
-   ========================================================= */
-
-.favorite-shloka-button {
-  position: absolute;
-
-  top: 18px;
-
-  right: 18px;
-
-  width: 48px;
-
-  height: 48px;
-
-  border: 2px solid #60a5fa;
-
-  border-radius: 50%;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  cursor: pointer;
-
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #edf6ff
-    );
-
-  color: #6b8fb8;
-
-  font-size: 25px;
-
-  line-height: 1;
-
-  box-shadow:
-    0 6px 14px rgba(37, 99, 235, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-
-  transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    background 0.22s ease,
-    color 0.22s ease;
-}
-
-
-/* Favourite button hover */
-
-.favorite-shloka-button:hover {
-  transform:
-    translateY(-3px)
-    scale(1.06);
-
-  color: #2563eb;
-
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #e7f2ff
-    );
-
-  box-shadow:
-    0 10px 20px rgba(37, 99, 235, 0.18);
-}
-
-
-/* Favourite button click */
-
-.favorite-shloka-button:active {
-  transform:
-    translateY(1px)
-    scale(0.96);
-}
-
-.dark .favorite-shloka-button,
-[data-theme="dark"] .favorite-shloka-button {
-  background: linear-gradient(145deg, #173455, #122b48);
-  border-color: rgba(96, 165, 250, 0.28);
-  color: #93c5fd;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
-}
-
-.dark .favorite-shloka-button:hover,
-[data-theme="dark"] .favorite-shloka-button:hover {
-  background: linear-gradient(145deg, #1d406a, #153254);
-  border-color: #ef4444;
-  color: #ef4444;
-  box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
-}
-
-
-/* =========================================================
-   FAVOURITE ACTIVE (RED HEART ICON INSIDE CIRCLE)
-   ========================================================= */
-
-.favorite-shloka-button.active,
-.favorite-shloka-button.favorited {
-  color: #ef4444 !important;
-  border-color: #60a5fa !important;
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #edf6ff
-    ) !important;
-  box-shadow:
-    0 6px 14px rgba(37, 99, 235, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  animation: favoritePulse 0.35s ease;
-}
-
-.favorite-shloka-button.active svg,
-.favorite-shloka-button.favorited svg {
-  fill: #ef4444 !important;
-  color: #ef4444 !important;
-}
-
-.favorite-shloka-button.active:hover,
-.favorite-shloka-button.favorited:hover {
-  transform:
-    translateY(-3px)
-    scale(1.06);
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #e7f2ff
-    ) !important;
-  border-color: #ef4444 !important;
-  color: #dc2626 !important;
-  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.18) !important;
-}
-
-.favorite-shloka-button.active:hover svg,
-.favorite-shloka-button.favorited:hover svg {
-  fill: #dc2626 !important;
-  color: #dc2626 !important;
-}
-
-[data-theme="dark"] .favorite-shloka-button.active,
-[data-theme="dark"] .favorite-shloka-button.favorited,
-.dark .favorite-shloka-button.active,
-.dark .favorite-shloka-button.favorited {
-  background: linear-gradient(145deg, #173455, #122b48) !important;
-  border-color: rgba(96, 165, 250, 0.35) !important;
-  color: #ef4444 !important;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35) !important;
-}
-
-[data-theme="dark"] .favorite-shloka-button.active svg,
-[data-theme="dark"] .favorite-shloka-button.favorited svg,
-.dark .favorite-shloka-button.active svg,
-.dark .favorite-shloka-button.favorited svg {
-  fill: #ef4444 !important;
-  color: #ef4444 !important;
-}
-
-[data-theme="dark"] .favorite-shloka-button.active:hover,
-[data-theme="dark"] .favorite-shloka-button.favorited:hover,
-.dark .favorite-shloka-button.active:hover,
-.dark .favorite-shloka-button.favorited:hover {
-  background: linear-gradient(145deg, #1d406a, #153254) !important;
-  border-color: #ef4444 !important;
-  color: #f87171 !important;
-  transform: translateY(-3px) scale(1.06);
-  box-shadow: 0 10px 22px rgba(239, 68, 68, 0.25) !important;
-}
-
-[data-theme="dark"] .favorite-shloka-button.active:hover svg,
-[data-theme="dark"] .favorite-shloka-button.favorited:hover svg,
-.dark .favorite-shloka-button.active:hover svg,
-.dark .favorite-shloka-button.favorited:hover svg {
-  fill: #f87171 !important;
-  color: #f87171 !important;
-}
-
-
-/* Favourite animation */
-
-@keyframes favoritePulse {
-  0% {
-    transform: scale(0.75);
-  }
-
-  55% {
-    transform: scale(1.15);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-
-/* =========================================================
-   SHLOKA ACTIONS RESPONSIVE & ACCESSIBILITY
-   ========================================================= */
-
-@media (max-width: 700px) {
-  .shloka-top-actions {
-    top: 12px;
-    right: 12px;
-    gap: 8px;
-  }
-
-  .share-shloka-button {
-    width: 43px;
-    height: 43px;
-  }
-
-  .favorite-shloka-button {
-    top: 12px;
-    right: 12px;
-    width: 43px;
-    height: 43px;
-    font-size: 22px;
-  }
-}
-
-@media (max-width: 480px) {
-  .share-shloka-button {
-    width: 40px;
-    height: 40px;
-  }
-
-  .favorite-shloka-button {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-}
-
-.favorite-shloka-button:focus-visible,
-.share-shloka-button:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.35);
-  outline-offset: 3px;
-}
-
-/* =========================================================
    CONTENT BOX HEADER & TEXT-TO-SPEECH (AUDIO) BUTTON
    ========================================================= */
 
 .content-box-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 15px;
-  flex-wrap: wrap;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin: 0 0 14px !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
 }
 
 .content-box-header h3 {
   margin: 0 !important;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+  flex-shrink: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
-/* Container holding speed button & speech button */
+/* Container holding speech button & speed button */
 .content-box-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
   position: relative;
 }
 
@@ -2910,13 +2128,15 @@ button:focus-visible {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 145px;
+  left: auto;
+  min-width: 140px;
+  max-width: calc(100vw - 24px);
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   padding: 6px;
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3315,4 +2535,1049 @@ body.dark .cr-offline-pill {
     opacity: 1;
     transform: translate(-50%, 0);
   }
+}
+
+/* =========================================================
+   INLINE PREV / NEXT PILL BUTTONS (Shloka & Chapter - Image 3 style)
+   ========================================================= */
+
+.shloka-inline-nav-pills,
+.chapter-inline-nav-pills {
+  width: min(850px, 94%);
+  margin: 14px auto 18px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.shloka-pill-nav-btn,
+.chapter-pill-nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  white-space: nowrap;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  background: linear-gradient(135deg, #0b1a3a 0%, #152754 100%);
+  color: #fbbf24;
+  outline: none;
+  outline-offset: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.shloka-pill-nav-btn span,
+.chapter-pill-nav-btn span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shloka-pill-nav-btn:hover:not(:disabled),
+.chapter-pill-nav-btn:hover:not(:disabled) {
+  border-color: #f59e0b;
+  outline: none;
+  outline-offset: 0;
+  background: linear-gradient(135deg, #132759 0%, #1c3674 100%);
+  color: #fef08a;
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.38), 0 0 16px rgba(59, 130, 246, 0.35);
+  transform: translateY(-2px);
+}
+
+.shloka-pill-nav-btn:focus:not(:disabled),
+.chapter-pill-nav-btn:focus:not(:disabled) {
+  outline: 2px solid rgba(80, 140, 255, 0.95) !important;
+  outline-offset: 3.5px !important;
+}
+
+.shloka-pill-nav-btn:active:not(:disabled),
+.chapter-pill-nav-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.shloka-pill-nav-btn:disabled,
+.chapter-pill-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.5);
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+/* Light mode support for pill nav buttons */
+:root:not(.dark):not([data-theme="dark"]) .shloka-pill-nav-btn,
+:root:not(.dark):not([data-theme="dark"]) .chapter-pill-nav-btn {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #ffffff;
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-pill-nav-btn:hover:not(:disabled),
+:root:not(.dark):not([data-theme="dark"]) .chapter-pill-nav-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  color: #fef08a;
+  border-color: #f59e0b;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-pill-nav-btn:disabled,
+:root:not(.dark):not([data-theme="dark"]) .chapter-pill-nav-btn:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  border-color: transparent;
+}
+
+
+/* =========================================================
+   SHLOKA READING SPECIALIZED BOTTOM BAR (4 BUTTONS)
+   Fixed permanently to bottom of screen on mobile (Native Footer)
+   ========================================================= */
+
+.shloka-reading-bottom-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 60px !important;
+  padding: 4px 8px !important;
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  transform: none !important;
+
+  /* Default Celestial Cosmic Dark Glassmorphism (Matches App Mobile Bottom Nav) */
+  background: rgba(4, 11, 26, 0.96) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-top: 1.5px solid rgba(245, 158, 11, 0.38) !important;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.65) !important;
+  transition: all 0.25s ease;
+}
+
+/* Subpage Light Mode - Matches MobileBottomNav on Chapters Page */
+html[data-theme="light"] .shloka-reading-bottom-bar,
+.light .shloka-reading-bottom-bar,
+:root:not(.dark):not([data-theme="dark"]) .shloka-reading-bottom-bar {
+  background: linear-gradient(180deg, #0b3c8c 0%, #082d6e 100%) !important;
+  border-top: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 -4px 20px rgba(0, 20, 60, 0.4) !important;
+}
+
+.shloka-bar-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.shloka-bar-btn span {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  color: inherit;
+}
+
+.shloka-bar-btn:hover {
+  color: #fbbf24;
+}
+
+.shloka-bar-btn:active {
+  transform: scale(0.92);
+}
+
+.shloka-bar-btn.active {
+  color: #fbbf24 !important;
+}
+
+.shloka-bar-btn.active span {
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+}
+
+/* Light mode button text */
+html[data-theme="light"] .shloka-bar-btn,
+.light .shloka-bar-btn,
+:root:not(.dark):not([data-theme="dark"]) .shloka-bar-btn {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme="light"] .shloka-bar-btn:hover,
+.light .shloka-bar-btn:hover,
+:root:not(.dark):not([data-theme="dark"]) .shloka-bar-btn:hover {
+  color: #fbbf24;
+}
+
+html[data-theme="light"] .shloka-bar-btn.active,
+.light .shloka-bar-btn.active,
+:root:not(.dark):not([data-theme="dark"]) .shloka-bar-btn.active {
+  color: #fbbf24 !important;
+}
+
+html[data-theme="light"] .shloka-bar-btn.active span,
+.light .shloka-bar-btn.active span,
+:root:not(.dark):not([data-theme="dark"]) .shloka-bar-btn.active span {
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+}
+
+/* Favorite Red Heart Active State */
+.shloka-bar-btn.favorited,
+.shloka-bar-btn.active.favorited,
+html[data-theme="light"] .shloka-bar-btn.favorited,
+html[data-theme="light"] .shloka-bar-btn.active.favorited {
+  color: #ef4444 !important;
+}
+
+.shloka-bar-btn.favorited span,
+.shloka-bar-btn.active.favorited span,
+html[data-theme="light"] .shloka-bar-btn.favorited span,
+html[data-theme="light"] .shloka-bar-btn.active.favorited span {
+  color: #ef4444 !important;
+  font-weight: 700 !important;
+}
+
+.shloka-bar-btn.favorited .heart-filled,
+.shloka-bar-btn.active.favorited .heart-filled {
+  color: #ef4444 !important;
+  fill: #ef4444 !important;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.65));
+  animation: heartPulse 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes heartPulse {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+
+/* =========================================================
+   SHLOKA SELECTOR POPUP MODAL SHEET (Bottom 4th button)
+   ========================================================= */
+
+.shloka-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: crFadeIn 0.22s ease-out;
+}
+
+.shloka-popup-sheet {
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  background: linear-gradient(180deg, #0e1e3e 0%, #081124 100%);
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px 28px;
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.65);
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  animation: crSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-sheet {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 -12px 48px rgba(15, 70, 120, 0.2);
+}
+
+.shloka-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.shloka-popup-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shloka-popup-header-icon {
+  color: #fbbf24;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-header-icon {
+  color: #2563eb;
+}
+
+.shloka-popup-header-info h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-header-info h3 {
+  color: #0f172a;
+}
+
+.shloka-popup-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.shloka-popup-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shloka-popup-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-close-btn {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-close-btn:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.shloka-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 55vh;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.shloka-popup-num-btn {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.18s ease;
+}
+
+.shloka-popup-num-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  transform: translateY(-2px);
+}
+
+.shloka-popup-num-btn.active {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #090d16;
+  border-color: #fbbf24;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.45);
+  font-weight: 800;
+}
+
+.popup-active-dot {
+  font-size: 8px;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-num-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #1e293b;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-num-btn:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+:root:not(.dark):not([data-theme="dark"]) .shloka-popup-num-btn.active {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+@keyframes crFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes crSheetSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   MOBILE RESPONSIVENESS (<= 768px)
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .chapter-reader {
+    padding-bottom: 95px !important;
+  }
+
+  /* Inline shloka list removed on mobile, accessible via 4th bottom button */
+  .chapter-shloka-selector {
+    display: none !important;
+  }
+
+  .shloka-inline-nav-pills,
+  .chapter-inline-nav-pills {
+    width: 96%;
+    gap: 8px;
+    margin: 10px auto;
+  }
+
+  .shloka-pill-nav-btn,
+  .chapter-pill-nav-btn {
+    height: 46px;
+    font-size: 13px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shloka-pill-nav-btn,
+  .chapter-pill-nav-btn {
+    height: 44px;
+    font-size: 12px;
+    padding: 0 4px;
+    gap: 4px;
+  }
+}
+
+/* =========================================================
+   MILESTONE BANNER CARD (CELEBRATORY IN-PAGE CARD)
+   ========================================================= */
+
+.shloka-milestone-banner-card {
+  margin: 20px 0;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.18) 50%, rgba(245, 158, 11, 0.08) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  animation: bannerPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes bannerPulse {
+  0% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+  100% {
+    box-shadow: 0 6px 26px rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.75);
+  }
+}
+
+.milestone-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.milestone-banner-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.milestone-banner-trophy {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+}
+
+.milestone-banner-text {
+  flex: 1;
+  min-width: 220px;
+}
+
+.milestone-banner-text h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.milestone-banner-text p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+}
+
+.milestone-banner-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.milestone-banner-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.55);
+}
+
+/* Light mode for milestone banner matching web theme */
+html[data-theme="light"] .shloka-milestone-banner-card,
+.light .shloka-milestone-banner-card,
+:root:not(.dark):not([data-theme="dark"]) .shloka-milestone-banner-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 4px 16px rgba(25, 80, 160, 0.08) !important;
+}
+
+html[data-theme="light"] .milestone-banner-icon-box,
+.light .milestone-banner-icon-box,
+:root:not(.dark):not([data-theme="dark"]) .milestone-banner-icon-box {
+  background: #fffbeb !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+}
+
+html[data-theme="light"] .milestone-banner-trophy,
+.light .milestone-banner-trophy,
+:root:not(.dark):not([data-theme="dark"]) .milestone-banner-trophy {
+  color: #d97706 !important;
+}
+
+html[data-theme="light"] .milestone-banner-text h4,
+.light .milestone-banner-text h4,
+:root:not(.dark):not([data-theme="dark"]) .milestone-banner-text h4 {
+  color: #1e3a8a !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="light"] .milestone-banner-text p,
+.light .milestone-banner-text p,
+:root:not(.dark):not([data-theme="dark"]) .milestone-banner-text p {
+  color: #334155 !important;
+}
+
+html[data-theme="light"] .milestone-banner-action-btn,
+.light .milestone-banner-action-btn,
+:root:not(.dark):not([data-theme="dark"]) .milestone-banner-action-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35) !important;
+}
+
+/* =========================================================
+   MILESTONE QUESTION COUNT SELECTION MODAL SHEET
+   ========================================================= */
+
+.milestone-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  z-index: 100000 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  animation: milestoneFadeIn 0.25s ease forwards;
+}
+
+@keyframes milestoneFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (min-width: 640px) {
+  .milestone-modal-backdrop {
+    align-items: center !important;
+    padding: 20px !important;
+  }
+}
+
+.milestone-modal-sheet {
+  width: 100% !important;
+  max-width: 480px !important;
+  background: linear-gradient(180deg, #091326 0%, #040914 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.5) !important;
+  border-radius: 24px 24px 0 0 !important;
+  padding: 20px 20px 28px !important;
+  padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.8) !important;
+  color: #ffffff !important;
+  animation: milestoneModalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-sizing: border-box;
+}
+
+@keyframes milestoneModalSlide {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 640px) {
+  .milestone-modal-sheet {
+    border-radius: 20px !important;
+    padding-bottom: 24px !important;
+  }
+}
+
+.milestone-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 18px;
+}
+
+.milestone-modal-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.milestone-modal-trophy-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.milestone-modal-trophy-icon {
+  color: #f59e0b;
+}
+
+.milestone-modal-header-info h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.milestone-modal-sub {
+  margin: 3px 0 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.milestone-available-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.milestone-modal-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.milestone-modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.milestone-modal-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 10px;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.milestone-spinner {
+  animation: spin 1s linear infinite;
+  color: #f59e0b;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.milestone-modal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 10px;
+  gap: 10px;
+  text-align: center;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.milestone-count-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.milestone-count-prompt .prompt-icon {
+  color: #f59e0b;
+}
+
+.milestone-count-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+  .milestone-count-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+.milestone-count-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 6px;
+  min-height: 60px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  user-select: none;
+}
+
+.milestone-count-card:hover:not(.disabled) {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.6);
+  transform: translateY(-2px);
+}
+
+.milestone-count-card.selected {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(217, 119, 6, 0.38) 100%) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35) !important;
+}
+
+.milestone-count-card.disabled {
+  opacity: 0.32 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  filter: grayscale(1);
+}
+
+.milestone-count-val {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.milestone-count-card.selected .milestone-count-val {
+  color: #fbbf24;
+}
+
+.milestone-count-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 3px;
+  text-align: center;
+}
+
+.milestone-count-card.selected .milestone-count-text {
+  color: #fde68a;
+}
+
+.milestone-selected-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: #fbbf24;
+}
+
+.milestone-disabled-pill {
+  font-size: 8px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
+.milestone-start-quiz-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.45);
+  transition: all 0.22s ease;
+  font-family: inherit;
+}
+
+.milestone-start-quiz-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.6);
+  transform: translateY(-2px);
+}
+
+.milestone-start-quiz-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Light mode for modal */
+html[data-theme="light"] .milestone-modal-sheet,
+.light .milestone-modal-sheet,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-sheet {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+  color: #1e293b !important;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme="light"] .milestone-modal-header,
+.light .milestone-modal-header,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-header {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html[data-theme="light"] .milestone-modal-trophy-wrap,
+.light .milestone-modal-trophy-wrap,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-trophy-wrap {
+  background: #fffbeb !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+}
+
+html[data-theme="light"] .milestone-modal-trophy-icon,
+.light .milestone-modal-trophy-icon,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-trophy-icon {
+  color: #d97706 !important;
+}
+
+html[data-theme="light"] .milestone-modal-header-info h3,
+.light .milestone-modal-header-info h3,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-header-info h3 {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme="light"] .milestone-count-prompt,
+.light .milestone-count-prompt,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-prompt {
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .milestone-count-card,
+.light .milestone-count-card,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .milestone-count-card:hover:not(.disabled),
+.light .milestone-count-card:hover:not(.disabled),
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card:hover:not(.disabled) {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+
+html[data-theme="light"] .milestone-count-val,
+.light .milestone-count-val,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-val {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .milestone-count-text,
+.light .milestone-count-text,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-text {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .milestone-count-card.selected,
+.light .milestone-count-card.selected,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card.selected {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.3) !important;
+}
+
+html[data-theme="light"] .milestone-count-card.selected .milestone-count-val,
+.light .milestone-count-card.selected .milestone-count-val,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card.selected .milestone-count-val {
+  color: #d97706 !important;
+}
+
+html[data-theme="light"] .milestone-count-card.selected .milestone-count-text,
+.light .milestone-count-card.selected .milestone-count-text,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card.selected .milestone-count-text {
+  color: #b45309 !important;
+}
+
+html[data-theme="light"] .milestone-count-card.disabled,
+.light .milestone-count-card.disabled,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card.disabled {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  opacity: 0.45 !important;
+}
+
+html[data-theme="light"] .milestone-count-card.disabled .milestone-count-val,
+.light .milestone-count-card.disabled .milestone-count-val,
+:root:not(.dark):not([data-theme="dark"]) .milestone-count-card.disabled .milestone-count-val {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] .milestone-modal-close-btn,
+.light .milestone-modal-close-btn,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-close-btn {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .milestone-modal-close-btn:hover,
+.light .milestone-modal-close-btn:hover,
+:root:not(.dark):not([data-theme="dark"]) .milestone-modal-close-btn:hover {
+  background: #e2e8f0 !important;
 }

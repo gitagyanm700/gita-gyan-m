@@ -1,0 +1,331 @@
+/* =====================================================
+   MOBILE BOTTOM NAVIGATION BAR
+   Native App UI for Bhagavad Gita — Royal Spiritual Design
+===================================================== */
+
+/* Hidden on Desktop / Tablet (> 768px) */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 60px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px));
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 9980;
+    transition: all 0.25s ease;
+
+    /* Default Spiritual Celestial Dark Glassmorphism */
+    background: rgba(5, 14, 36, 0.95);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1.5px solid rgba(245, 158, 11, 0.38);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  /* -----------------------------------------------------
+     HOME PAGE BOTTOM NAV (ALWAYS MATCHES HOME ARTWORK)
+     Celestial Cosmic Dark Glassmorphism
+     ----------------------------------------------------- */
+  .mobile-bottom-nav.is-home-bottom-nav,
+  html[data-theme="light"] .mobile-bottom-nav.is-home-bottom-nav,
+  html[data-theme="dark"] .mobile-bottom-nav.is-home-bottom-nav,
+  body.dark .mobile-bottom-nav.is-home-bottom-nav {
+    background: rgba(4, 11, 26, 0.92) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border-top: 1.5px solid rgba(245, 158, 11, 0.38) !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn,
+  html[data-theme="light"] .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn {
+    color: #cbd5e1 !important;
+  }
+
+  .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active,
+  html[data-theme="light"] .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active {
+    color: #fbbf24 !important;
+  }
+
+  .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active .tab-label,
+  html[data-theme="light"] .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active .tab-label {
+    color: #fbbf24 !important;
+    font-weight: 700 !important;
+  }
+
+  .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active .tab-icon-wrapper,
+  html[data-theme="light"] .mobile-bottom-nav.is-home-bottom-nav .mobile-tab-btn.active .tab-icon-wrapper {
+    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.75)) !important;
+  }
+
+  /* -----------------------------------------------------
+     SUBPAGE BOTTOM NAV (LIGHT THEME - ROYAL BLUE MATCHING SITE)
+     ----------------------------------------------------- */
+  html[data-theme="light"] .mobile-bottom-nav.is-subpage-bottom-nav,
+  .light .mobile-bottom-nav.is-subpage-bottom-nav {
+    background: linear-gradient(180deg, #0b3c8c 0%, #082d6e 100%) !important;
+    border-top: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+    box-shadow: 0 -4px 20px rgba(0, 20, 60, 0.4) !important;
+  }
+
+  html[data-theme="light"] .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn,
+  .light .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn {
+    color: rgba(255, 255, 255, 0.75) !important;
+  }
+
+  html[data-theme="light"] .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active,
+  .light .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active {
+    color: #fbbf24 !important;
+  }
+
+  html[data-theme="light"] .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active .tab-label,
+  .light .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active .tab-label {
+    color: #fbbf24 !important;
+    font-weight: 700 !important;
+  }
+
+  html[data-theme="light"] .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active .tab-icon-wrapper,
+  .light .mobile-bottom-nav.is-subpage-bottom-nav .mobile-tab-btn.active .tab-icon-wrapper {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.75)) !important;
+  }
+
+  /* -----------------------------------------------------
+     ZERO WHITE SPACE AT TOP + BALANCED CONTENT POSITIONING
+     Fixed Header is 56px.
+     Provide comfortable breathing room below header on all pages.
+     ----------------------------------------------------- */
+  body.has-mobile-bottom-nav {
+    padding-top: 0 !important;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.has-mobile-bottom-nav .navbar-spacer,
+  body.has-mobile-bottom-nav .mobile-top-header-spacer {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 1. HOME PAGE HERO:
+     Prevents top title & subtitle from going behind the fixed top header */
+  body.has-mobile-bottom-nav .home-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  }
+  body.has-mobile-bottom-nav .home-page .hero {
+    padding-top: 20px !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* 2. ADHYAY / CHAPTERS PAGE:
+     Natural spacing for sacred title and 18 chapters title */
+  body.has-mobile-bottom-nav .chapters-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  }
+  body.has-mobile-bottom-nav .chapters-header {
+    margin-top: 4px !important;
+    padding-top: 22px !important;
+    padding-bottom: 16px !important;
+  }
+  body.has-mobile-bottom-nav .chapters-grid {
+    margin-top: 16px !important;
+  }
+
+  /* 3. QUIZ PAGES:
+     Comfortable spacing for Quiz Category & Quiz setup cards */
+  body.has-mobile-bottom-nav .quiz-category-page,
+  body.has-mobile-bottom-nav .quiz-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important;
+  }
+  body.has-mobile-bottom-nav .quiz-category-header {
+    margin-top: 14px !important;
+    padding: 22px 18px !important;
+  }
+
+  /* 4. FAVOURITES / PASANDGI PAGE:
+     Spacious header with Om symbol and title */
+  body.has-mobile-bottom-nav .favourite-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  }
+  body.has-mobile-bottom-nav .favourite-header {
+    margin-top: 10px !important;
+    padding-top: 20px !important;
+    padding-bottom: 16px !important;
+  }
+
+  /* 5. VADHU / MORE MENU PAGE:
+     Pleasant top margin above Profile Card */
+  body.has-mobile-bottom-nav .more-menu-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important;
+  }
+
+  /* 6. ABOUT APP:
+     Proper clearance below fixed header, height auto for complete visibility */
+  body.has-mobile-bottom-nav .about-compact-page,
+  body.has-mobile-bottom-nav .about-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 18px) !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+  }
+  body.has-mobile-bottom-nav .compact-header-centered {
+    margin-top: 6px !important;
+  }
+
+  /* 7. ADMIN PAGES (Dashboard, Shlok Management, Quiz Management):
+     Proper clearance below fixed header so top actions/titles are not cut off */
+  body.has-mobile-bottom-nav .admin-page,
+  body.has-mobile-bottom-nav .shlok-management-page,
+  body.has-mobile-bottom-nav .quiz-management-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 18px) !important;
+  }
+  body.has-mobile-bottom-nav .admin-header,
+  body.has-mobile-bottom-nav .shlok-management-header,
+  body.has-mobile-bottom-nav .quiz-management-header {
+    margin-top: 6px !important;
+  }
+
+  /* 8. OTHER SUBPAGES:
+     Chapter Reader, Life Guidance, History, Reading Tracker, Achievements, Profile */
+  body.has-mobile-bottom-nav .chapter-reader,
+  body.has-mobile-bottom-nav .chapter-reader-page,
+  body.has-mobile-bottom-nav .guidance-page,
+  body.has-mobile-bottom-nav .rt-page,
+  body.has-mobile-bottom-nav .reading-tracker-page,
+  body.has-mobile-bottom-nav .history-page,
+  body.has-mobile-bottom-nav .quiz-achievements-page,
+  body.has-mobile-bottom-nav .quiz-result-page,
+  body.has-mobile-bottom-nav .profile-page {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px) + 16px) !important;
+  }
+
+  /* -----------------------------------------------------
+     PREVENT FLOATING BUTTONS FROM OVERLAPPING BOTTOM TABS
+     Lift Feedback (Star Rating) and Gita AI above nav bar
+     ----------------------------------------------------- */
+  body.has-mobile-bottom-nav .feedback-fab-trigger {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 16px !important;
+    z-index: 9970 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(245, 158, 11, 0.3) !important;
+  }
+
+  body.has-mobile-bottom-nav .gita-ai-wrapper {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 16px !important;
+    z-index: 9975 !important;
+  }
+
+  body.has-mobile-bottom-nav .gita-ai-wrapper.is-open {
+    bottom: 0 !important;
+    right: 0 !important;
+    inset: 0 !important;
+    z-index: 10005 !important;
+  }
+
+  /* HIDE OLD TOP NAVBAR & SPACER WHEN BOTTOM NAV IS ACTIVE ON LOCALHOST MOBILE */
+  body.has-mobile-bottom-nav .navbar {
+    display: none !important;
+  }
+
+  body.has-mobile-bottom-nav .navbar-side-menu {
+    display: none !important;
+  }
+
+  body.has-mobile-bottom-nav .navbar-menu-overlay {
+    display: none !important;
+  }
+
+  /* -----------------------------------------------------
+     HIDE HOME PAGE EMBEDDED SEARCH ON MOBILE LOCALHOST
+     (ONLY ACCESSIBLE VIA TOP SEARCH ICON POPUP)
+     ----------------------------------------------------- */
+  body.has-mobile-bottom-nav .home-search-desktop-only,
+  body.has-mobile-bottom-nav .home-page .home-search,
+  body.has-mobile-bottom-nav .hero .home-search,
+  body.has-mobile-bottom-nav main .home-search {
+    display: none !important;
+  }
+
+  /* TAB BUTTON */
+  .mobile-tab-btn {
+    position: relative;
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    color: #94a3b8;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-tab-btn:active {
+    transform: scale(0.92);
+  }
+
+  .tab-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    transition: all 0.2s ease;
+  }
+
+  .tab-label {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.1px;
+    transition: all 0.2s ease;
+  }
+
+  /* ACTIVE STATE */
+  .mobile-tab-btn.active {
+    color: #fbbf24;
+  }
+
+  .mobile-tab-btn.active .tab-icon-wrapper {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5));
+    transform: translateY(-1px);
+  }
+
+  .mobile-tab-btn.active .tab-label {
+    font-weight: 700;
+    color: #fbbf24;
+  }
+
+  /* ACTIVE TOP GOLD PILL INDICATOR */
+  .mobile-tab-btn.active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 32px;
+    height: 3px;
+    background: linear-gradient(90deg, #f59e0b, #fde047);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.7);
+  }
+}
