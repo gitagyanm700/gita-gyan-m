@@ -9,7 +9,11 @@ import { getValidToken } from "./authHelper.js";
 import { autoSyncMultipleChaptersAudios } from "./audioCache.js";
 import { isRunningInStandaloneApp } from "./pwaManager.js";
 
-const API_BASE = "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
+const API_BASE =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:5000/api/shloks"
+    : "https://bhagavad-gita-backend-jy1a.onrender.com/api/shloks";
 
 const OFFLINE_DB_NAME = "GitaOfflineChaptersDB";
 const OFFLINE_DB_VERSION = 1;
@@ -22,7 +26,9 @@ let offlineDbInstance = null;
 let hydrationPromise = null;
 let downloadedFlagMemory =
   typeof localStorage !== "undefined" &&
-  localStorage.getItem(DOWNLOADED_FLAG_KEY) === "true";
+  (localStorage.getItem(DOWNLOADED_FLAG_KEY) === "true" ||
+    localStorage.getItem("gita_all_chapters_downloaded") === "true" ||
+    localStorage.getItem("gita_hide_offline_download_btn") === "true");
 
 // Fast in-memory mirror of offline chapters (populated from IndexedDB & writes)
 const chapterMemoryCache = new Map();
@@ -318,9 +324,15 @@ if (typeof window !== "undefined") {
 export function isOfflineDownloadedSync() {
   if (downloadedFlagMemory) return true;
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem(DOWNLOADED_FLAG_KEY) === "true") {
-      downloadedFlagMemory = true;
-      return true;
+    if (typeof localStorage !== "undefined") {
+      if (
+        localStorage.getItem(DOWNLOADED_FLAG_KEY) === "true" ||
+        localStorage.getItem("gita_all_chapters_downloaded") === "true" ||
+        localStorage.getItem("gita_hide_offline_download_btn") === "true"
+      ) {
+        downloadedFlagMemory = true;
+        return true;
+      }
     }
   } catch (e) {}
   return false;
@@ -341,6 +353,8 @@ export async function isOfflineDownloadedAsync() {
 export async function markOfflineDownloadComplete(userId = null) {
   downloadedFlagMemory = true;
   safeLocalStorageSet(DOWNLOADED_FLAG_KEY, "true");
+  safeLocalStorageSet("gita_all_chapters_downloaded", "true");
+  safeLocalStorageSet("gita_hide_offline_download_btn", "true");
   await putDownloadedMetaToIDB(userId);
   try {
     if (typeof window !== "undefined") {

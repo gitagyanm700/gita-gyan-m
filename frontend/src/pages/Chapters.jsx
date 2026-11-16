@@ -90,7 +90,19 @@ function Chapters() {
   const [isStandaloneApp, setIsStandaloneApp] = useState(() =>
     typeof window !== "undefined" ? isRunningInStandaloneApp() : false
   );
-  const [isDownloaded, setIsDownloaded] = useState(() => isOfflineDownloadedSync());
+  const [isDownloaded, setIsDownloaded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return (
+        localStorage.getItem("gita_all_chapters_downloaded") === "true" ||
+        localStorage.getItem("gita_18_chapters_downloaded") === "true" ||
+        localStorage.getItem("gita_hide_offline_download_btn") === "true" ||
+        isOfflineDownloadedSync()
+      );
+    } catch (e) {
+      return false;
+    }
+  });
 
   useEffect(() => {
     setIsStandaloneApp(isRunningInStandaloneApp());
@@ -104,10 +116,16 @@ function Chapters() {
         const summary = await getOfflineStatusSummaryAsync();
         if (!active) return;
         setOfflineStatus(summary);
-        if (summary.isDownloaded || summary.isFullyCached) {
+        if (
+          summary.isDownloaded ||
+          summary.isFullyCached ||
+          summary.cachedCount >= 18 ||
+          localStorage.getItem("gita_all_chapters_downloaded") === "true" ||
+          localStorage.getItem("gita_18_chapters_downloaded") === "true" ||
+          localStorage.getItem("gita_hide_offline_download_btn") === "true" ||
+          isOfflineDownloadedSync()
+        ) {
           setIsDownloaded(true);
-        } else {
-          setIsDownloaded(false);
         }
       } catch (e) {}
     };
@@ -117,6 +135,11 @@ function Chapters() {
     const handleDownloadComplete = () => {
       if (!active) return;
       setIsDownloaded(true);
+      try {
+        localStorage.setItem("gita_all_chapters_downloaded", "true");
+        localStorage.setItem("gita_18_chapters_downloaded", "true");
+        localStorage.setItem("gita_hide_offline_download_btn", "true");
+      } catch (e) {}
       setOfflineStatus((prev) => ({
         ...prev,
         isFullyCached: true,
@@ -176,7 +199,12 @@ function Chapters() {
       const res = await downloadAllChaptersOffline((prog) => {
         setDownloadProgress(prog.percent);
       });
-      if (res.success) {
+      if (res.success || res.totalShlokas > 0 || (res.downloadedChapters && res.downloadedChapters.length > 0)) {
+        try {
+          localStorage.setItem("gita_all_chapters_downloaded", "true");
+          localStorage.setItem("gita_18_chapters_downloaded", "true");
+          localStorage.setItem("gita_hide_offline_download_btn", "true");
+        } catch (e) {}
         await markOfflineDownloadComplete(user?._id || user?.id || user?.email);
         setIsDownloaded(true);
         const updated = await getOfflineStatusSummaryAsync();
@@ -277,7 +305,7 @@ function Chapters() {
           {txt("ભગવદ્ ગીતાના 18 અધ્યાય", "भगवद् गीता के 18 अध्याय", "18 Chapters of Bhagavad Gita")}
         </h1>
 
-        {isStandaloneApp && !offlineStatus.isFullyCached && !isDownloaded && (
+        {isStandaloneApp && !isDownloaded && !offlineStatus.isFullyCached && !offlineStatus.isDownloaded && (
           <div className="offline-download-bar">
             {downloadingOffline ? (
               <div className="offline-downloading-box">
