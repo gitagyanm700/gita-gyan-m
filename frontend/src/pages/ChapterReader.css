@@ -2657,8 +2657,9 @@ body.dark .cr-offline-pill {
   width: 100% !important;
   width: 100vw !important;
   max-width: 100vw !important;
-  height: 60px !important;
-  padding: 4px 8px !important;
+  min-height: 62px !important;
+  height: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+  padding: 3px 6px !important;
   padding-bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
   box-sizing: border-box !important;
   display: flex !important;
@@ -2692,8 +2693,8 @@ html[data-theme="light"] .shloka-reading-bottom-bar,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 4px;
+  gap: 2px;
+  padding: 3px 2px 2px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.72);
@@ -2709,15 +2710,18 @@ html[data-theme="light"] .shloka-reading-bottom-bar,
 }
 
 .shloka-bar-btn span {
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  letter-spacing: 0.2px;
-  line-height: 1.1;
-  color: inherit;
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: 100% !important;
+  letter-spacing: 0.15px !important;
+  line-height: 1.4 !important;
+  padding: 1px 0 0 !important;
+  color: inherit !important;
+  box-sizing: border-box !important;
 }
 
 .shloka-bar-btn:hover {
