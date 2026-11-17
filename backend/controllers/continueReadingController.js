@@ -50,6 +50,15 @@ const getContinueReading = async (req, res) => {
     const readShlokas = user.readingProgress?.readShlokas || [];
     const nextSequential = getNextSequentialUnread(readShlokas);
 
+    // Keep user record strictly synchronized with sequential unread
+    user.continueReading = {
+      chapterNumber: nextSequential.chapterNumber,
+      shlokNumber: nextSequential.shlokNumber,
+      isCompleted: nextSequential.isCompleted,
+      updatedAt: new Date(),
+    };
+    await user.save();
+
     // Return Continue Reading
     res.status(200).json({
       success: true,
@@ -153,11 +162,16 @@ const saveContinueReading = async (req, res) => {
 
     // =================================================
     // SAVE CONTINUE READING
+    // Strictly computed from read progress so skipped shlokas never corrupt it
     // =================================================
 
+    const readShlokas = user.readingProgress?.readShlokas || [];
+    const nextSequential = getNextSequentialUnread(readShlokas);
+
     user.continueReading = {
-      chapterNumber: chapter,
-      shlokNumber: shlok,
+      chapterNumber: nextSequential.chapterNumber,
+      shlokNumber: nextSequential.shlokNumber,
+      isCompleted: nextSequential.isCompleted,
       updatedAt: new Date(),
     };
 

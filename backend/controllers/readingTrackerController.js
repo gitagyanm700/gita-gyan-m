@@ -24,6 +24,31 @@ const CHAPTER_LENGTHS = {
 
 const TOTAL_SHLOKAS = 700;
 
+function getNextSequentialUnread(readShlokas = []) {
+  const readSet = new Set(
+    (readShlokas || []).map((s) => `${Number(s.chapterNumber)}-${Number(s.shlokNumber)}`)
+  );
+
+  for (let ch = 1; ch <= 18; ch++) {
+    const total = CHAPTER_LENGTHS[ch] || 47;
+    for (let s = 1; s <= total; s++) {
+      if (!readSet.has(`${ch}-${s}`)) {
+        return {
+          chapterNumber: ch,
+          shlokNumber: s,
+          isCompleted: false,
+        };
+      }
+    }
+  }
+
+  return {
+    chapterNumber: 1,
+    shlokNumber: 1,
+    isCompleted: true,
+  };
+}
+
 function getTodayString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -228,10 +253,12 @@ const markShlokaRead = async (req, res) => {
       user.readingProgress.unlockedBadges.push(...newlyUnlocked);
     }
 
-    // Also update continueReading
+    // Strictly update continueReading to the first sequential unread shloka across 18 chapters
+    const nextSeq = getNextSequentialUnread(user.readingProgress.readShlokas);
     user.continueReading = {
-      chapterNumber: ch,
-      shlokNumber: shl,
+      chapterNumber: nextSeq.chapterNumber,
+      shlokNumber: nextSeq.shlokNumber,
+      isCompleted: nextSeq.isCompleted,
       updatedAt: new Date(),
     };
 
@@ -309,6 +336,15 @@ const syncProgress = async (req, res) => {
     if (newBadges.length > 0) {
       user.readingProgress.unlockedBadges.push(...newBadges);
     }
+
+    // Keep continueReading strictly synchronized to the first sequential unread shloka
+    const nextSeq = getNextSequentialUnread(user.readingProgress.readShlokas);
+    user.continueReading = {
+      chapterNumber: nextSeq.chapterNumber,
+      shlokNumber: nextSeq.shlokNumber,
+      isCompleted: nextSeq.isCompleted,
+      updatedAt: new Date(),
+    };
 
     await user.save();
 

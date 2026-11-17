@@ -35,7 +35,7 @@ import {
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
-import { trackShlokaRead, getFirstUnreadShloka, getLocalProgress } from "../utils/readingTracker.js";
+import { trackShlokaRead, getFirstUnreadShloka, getLocalProgress, getNextSequentialUnread } from "../utils/readingTracker.js";
 import { saveChapterOffline, getChapterOffline, getChapterOfflineAsync } from "../utils/offlineStorage.js";
 import {
   saveAudioToCache,
@@ -639,7 +639,7 @@ useEffect(() => {
 
     const shlokNum = Number(current.shlokNumber);
 
-    // 1. Save in session & local storage for immediate in-page reload and continue reading
+    // 1. Save in session & local storage for immediate in-page reload of this chapter
     try {
       sessionStorage.setItem(
         `gita_last_shloka_ch_${currentChapterNumber}`,
@@ -649,25 +649,6 @@ useEffect(() => {
         `gita_last_shloka_ch_${currentChapterNumber}`,
         String(shlokNum)
       );
-      const uid = user?._id || user?.email;
-      const userKey = uid ? `gita_continue_reading_${uid}` : "gita_continue_reading_guest";
-      localStorage.setItem(
-        userKey,
-        JSON.stringify({
-          chapterNumber: currentChapterNumber,
-          shlokNumber: shlokNum,
-          updatedAt: new Date().toISOString(),
-        })
-      );
-      localStorage.setItem(
-        "gita_continue_reading",
-        JSON.stringify({
-          chapterNumber: currentChapterNumber,
-          shlokNumber: shlokNum,
-          userId: uid || null,
-          updatedAt: new Date().toISOString(),
-        })
-      );
     } catch (e) {}
 
     // 2. Synchronize URL query parameter smoothly via replaceState (no page reload, no history spam)
@@ -676,12 +657,7 @@ useEffect(() => {
     if (currentUrl !== targetUrl) {
       window.history.replaceState(window.history.state, "", targetUrl);
     }
-
-    // 3. Immediately save Continue Reading to backend if user is logged in
-    if (user) {
-      saveContinueReading(currentChapterNumber, shlokNum);
-    }
-  }, [currentShloka, shlokas, currentChapterNumber, user]);
+  }, [currentShloka, shlokas, currentChapterNumber]);
 
   // =====================================================
   // LOAD FAVOURITES FROM BACKEND
@@ -746,53 +722,39 @@ useEffect(() => {
   // SAVE CURRENT SHLOK
   // =====================================================
 
-  const saveContinueReading = async (
-    chapter,
-    shlok
-  ) => {
+  const saveContinueReading = async () => {
     // Login વગર save નહીં થાય
     if (!user) {
       return;
     }
 
-    const token =
-      getValidToken();
-
+    const token = getValidToken();
     if (!token) {
       return;
     }
 
-    if (
-      !chapter ||
-      !shlok
-    ) {
-      return;
-    }
-
     try {
+      // Calculate strictly sequential next unread shloka across 18 chapters
+      // (Starts from Ch 1 Shl 1, advances sequentially, never skips unread verses)
+      const local = getLocalProgress();
+      const nextSeq = getNextSequentialUnread(local?.readShlokas || []);
+
       const response = await fetch(
         CONTINUE_READING_API_URL,
         {
           method: "POST",
           headers: {
-            Authorization:
-              `Bearer ${token}`,
-            "Content-Type":
-              "application/json",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            chapterNumber: Number(
-              chapter
-            ),
-            shlokNumber: Number(
-              shlok
-            ),
+            chapterNumber: Number(nextSeq.chapterNumber),
+            shlokNumber: Number(nextSeq.shlokNumber),
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -802,7 +764,7 @@ useEffect(() => {
       }
 
       console.log(
-        "Continue Reading Saved:",
+        "Continue Reading Saved (Sequential):",
         data.continueReading
       );
     } catch (error) {
@@ -861,7 +823,7 @@ useEffect(() => {
         );
       } catch (e) {}
       if (user) {
-        saveContinueReading(currentChapterNumber, current.shlokNumber);
+        saveContinueReading();
       }
     };
 
@@ -1141,14 +1103,6 @@ if (
   setCurrentShloka(index);
   setActiveWordIndex(null);
 
-  // Continue Reading
-  if (selectedShlok) {
-    saveContinueReading(
-      currentChapterNumber,
-      selectedShlok.shlokNumber
-    );
-  }
-
   // Scroll to current shloka
   window.scrollTo({
     top: 0,
@@ -1281,7 +1235,7 @@ if (
       );
     } catch (e) {}
     if (user) {
-      saveContinueReading(currentChapterNumber, shlokaObj.shlokNumber);
+      saveContinueReading();
     }
   };
 
@@ -2268,14 +2222,6 @@ if (
 
     setActiveWordIndex(null);
 
-    // Continue Reading
-    if (next) {
-      saveContinueReading(
-        currentChapterNumber,
-        next.shlokNumber
-      );
-    }
-
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -2298,24 +2244,10 @@ if (
 
       setActiveWordIndex(null);
 
-      // Continue Reading
-      const previous =
-        shlokas[previousIndex];
-
-      if (previous) {
-        saveContinueReading(
-          currentChapterNumber,
-          previous.shlokNumber
-        );
-      }
-
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
-
-
-
     }
   };
 
@@ -2329,12 +2261,6 @@ if (
 
     if (nextChapterNumber <= 18) {
       setActiveWordIndex(null);
-
-      // Save current reading position
-      saveContinueReading(
-        currentChapterNumber,
-        shloka.shlokNumber
-      );
 
       try {
         sessionStorage.setItem(`gita_last_shloka_ch_${nextChapterNumber}`, "1");
@@ -2364,12 +2290,6 @@ if (
       previousChapterNumber >= 1
     ) {
       setActiveWordIndex(null);
-
-      // Save current reading position
-      saveContinueReading(
-        currentChapterNumber,
-        shloka.shlokNumber
-      );
 
       try {
         sessionStorage.setItem(`gita_last_shloka_ch_${previousChapterNumber}`, "1");
