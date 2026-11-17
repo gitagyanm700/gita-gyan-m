@@ -33,10 +33,13 @@ function ensureVapidConfig() {
 async function sendPush(subscription, payload) {
   if (!ensureVapidConfig()) return false;
 
+  // IMPORTANT: Do NOT set a static 'topic' header!
+  // RFC 8030 / Google FCM treats messages with a 'Topic' header as collapsible,
+  // which causes Android to defer/delay delivery in Doze mode until the app is opened.
+  // Omitting 'topic' guarantees immediate, high-priority background delivery even when the screen is off and app is closed!
   const pushOptions = {
     TTL: 24 * 60 * 60, // 24 hours: delivers as soon as device is online
     urgency: "high",   // High urgency: wakes up device immediately
-    topic: "gita-2hr-reminder",
   };
 
   try {
@@ -445,6 +448,13 @@ module.exports = {
           badge: `${siteUrl}/icons/icon-192x192.png`,
           url: customMsg.url ? (customMsg.url.startsWith("http") ? customMsg.url : `${siteUrl}${customMsg.url}`) : `${siteUrl}/chapters`,
           tag: `custom-${Date.now()}`,
+          timestamp: Date.now(),
+          vibrate: [200, 100, 200],
+          requireInteraction: false,
+          actions: [
+            { action: "read", title: "📖 વાંચો" },
+            { action: "quiz", title: "🎯 ક્વિઝ રમો" },
+          ],
         };
       } else {
         const templates = slotData.templates;
@@ -456,6 +466,13 @@ module.exports = {
           badge: `${siteUrl}/icons/icon-192x192.png`,
           url: `${siteUrl}${selected.url}`,
           tag: `gita-${slotKey}-${Date.now()}`,
+          timestamp: Date.now(),
+          vibrate: [200, 100, 200],
+          requireInteraction: false,
+          actions: [
+            { action: "read", title: "📖 વાંચો" },
+            { action: "quiz", title: "🎯 ક્વિઝ રમો" },
+          ],
         };
       }
 
@@ -541,6 +558,13 @@ module.exports = {
         badge: `${siteUrl}/icons/icon-192x192.png`,
         url: `${siteUrl}/chapters`,
         tag: `test-${Date.now()}`,
+        timestamp: Date.now(),
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
+        actions: [
+          { action: "read", title: "📖 વાંચો" },
+          { action: "quiz", title: "🎯 ક્વિઝ રમો" },
+        ],
       };
 
       await sendPush(sub, payload);

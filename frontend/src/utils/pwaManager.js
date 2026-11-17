@@ -190,9 +190,9 @@ export function registerPwa() {
 
   // Register Service Worker
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
+    const doRegister = () => {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { scope: "/" })
         .then((registration) => {
           console.log("PWA Service Worker registered with scope:", registration.scope);
 
@@ -217,7 +217,7 @@ export function registerPwa() {
                   newWorker.state === "installed" &&
                   navigator.serviceWorker.controller
                 ) {
-                  // New update available! Notify user or auto-claim
+                  // New update available! Auto-claim
                   console.log("New version of Bhagavad Gita app installed. Auto-activating...");
                 }
               });
@@ -236,7 +236,13 @@ export function registerPwa() {
           window.location.reload();
         }
       });
-    });
+    };
+
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      doRegister();
+    } else {
+      window.addEventListener("load", doRegister);
+    }
   }
 }
 

@@ -114,6 +114,7 @@ cron.schedule(
 );
 
 // High-precision Watchdog (checks every 30 seconds to guarantee exact on-time delivery)
+// Catches cold starts within the first 25 minutes of each slot!
 let lastTriggeredSlot = null;
 setInterval(async () => {
   try {
@@ -124,12 +125,12 @@ setInterval(async () => {
     const minute = istTime.getUTCMinutes();
     const targetHours = [6, 8, 10, 12, 14, 16, 18, 20, 22];
 
-    // Trigger at minute 0 (within first 2 minutes) if not already triggered
-    if (targetHours.includes(hour) && minute <= 1) {
+    // Trigger within first 25 minutes of slot if not already triggered today
+    if (targetHours.includes(hour) && minute <= 25) {
       const slotKey = `${istTime.getUTCFullYear()}-${istTime.getUTCMonth()}-${istTime.getUTCDate()}_${hour}`;
       if (lastTriggeredSlot !== slotKey) {
         lastTriggeredSlot = slotKey;
-        console.log(`🎯 [Watchdog Exact Time IST ${hour}:${minute.toString().padStart(2, '0')}] Firing 2-hour notification...`);
+        console.log(`🎯 [Watchdog Trigger IST ${hour}:${minute.toString().padStart(2, '0')}] Firing 2-hour notification for slot ${hour}:00...`);
         await notificationController.sendEvery2HoursReminder();
       }
     }
@@ -137,6 +138,33 @@ setInterval(async () => {
     console.error("Watchdog error:", watchErr.message);
   }
 }, 30 * 1000);
+
+// =====================================================
+// RENDER 24/7 ACTIVE KEEP-ALIVE (PREVENTS SPIN-DOWN DURING ACTIVE HOURS)
+// Pings every 10 minutes between 05:30 AM and 10:30 PM IST
+// Guarantees that Render remains awake so notifications trigger on time even if app is closed!
+// =====================================================
+const BACKEND_SELF_URL = process.env.BACKEND_URL || "https://bhagavad-gita-backend-jy1a.onrender.com";
+
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const istTime = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const hour = istTime.getUTCHours();
+    const min = istTime.getUTCMinutes();
+
+    // Active spiritual reading hours: 05:30 AM to 10:30 PM IST
+    const isDayTime = (hour > 5 || (hour === 5 && min >= 30)) && (hour < 22 || (hour === 22 && min <= 30));
+    if (isDayTime) {
+      const res = await fetch(`${BACKEND_SELF_URL}/`);
+      if (res.ok) {
+        console.log(`🔄 [Keep-Alive Ping OK] Server kept active at IST ${hour}:${min.toString().padStart(2, "0")}`);
+      }
+    }
+  } catch (e) {
+    // Non-blocking ping
+  }
+}, 10 * 60 * 1000); // 10 minutes (Render sleeps after 15m)
 
 // Midnight reset (00:00 IST)
 cron.schedule(

@@ -3,7 +3,7 @@
    AUTO-UPDATE • OFFLINE CAPABLE • FAST CACHE • ZERO LATENCY
    ========================================================= */
 
-const CACHE_NAME = "bhagavad-gita-cache-v48";
+const CACHE_NAME = "bhagavad-gita-cache-v49";
 
 // Essential core shell assets to pre-cache on install
 const PRECACHE_ASSETS = [
@@ -160,14 +160,19 @@ self.addEventListener("push", (event) => {
     body: data.body || "આજનું પવિત્ર ગીતા વાંચન અને ક્વિઝ લક્ષ્ય પૂર્ણ કરવા અહીં ક્લિક કરો.",
     icon: iconUrl,
     badge: badgeUrl,
-    vibrate: [300, 150, 300, 150, 300],
+    vibrate: [200, 100, 200],
     data: {
       url: data.url || `${origin}/`,
       dateOfArrival: Date.now(),
     },
     tag: data.tag ? `${data.tag}-${Date.now()}` : `gita-${Date.now()}`,
     renotify: true,
-    requireInteraction: true,
+    requireInteraction: false,
+    timestamp: data.timestamp || Date.now(),
+    actions: data.actions || [
+      { action: "read", title: "📖 વાંચો" },
+      { action: "quiz", title: "🎯 ક્વિઝ રમો" },
+    ],
   };
 
   event.waitUntil(
@@ -177,6 +182,7 @@ self.addEventListener("push", (event) => {
         console.warn("Primary notification failed, showing minimal fallback:", err);
         return self.registration.showNotification(title, {
           body: options.body,
+          icon: iconUrl,
           data: options.data,
         });
       })
@@ -186,7 +192,15 @@ self.addEventListener("push", (event) => {
 // 6. NOTIFICATION CLICK — Focus existing window or open app
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+  const origin = self.location.origin;
+  let targetUrl = (event.notification.data && event.notification.data.url) || `${origin}/`;
+
+  // Handle action buttons
+  if (event.action === "quiz") {
+    targetUrl = `${origin}/quiz`;
+  } else if (event.action === "read") {
+    targetUrl = `${origin}/chapters`;
+  }
 
   event.waitUntil(
     (async () => {
