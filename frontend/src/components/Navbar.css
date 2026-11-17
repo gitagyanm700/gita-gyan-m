@@ -163,34 +163,114 @@ body {
 
 
 /* =========================================================
-   HOME PAGE CELESTIAL NAVBAR (PERFECTLY SUITED TO ARTWORK)
+   HOME PAGE NAVBAR (ROYAL BLUE THEME)
    ========================================================= */
 
+/* Light Mode: Royal Blue Glass matched to site theme */
 .navbar.navbar-home,
-[data-theme="dark"] .navbar.navbar-home {
-  background: rgba(4, 11, 26, 0.78);
+html[data-theme="light"] .navbar.navbar-home,
+.light .navbar.navbar-home {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 61, 143, 0.85) 0%,
+    rgba(17, 85, 204, 0.85) 55%,
+    rgba(26, 107, 224, 0.85) 100%
+  ) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.35) !important;
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.55),
-    inset 0 -1px 0 rgba(245, 158, 11, 0.15);
+    0 4px 20px rgba(0, 30, 100, 0.35),
+    inset 0 -1px 0 rgba(251, 191, 36, 0.18) !important;
 }
 
 .navbar.navbar-home.scrolled,
-[data-theme="dark"] .navbar.navbar-home.scrolled {
-  background: rgba(3, 9, 22, 0.94);
+html[data-theme="light"] .navbar.navbar-home.scrolled,
+.light .navbar.navbar-home.scrolled {
+  background: linear-gradient(
+    135deg,
+    rgba(10, 61, 143, 0.95) 0%,
+    rgba(17, 85, 204, 0.95) 55%,
+    rgba(26, 107, 224, 0.95) 100%
+  ) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.45) !important;
   box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.75),
-    0 1px 0 rgba(245, 158, 11, 0.20) inset;
+    0 8px 30px rgba(0, 20, 80, 0.45),
+    inset 0 -1px 0 rgba(251, 191, 36, 0.25) !important;
+}
+
+/* Dark Mode: Deep Celestial Navy Glass */
+[data-theme="dark"] .navbar.navbar-home,
+body.dark .navbar.navbar-home {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 14, 36, 0.88) 0%,
+    rgba(10, 31, 75, 0.88) 55%,
+    rgba(14, 45, 106, 0.88) 100%
+  ) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(80, 140, 255, 0.22) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 rgba(80, 140, 255, 0.15) !important;
+}
+
+[data-theme="dark"] .navbar.navbar-home.scrolled,
+body.dark .navbar.navbar-home.scrolled {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 14, 36, 0.96) 0%,
+    rgba(10, 31, 75, 0.96) 55%,
+    rgba(14, 45, 106, 0.96) 100%
+  ) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(80, 140, 255, 0.30) !important;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.70),
+    inset 0 -1px 0 rgba(80, 140, 255, 0.20) !important;
 }
 
 .navbar.navbar-home .logo {
-  color: #fbbf24;
-  text-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+  color: #fbbf24 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 14px rgba(245, 158, 11, 0.45);
+}
+
+.navbar.navbar-home .history-btn {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+.navbar.navbar-home .history-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.navbar.navbar-home .nav-lang-toggle-btn {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+}
+
+.navbar.navbar-home .current-page-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+
+.navbar.navbar-home .hamburger-btn {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+}
+
+.navbar.navbar-home .hamburger-btn:hover {
+  background: rgba(255, 255, 255, 0.30) !important;
+  border-color: rgba(255, 255, 255, 0.50) !important;
 }
 
 /* =========================================================
