@@ -514,7 +514,7 @@ function AnimatedRoutes() {
             <Route
               path="/admin/shloks"
               element={
-                <AdminRoute permission={["add_shloks", "edit_shloks", "delete_shloks", "manage_shloks"]}>
+                <AdminRoute permission={["add_shloks", "edit_shloks", "delete_shloks", "manage_shloks", "download_audio"]}>
                   <ShlokManagement />
                 </AdminRoute>
               }

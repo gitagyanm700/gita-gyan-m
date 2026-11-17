@@ -325,6 +325,13 @@ const getAdminPermissionsList = async (req, res) => {
       isDanger: true,
     },
     {
+      id: "download_audio",
+      nameGu: "ઓડિયો MP3 ડાઉનલોડ (Audio Download)",
+      nameHi: "ऑडियो MP3 डाउनलोड (Audio Download)",
+      nameEn: "Download Audio MP3",
+      category: "shloks",
+    },
+    {
       id: "add_quiz",
       nameGu: "ક્વિઝ પ્રશ્ન ઉમેરો (Add Question)",
       nameHi: "क्विज़ प्रश्न जोड़ें (Add Question)",

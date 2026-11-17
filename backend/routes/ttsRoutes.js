@@ -6,7 +6,7 @@ const {
   warmupChapterAudios,
   downloadShlokAudio,
 } = require("../controllers/ttsController");
-const { protect, strictSuperAdminOnly } = require("../middleware/authMiddleware");
+const { protect, requirePermission } = require("../middleware/authMiddleware");
 
 // POST /api/tts/speak
 router.post("/speak", generateSpeech);
@@ -18,10 +18,20 @@ router.post("/batch", generateSpeechBatch);
 router.get("/warmup/:chapterNumber", warmupChapterAudios);
 router.post("/warmup/:chapterNumber", warmupChapterAudios);
 
-// SUPER ADMIN EXCLUSIVE: Download Shlok Audio MP3
+// DOWNLOAD SHLOK AUDIO MP3 (Super Admin or download_audio permission)
 // GET & POST /api/tts/download/shlok/:chapterNumber/:shlokNumber
-router.get("/download/shlok/:chapterNumber/:shlokNumber", protect, strictSuperAdminOnly, downloadShlokAudio);
-router.post("/download/shlok/:chapterNumber/:shlokNumber", protect, strictSuperAdminOnly, downloadShlokAudio);
+router.get(
+  "/download/shlok/:chapterNumber/:shlokNumber",
+  protect,
+  requirePermission("download_audio"),
+  downloadShlokAudio
+);
+router.post(
+  "/download/shlok/:chapterNumber/:shlokNumber",
+  protect,
+  requirePermission("download_audio"),
+  downloadShlokAudio
+);
 
 module.exports = router;
 

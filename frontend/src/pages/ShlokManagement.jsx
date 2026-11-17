@@ -496,6 +496,7 @@ function ShlokManagement() {
   const canAddShloks = hasPermission(user, "add_shloks") || hasPermission(user, "manage_shloks");
   const canEditShloks = hasPermission(user, "edit_shloks") || hasPermission(user, "manage_shloks");
   const canDeleteShloks = hasPermission(user, "delete_shloks");
+  const canDownloadAudio = isSuperAdmin || hasPermission(user, "download_audio");
 
   /* =====================================================
      STATE
@@ -727,8 +728,8 @@ function ShlokManagement() {
   };
 
   const handleDownloadSingleAudio = async (shlok, type, lang) => {
-    if (!shlok || !isSuperAdmin) {
-      alert("માત્ર મુખ્ય સુપર એડમિન જ શ્લોક ઓડિયો MP3 ડાઉનલોડ કરી શકે છે.");
+    if (!shlok || !canDownloadAudio) {
+      alert("માત્ર સુપર એડમિન અથવા ઓડિયો ડાઉનલોડ પરમિશન ધરાવતા એડમિન જ શ્લોક ઓડિયો MP3 ડાઉનલોડ કરી શકે છે.");
       return;
     }
 
@@ -774,7 +775,7 @@ function ShlokManagement() {
   };
 
   const startBatchDownload = async () => {
-    if (!isSuperAdmin || !shlokas || shlokas.length === 0) return;
+    if (!canDownloadAudio || !shlokas || shlokas.length === 0) return;
 
     setBatchDownloading(true);
     batchAbortedRef.current = false;
@@ -3115,14 +3116,14 @@ function ShlokManagement() {
             </div>
 
             <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-              {isSuperAdmin && shlokas.length > 0 && (
+              {canDownloadAudio && shlokas.length > 0 && (
                 <button
                   type="button"
                   className="chapter-batch-audio-btn"
                   onClick={() => setIsBatchAudioModalOpen(true)}
-                  title={`અધ્યાય ${selectedChapter} ના તમામ ${shlokas.length} શ્લોકના ઓડિયો MP3 ડાઉનલોડ કરો (માત્ર મુખ્ય સુપર એડમિન)`}
+                  title={`અધ્યાય ${selectedChapter} ના તમામ ${shlokas.length} શ્લોકના ઓડિયો MP3 ડાઉનલોડ કરો`}
                 >
-                  <Download className="btn-icon" size={16} /> 👑 આખા અધ્યાય {selectedChapter} ના Audio MP3 ({shlokas.length})
+                  <Download className="btn-icon" size={16} /> 🎧 આખા અધ્યાય {selectedChapter} ના Audio MP3 ({shlokas.length})
                 </button>
               )}
 
@@ -3238,8 +3239,8 @@ function ShlokManagement() {
 
                             <div className="shlok-actions">
 
-                              {/* 👑 SUPER ADMIN EXCLUSIVE AUDIO MP3 DOWNLOAD */}
-                              {isSuperAdmin && (
+                              {/* 🎧 AUDIO MP3 DOWNLOAD (Super Admin or download_audio permission) */}
+                              {canDownloadAudio && (
                                 <button
                                   type="button"
                                   className="audio-download-shlok-btn"
@@ -3247,7 +3248,7 @@ function ShlokManagement() {
                                     stopAudioPreview();
                                     setAudioModalShlok(shlok);
                                   }}
-                                  title="આ શ્લોકનો ઓડિયો MP3 ડાઉનલોડ કરો (👑 Super Admin)"
+                                  title="આ શ્લોકનો ઓડિયો MP3 ડાઉનલોડ કરો"
                                 >
                                   <Download className="btn-icon" size={15} /> Audio MP3
                                 </button>
@@ -3450,9 +3451,9 @@ function ShlokManagement() {
         </section>
 
         {/* =================================================
-            1. SUPER ADMIN SINGLE SHLOK AUDIO MODAL
+            1. SINGLE SHLOK AUDIO MODAL
         ================================================= */}
-        {isSuperAdmin && audioModalShlok && typeof document !== "undefined" && createPortal(
+        {canDownloadAudio && audioModalShlok && typeof document !== "undefined" && createPortal(
           <div
             className="admin-modal-overlay"
             onClick={() => {
@@ -3730,9 +3731,9 @@ function ShlokManagement() {
         )}
 
         {/* =================================================
-            2. SUPER ADMIN BATCH CHAPTER AUDIO DOWNLOAD MODAL
+            2. BATCH CHAPTER AUDIO DOWNLOAD MODAL
         ================================================= */}
-        {isSuperAdmin && isBatchAudioModalOpen && typeof document !== "undefined" && createPortal(
+        {canDownloadAudio && isBatchAudioModalOpen && typeof document !== "undefined" && createPortal(
           <div
             className="admin-modal-overlay"
             onClick={() => {

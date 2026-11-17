@@ -123,7 +123,8 @@ function Admin() {
     hasPermission(loggedInUser, "add_shloks") ||
     hasPermission(loggedInUser, "edit_shloks") ||
     hasPermission(loggedInUser, "delete_shloks") ||
-    hasPermission(loggedInUser, "manage_shloks");
+    hasPermission(loggedInUser, "manage_shloks") ||
+    hasPermission(loggedInUser, "download_audio");
   const canAccessQuizAdmin =
     hasPermission(loggedInUser, "add_quiz") ||
     hasPermission(loggedInUser, "edit_quiz") ||

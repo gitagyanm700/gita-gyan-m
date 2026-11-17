@@ -14,6 +14,7 @@ export const PERMISSION_KEYS = {
   EDIT_SHLOKS: "edit_shloks",
   DELETE_SHLOKS: "delete_shloks",
   MANAGE_SHLOKS: "manage_shloks", // backward compatibility
+  DOWNLOAD_AUDIO: "download_audio",
   ADD_QUIZ: "add_quiz",
   EDIT_QUIZ: "edit_quiz",
   DELETE_QUIZ: "delete_quiz",
@@ -49,6 +50,13 @@ export const ALL_PERMISSIONS = [
     nameEn: "Delete Shlokas",
     category: "shloks",
     isDanger: true,
+  },
+  {
+    id: "download_audio",
+    nameGu: "ઓડિયો MP3 ડાઉનલોડ (Audio Download)",
+    nameHi: "ऑडियो MP3 डाउनलोड (Audio Download)",
+    nameEn: "Download Audio MP3",
+    category: "shloks",
   },
   {
     id: "add_quiz",
