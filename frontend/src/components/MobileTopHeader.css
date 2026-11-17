@@ -25,32 +25,55 @@
   }
 
   /* ---------------------------------------------------
-     1. HOME PAGE HEADER (ALWAYS MATCHES HOME ARTWORK)
-     Celestial Cosmic Dark Glassmorphism with gold glow
+     1. HOME PAGE HEADER (MATCHES WEBSITE THEME)
      --------------------------------------------------- */
-  .mobile-top-header.is-home-header,
   html[data-theme="light"] .mobile-top-header.is-home-header,
-  html[data-theme="dark"] .mobile-top-header.is-home-header,
-  body.dark .mobile-top-header.is-home-header {
-    background: rgba(4, 11, 26, 0.88) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-    border-bottom: 1.5px solid rgba(245, 158, 11, 0.38) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(245, 158, 11, 0.15) !important;
+  .light .mobile-top-header.is-home-header,
+  .mobile-top-header.is-home-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #1155cc 55%, #1a6be0 100%) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 4px 18px rgba(0, 30, 100, 0.35) !important;
   }
 
-  .mobile-top-header.is-home-header .mobile-header-app-title,
-  html[data-theme="light"] .mobile-top-header.is-home-header .mobile-header-app-title {
+  html[data-theme="light"] .mobile-top-header.is-home-header .mobile-header-app-title,
+  .light .mobile-top-header.is-home-header .mobile-header-app-title,
+  .mobile-top-header.is-home-header .mobile-header-app-title {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  html[data-theme="light"] .mobile-top-header.is-home-header .mobile-header-action-btn,
+  .light .mobile-top-header.is-home-header .mobile-header-action-btn,
+  .mobile-top-header.is-home-header .mobile-header-action-btn {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.28) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  html[data-theme="dark"] .mobile-top-header.is-home-header,
+  body.dark .mobile-top-header.is-home-header {
+    background: linear-gradient(135deg, #050e24 0%, #0a1f4b 55%, #0e2d6a 100%) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid rgba(80, 140, 255, 0.22) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
+  }
+
+  html[data-theme="dark"] .mobile-top-header.is-home-header .mobile-header-app-title,
+  body.dark .mobile-top-header.is-home-header .mobile-header-app-title {
     color: #fbbf24 !important;
     text-shadow: 0 0 14px rgba(245, 158, 11, 0.5) !important;
   }
 
-  .mobile-top-header.is-home-header .mobile-header-action-btn,
-  html[data-theme="light"] .mobile-top-header.is-home-header .mobile-header-action-btn {
-    background: rgba(245, 158, 11, 0.14) !important;
-    border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  html[data-theme="dark"] .mobile-top-header.is-home-header .mobile-header-action-btn,
+  body.dark .mobile-top-header.is-home-header .mobile-header-action-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
     color: #fbbf24 !important;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25) !important;
   }
 
   /* ---------------------------------------------------
