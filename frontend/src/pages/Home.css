@@ -958,27 +958,34 @@ body.has-mobile-bottom-nav .home-search-desktop-only {
 }
 
 .today-sanskrit {
-  padding: 25px 20px;
-  border-radius: 17px;
-  background: linear-gradient(135deg, rgba(254, 252, 232, 0.96), rgba(254, 249, 195, 0.90));
-  border: 1.5px solid rgba(234, 179, 8, 0.50);
-  border-left: 6px solid #d97706;
-  color: #451a03;
-  font-size: 22px;
-  line-height: 1.5;
-  text-align: center;
-  font-weight: 700;
+  padding: 22px 20px;
+  border-radius: 18px;
+  background: rgba(6, 26, 68, 0.52);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1.5px solid rgba(251, 191, 36, 0.42);
+  border-left: 5px solid #fbbf24;
+  color: #fef08a;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(180, 83, 9, 0.08), 0 8px 20px rgba(0, 20, 60, 0.25);
+  box-shadow:
+    0 8px 24px rgba(0, 15, 45, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: all 0.25s ease;
 }
 
 .today-sanskrit-text {
   width: 100%;
-  line-height: 1.5;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.7;
+  letter-spacing: 0.3px;
   text-align: center;
+  color: #fef08a;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.85),
+    0 0 14px rgba(251, 191, 36, 0.35);
   overflow-wrap: break-word;
   word-break: normal;
 }
@@ -1426,12 +1433,13 @@ html.dark .today-sanskrit,
 body.dark .today-sanskrit,
 html[data-theme="dark"] .today-sanskrit,
 body[data-theme="dark"] .today-sanskrit {
-  background: rgba(10, 22, 50, 0.75);
-  border-color: rgba(245, 158, 11, 0.3);
-  border-left-color: #f59e0b;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5), 0 5px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(4, 16, 42, 0.65);
+  border: 1.5px solid rgba(251, 191, 36, 0.45);
+  border-left: 5px solid #fbbf24;
+  color: #fef08a;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 
@@ -1845,32 +1853,26 @@ body[data-theme="dark"] .today-message div {
 
 
   .today-sanskrit {
-    padding:
-      20px 14px;
+    padding: 18px 14px;
+    min-height: auto;
+    max-height: none;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 26, 68, 0.52);
+    border: 1.5px solid rgba(251, 191, 36, 0.42);
+    border-left: 5px solid #fbbf24;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 15, 45, 0.30);
+  }
 
-    font-size:
-      19px;
-
-    line-height:
-      1.45;
-
-    overflow:
-      hidden;
-
-    min-height:
-      110px;
-
-    max-height:
-      110px;
-
-    display:
-      flex;
-
-    align-items:
-      center;
-
-    justify-content:
-      center;
+  .today-sanskrit-text {
+    font-size: 19px !important;
+    line-height: 1.65;
+    font-weight: 700;
+    color: #fef08a;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 12px rgba(251, 191, 36, 0.35);
   }
 
 
@@ -2163,32 +2165,18 @@ body[data-theme="dark"] .today-message div {
 
 
   .today-sanskrit {
-    padding:
-      18px 11px;
+    padding: 16px 12px;
+    min-height: auto;
+    max-height: none;
+    height: auto;
+    border-radius: 14px;
+    border-left: 4.5px solid #fbbf24;
+  }
 
-    font-size:
-      17px;
-
-    line-height:
-      1.85;
-
-    min-height:
-      100px;
-
-    max-height:
-      100px;
-
-    display:
-      flex;
-
-    align-items:
-      center;
-
-    justify-content:
-      center;
-
-    overflow:
-      hidden;
+  .today-sanskrit-text {
+    font-size: 18px !important;
+    line-height: 1.62;
+    font-weight: 700;
   }
 
 

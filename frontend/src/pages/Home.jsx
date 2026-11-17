@@ -156,61 +156,6 @@ function Home() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // =====================================================
-// TODAY'S SANSKRIT AUTO FIT
-// =====================================================
-
-const todaySanskritRef = useRef(null);
-
-useEffect(() => {
-  const element =
-    todaySanskritRef.current;
-
-  if (!element || !todayShlok?.sanskrit) {
-    return;
-  }
-
-  const fitSanskrit = () => {
-    const maxFontSize = 22;
-    const minFontSize = 10;
-
-    let fontSize = maxFontSize;
-
-    element.style.fontSize =
-      `${fontSize}px`;
-
-    while (
-      element.scrollHeight >
-        fontSize * 1.45 * 2 &&
-      fontSize > minFontSize
-    ) {
-      fontSize -= 0.5;
-
-      element.style.fontSize =
-        `${fontSize}px`;
-    }
-  };
-
-  const timer =
-    setTimeout(() => {
-      fitSanskrit();
-    }, 50);
-
-  window.addEventListener(
-    "resize",
-    fitSanskrit
-  );
-
-  return () => {
-    clearTimeout(timer);
-
-    window.removeEventListener(
-      "resize",
-      fitSanskrit
-    );
-  };
-}, [todayShlok]);
-
-  // =====================================================
   // API URL
   // =====================================================
 
@@ -1474,7 +1419,6 @@ useEffect(() => {
               <div className="today-sanskrit">
                 {todayShlok.sanskrit && (
                   <div
-                    ref={todaySanskritRef}
                     className="today-sanskrit-text"
                     dangerouslySetInnerHTML={{
                       __html: todayShlok.sanskrit,
