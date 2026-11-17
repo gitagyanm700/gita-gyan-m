@@ -374,6 +374,7 @@ export default function GitaAIAssistant() {
       sessionStorage.getItem("gita_fab_intro_shown") === "true";
 
     if (introAlreadyShown) {
+      setIsLabelExpanded(false);
       return;
     }
 
@@ -387,13 +388,19 @@ export default function GitaAIAssistant() {
       if (sessionStorage.getItem("gita_fab_intro_shown") === "true") return;
 
       // Must strictly be on Home page ("/")
-      if (location.pathname !== "/") return;
+      if (location.pathname !== "/") {
+        setIsLabelExpanded(false);
+        return;
+      }
 
       // Must have zero startup modals pending or showing
       if (areStartupModalsPending()) return;
 
       // If chat assistant is already open, do not show pill
-      if (isOpen) return;
+      if (isOpen) {
+        setIsLabelExpanded(false);
+        return;
+      }
 
       // Mark as shown so refreshing the page NEVER plays the intro again!
       sessionStorage.setItem("gita_fab_intro_shown", "true");
@@ -403,13 +410,13 @@ export default function GitaAIAssistant() {
 
         collapseTimer = setTimeout(() => {
           setIsLabelExpanded(false);
-          // Wait for smooth collapse glide (750ms) to finish, then trigger rating pill!
+          // Wait for smooth collapse glide (500ms) to finish, then trigger rating pill!
           glideTimer = setTimeout(() => {
             try {
               window.dispatchEvent(new CustomEvent("gita-ai-pill-closed"));
             } catch (e) {}
-          }, 750);
-        }, 4000); // 4 seconds duration
+          }, 500);
+        }, 2800); // 2.8 seconds duration
       }, 300);
     };
 
@@ -441,17 +448,34 @@ export default function GitaAIAssistant() {
     window.addEventListener("gita-login-prompt-done", handleStepDone);
     window.addEventListener("feedback-modal-closed", handleStepDone);
 
+    // Automatically collapse and retract inside on user interaction (scroll, click, touch)
+    const handleUserInteraction = () => {
+      setIsLabelExpanded(false);
+      try {
+        window.dispatchEvent(new CustomEvent("gita-ai-pill-closed"));
+      } catch (e) {}
+    };
+
+    window.addEventListener("scroll", handleUserInteraction, { passive: true });
+    window.addEventListener("click", handleUserInteraction, { passive: true });
+    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+
     return () => {
       window.removeEventListener("gita-splash-finished", handleStepDone);
       window.removeEventListener("gita-language-selected", handleStepDone);
       window.removeEventListener("gita-notification-prompt-done", handleStepDone);
       window.removeEventListener("gita-login-prompt-done", handleStepDone);
       window.removeEventListener("feedback-modal-closed", handleStepDone);
+      window.removeEventListener("scroll", handleUserInteraction);
+      window.removeEventListener("click", handleUserInteraction);
+      window.removeEventListener("touchstart", handleUserInteraction);
 
       clearTimeout(settleTimer);
       clearTimeout(expandTimer);
       clearTimeout(collapseTimer);
       clearTimeout(glideTimer);
+      // Guarantee the pill never stays stuck expanded on unmount or re-render!
+      setIsLabelExpanded(false);
     };
   }, [location.pathname, isOpen]);
 
@@ -1245,6 +1269,7 @@ export default function GitaAIAssistant() {
   };
 
   const handleFabClick = () => {
+    setIsLabelExpanded(false);
     if (!user) {
       const targetPath = location.pathname + location.search;
       const redirectMsg = txt(

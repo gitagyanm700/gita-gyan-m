@@ -78,21 +78,29 @@ export default function FeedbackModal() {
       sessionStorage.getItem("gita_fab_rating_intro_shown") === "true";
 
     if (introAlreadyShown) {
+      setIsLabelExpanded(false);
       return;
     }
 
     let expandTimer;
     let collapseTimer;
+    let fallbackTimer;
 
     const runRatingPill = () => {
       // Re-check early constraints
       if (sessionStorage.getItem("gita_fab_rating_intro_shown") === "true") return;
 
       // Must strictly be on Home page ("/")
-      if (location.pathname !== "/") return;
+      if (location.pathname !== "/") {
+        setIsLabelExpanded(false);
+        return;
+      }
 
       // Must not open if rating modal dialog is currently showing
-      if (isOpen || document.querySelector(".feedback-modal-overlay")) return;
+      if (isOpen || document.querySelector(".feedback-modal-overlay")) {
+        setIsLabelExpanded(false);
+        return;
+      }
 
       // Mark as shown so refreshing the page NEVER plays the intro again!
       sessionStorage.setItem("gita_fab_rating_intro_shown", "true");
@@ -102,17 +110,42 @@ export default function FeedbackModal() {
 
         collapseTimer = setTimeout(() => {
           setIsLabelExpanded(false);
-        }, 4000); // 4 seconds duration
+        }, 2800); // 2.8 seconds duration
       }, 350);
     };
 
     // Listen for AI pill finish event
     window.addEventListener("gita-ai-pill-closed", runRatingPill, { once: true });
 
+    // Fallback: If AI pill already played or doesn't fire within 6s, run rating pill
+    fallbackTimer = setTimeout(() => {
+      if (
+        sessionStorage.getItem("gita_fab_intro_shown") === "true" &&
+        sessionStorage.getItem("gita_fab_rating_intro_shown") !== "true"
+      ) {
+        runRatingPill();
+      }
+    }, 6000);
+
+    // Automatically collapse and retract inside on user interaction (scroll, click, touch)
+    const handleUserInteraction = () => {
+      setIsLabelExpanded(false);
+    };
+
+    window.addEventListener("scroll", handleUserInteraction, { passive: true });
+    window.addEventListener("click", handleUserInteraction, { passive: true });
+    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+
     return () => {
       window.removeEventListener("gita-ai-pill-closed", runRatingPill);
+      window.removeEventListener("scroll", handleUserInteraction);
+      window.removeEventListener("click", handleUserInteraction);
+      window.removeEventListener("touchstart", handleUserInteraction);
       clearTimeout(expandTimer);
       clearTimeout(collapseTimer);
+      clearTimeout(fallbackTimer);
+      // Guarantee the pill never stays stuck expanded on unmount or re-render!
+      setIsLabelExpanded(false);
     };
   }, [location.pathname, isOpen]);
 
@@ -376,6 +409,7 @@ export default function FeedbackModal() {
         type="button"
         className={`feedback-fab-trigger ${isLabelExpanded ? "label-expanded" : ""}`}
         onClick={() => {
+          setIsLabelExpanded(false);
           setIsAutoPrompt(false);
           setIsOpen(true);
           setError("");
