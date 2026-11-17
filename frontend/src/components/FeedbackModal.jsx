@@ -73,36 +73,26 @@ export default function FeedbackModal() {
   // Starts strictly AFTER Gita AI pill closes, and ONLY on the Home page when no modals are open!
   useEffect(() => {
     // If already shown in this session (e.g. on page refresh), DO NOT PLAY AGAIN!
-    const introAlreadyShown =
-      typeof window !== "undefined" &&
-      sessionStorage.getItem("gita_fab_rating_intro_shown") === "true";
-
-    if (introAlreadyShown) {
+    if (sessionStorage.getItem("gita_fab_rating_intro_shown") === "true") {
       setIsLabelExpanded(false);
       return;
     }
 
-    let expandTimer;
-    let collapseTimer;
-    let fallbackTimer;
+    if (location.pathname !== "/") {
+      setIsLabelExpanded(false);
+      return;
+    }
+
+    let expandTimer = null;
+    let collapseTimer = null;
+    let fallbackTimer = null;
 
     const runRatingPill = () => {
       // Re-check early constraints
       if (sessionStorage.getItem("gita_fab_rating_intro_shown") === "true") return;
+      if (location.pathname !== "/") return;
+      if (isOpen || document.querySelector(".feedback-modal-overlay")) return;
 
-      // Must strictly be on Home page ("/")
-      if (location.pathname !== "/") {
-        setIsLabelExpanded(false);
-        return;
-      }
-
-      // Must not open if rating modal dialog is currently showing
-      if (isOpen || document.querySelector(".feedback-modal-overlay")) {
-        setIsLabelExpanded(false);
-        return;
-      }
-
-      // Mark as shown so refreshing the page NEVER plays the intro again!
       sessionStorage.setItem("gita_fab_rating_intro_shown", "true");
 
       expandTimer = setTimeout(() => {
@@ -110,8 +100,8 @@ export default function FeedbackModal() {
 
         collapseTimer = setTimeout(() => {
           setIsLabelExpanded(false);
-        }, 2800); // 2.8 seconds duration
-      }, 350);
+        }, 2500); // 2.5 seconds duration
+      }, 250);
     };
 
     // Listen for AI pill finish event
@@ -120,34 +110,23 @@ export default function FeedbackModal() {
     // Fallback: If AI pill already played or doesn't fire within 6s, run rating pill
     fallbackTimer = setTimeout(() => {
       if (
-        sessionStorage.getItem("gita_fab_intro_shown") === "true" &&
-        sessionStorage.getItem("gita_fab_rating_intro_shown") !== "true"
+        sessionStorage.getItem("gita_fab_rating_intro_shown") !== "true" &&
+        location.pathname === "/"
       ) {
         runRatingPill();
       }
-    }, 6000);
-
-    // Automatically collapse and retract inside on user interaction (scroll, click, touch)
-    const handleUserInteraction = () => {
-      setIsLabelExpanded(false);
-    };
-
-    window.addEventListener("scroll", handleUserInteraction, { passive: true });
-    window.addEventListener("click", handleUserInteraction, { passive: true });
-    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+    }, 5500);
 
     return () => {
       window.removeEventListener("gita-ai-pill-closed", runRatingPill);
-      window.removeEventListener("scroll", handleUserInteraction);
-      window.removeEventListener("click", handleUserInteraction);
-      window.removeEventListener("touchstart", handleUserInteraction);
       clearTimeout(expandTimer);
       clearTimeout(collapseTimer);
       clearTimeout(fallbackTimer);
-      // Guarantee the pill never stays stuck expanded on unmount or re-render!
-      setIsLabelExpanded(false);
+      if (location.pathname !== "/") {
+        setIsLabelExpanded(false);
+      }
     };
-  }, [location.pathname, isOpen]);
+  }, [location.pathname]);
 
   // Initialize name and email from logged-in user
   useEffect(() => {

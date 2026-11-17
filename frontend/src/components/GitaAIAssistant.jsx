@@ -369,11 +369,12 @@ export default function GitaAIAssistant() {
   // ONLY on first visit to HOME PAGE per session, AFTER all startup popups/modals close!
   useEffect(() => {
     // If already shown in this session (e.g. on page refresh), DO NOT PLAY AGAIN!
-    const introAlreadyShown =
-      typeof window !== "undefined" &&
-      sessionStorage.getItem("gita_fab_intro_shown") === "true";
+    if (sessionStorage.getItem("gita_fab_intro_shown") === "true") {
+      setIsLabelExpanded(false);
+      return;
+    }
 
-    if (introAlreadyShown) {
+    if (location.pathname !== "/") {
       setIsLabelExpanded(false);
       return;
     }
@@ -384,25 +385,11 @@ export default function GitaAIAssistant() {
     let glideTimer = null;
 
     const runPillIntro = () => {
-      // Re-verify intro not yet shown
       if (sessionStorage.getItem("gita_fab_intro_shown") === "true") return;
-
-      // Must strictly be on Home page ("/")
-      if (location.pathname !== "/") {
-        setIsLabelExpanded(false);
-        return;
-      }
-
-      // Must have zero startup modals pending or showing
+      if (location.pathname !== "/") return;
       if (areStartupModalsPending()) return;
+      if (isOpen) return;
 
-      // If chat assistant is already open, do not show pill
-      if (isOpen) {
-        setIsLabelExpanded(false);
-        return;
-      }
-
-      // Mark as shown so refreshing the page NEVER plays the intro again!
       sessionStorage.setItem("gita_fab_intro_shown", "true");
 
       expandTimer = setTimeout(() => {
@@ -410,13 +397,13 @@ export default function GitaAIAssistant() {
 
         collapseTimer = setTimeout(() => {
           setIsLabelExpanded(false);
-          // Wait for smooth collapse glide (500ms) to finish, then trigger rating pill!
+          // Wait for smooth collapse glide (400ms) to finish, then trigger rating pill!
           glideTimer = setTimeout(() => {
             try {
               window.dispatchEvent(new CustomEvent("gita-ai-pill-closed"));
             } catch (e) {}
-          }, 500);
-        }, 2800); // 2.8 seconds duration
+          }, 400);
+        }, 2500); // 2.5 seconds duration
       }, 300);
     };
 
@@ -448,36 +435,22 @@ export default function GitaAIAssistant() {
     window.addEventListener("gita-login-prompt-done", handleStepDone);
     window.addEventListener("feedback-modal-closed", handleStepDone);
 
-    // Automatically collapse and retract inside on user interaction (scroll, click, touch)
-    const handleUserInteraction = () => {
-      setIsLabelExpanded(false);
-      try {
-        window.dispatchEvent(new CustomEvent("gita-ai-pill-closed"));
-      } catch (e) {}
-    };
-
-    window.addEventListener("scroll", handleUserInteraction, { passive: true });
-    window.addEventListener("click", handleUserInteraction, { passive: true });
-    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
-
     return () => {
       window.removeEventListener("gita-splash-finished", handleStepDone);
       window.removeEventListener("gita-language-selected", handleStepDone);
       window.removeEventListener("gita-notification-prompt-done", handleStepDone);
       window.removeEventListener("gita-login-prompt-done", handleStepDone);
       window.removeEventListener("feedback-modal-closed", handleStepDone);
-      window.removeEventListener("scroll", handleUserInteraction);
-      window.removeEventListener("click", handleUserInteraction);
-      window.removeEventListener("touchstart", handleUserInteraction);
 
       clearTimeout(settleTimer);
       clearTimeout(expandTimer);
       clearTimeout(collapseTimer);
       clearTimeout(glideTimer);
-      // Guarantee the pill never stays stuck expanded on unmount or re-render!
-      setIsLabelExpanded(false);
+      if (location.pathname !== "/") {
+        setIsLabelExpanded(false);
+      }
     };
-  }, [location.pathname, isOpen]);
+  }, [location.pathname]);
 
   // Retrieve or resolve the current active conversation object
   const getActiveConversation = () => {

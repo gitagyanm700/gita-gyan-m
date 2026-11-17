@@ -23,8 +23,10 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
-  backdrop-filter: blur(8px);
   user-select: none;
   overflow: hidden;
 }
@@ -73,18 +75,16 @@
   color: #ffffff;
   letter-spacing: 0.02em;
   padding: 0;
-  transform: translateX(-4px);
-  transition: max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-              opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-              padding 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: max-width, opacity, padding;
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.28s ease,
+              padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .feedback-fab-trigger.label-expanded .feedback-fab-text {
   max-width: 170px;
   opacity: 1;
   padding-right: 12px;
-  transform: translateX(0);
 }
 
 /* Modal Overlay */
