@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Search, Moon, Sun } from "lucide-react";
+import { ArrowLeft, Search, Moon, Sun, Globe, Check } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 import "./MobileTopHeader.css";
@@ -9,11 +9,99 @@ export default function MobileTopHeader({ onOpenSearch }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { txt } = useLanguage();
+  const { language, setLanguage, txt } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const langMenuRef = useRef(null);
 
   const pathname = location.pathname;
   const isHome = pathname === "/";
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target)) {
+        setLangMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    setLangMenuOpen(false);
+  }, [pathname]);
+
+  const getShortLangLabel = () => {
+    if (language === "en") return "EN";
+    if (language === "hi") return "हिं";
+    return "ગુજ";
+  };
+
+  const renderLanguageSelector = () => (
+    <div className="mobile-lang-wrapper" ref={langMenuRef}>
+      <button
+        type="button"
+        className={`mobile-header-action-btn mobile-lang-btn ${langMenuOpen ? "active" : ""}`}
+        onClick={() => setLangMenuOpen((prev) => !prev)}
+        title={txt(
+          "ભાષા પસંદ કરો (ગુજરાતી / हिन्दी / English)",
+          "भाषा चुनें (ગુજરાતી / हिन्दी / English)",
+          "Select Language (ગુજરાતી / हिन्दी / English)"
+        )}
+        aria-label="ભાષા બદલો / भाषा बदलें / Change Language"
+        aria-expanded={langMenuOpen}
+      >
+        <Globe size={15} strokeWidth={2.2} className="mobile-lang-icon" />
+        <span className="mobile-lang-label">{getShortLangLabel()}</span>
+      </button>
+
+      {langMenuOpen && (
+        <div className="mobile-lang-dropdown" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className={`mobile-lang-option ${language === "gu" ? "selected" : ""}`}
+            onClick={() => {
+              setLanguage("gu");
+              setLangMenuOpen(false);
+            }}
+          >
+            <span className="mobile-lang-option-text">ગુજરાતી</span>
+            {language === "gu" && <Check size={15} className="mobile-lang-check" />}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`mobile-lang-option ${language === "hi" ? "selected" : ""}`}
+            onClick={() => {
+              setLanguage("hi");
+              setLangMenuOpen(false);
+            }}
+          >
+            <span className="mobile-lang-option-text">हिन्दी</span>
+            {language === "hi" && <Check size={15} className="mobile-lang-check" />}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`mobile-lang-option ${language === "en" ? "selected" : ""}`}
+            onClick={() => {
+              setLanguage("en");
+              setLangMenuOpen(false);
+            }}
+          >
+            <span className="mobile-lang-option-text">English</span>
+            {language === "en" && <Check size={15} className="mobile-lang-check" />}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   // Compute dynamic title per screen matching reference design
   const getDynamicTitle = () => {
@@ -144,6 +232,8 @@ export default function MobileTopHeader({ onOpenSearch }) {
             </div>
 
             <div className="mobile-header-actions">
+              {renderLanguageSelector()}
+
               <button
                 type="button"
                 className="mobile-header-action-btn theme-trigger"
@@ -191,6 +281,8 @@ export default function MobileTopHeader({ onOpenSearch }) {
             </h1>
 
             <div className="mobile-header-actions">
+              {renderLanguageSelector()}
+
               <button
                 type="button"
                 className="mobile-header-action-btn theme-trigger"
