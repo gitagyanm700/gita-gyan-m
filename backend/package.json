@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "upload-scenes": "node scripts/uploadScenesToCloudinary.js"
+    "upload-scenes": "node scripts/uploadScenesToCloudinary.js",
+    "auto-generate-scenes": "node scripts/autoGenerateScenes.js"
   },
   "keywords": [],
   "author": "",
