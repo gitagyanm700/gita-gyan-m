@@ -4662,6 +4662,29 @@ html[data-theme="dark"] .field-ai-translate-btn.en-btn:hover:not(:disabled) {
   box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
 }
 
+/* Individual Shlok 9:16 Video Action Button */
+.video-download-shlok-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(4, 120, 87, 0.30);
+}
+
+.video-download-shlok-btn:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+
 /* Audio Modal Styles */
 .audio-download-modal,
 .batch-audio-modal {

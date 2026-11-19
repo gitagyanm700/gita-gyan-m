@@ -245,6 +245,3 @@ export function registerPwa() {
     }
   }
 }
-
-
-

@@ -43,6 +43,7 @@ import {
   Italic,
   Underline,
   Download,
+  Film,
   Play,
   Pause,
   Headphones,
@@ -50,6 +51,7 @@ import {
   X,
   CheckCircle2,
 } from "lucide-react";
+import ShlokVideoGeneratorModal from "../components/ShlokVideoGeneratorModal.jsx";
 import "./ShlokManagement.css";
 
 
@@ -605,6 +607,7 @@ function ShlokManagement() {
      SUPER ADMIN AUDIO DOWNLOAD & PREVIEW (EXCLUSIVE)
   ===================================================== */
   const [audioModalShlok, setAudioModalShlok] = useState(null);
+  const [videoModalShlok, setVideoModalShlok] = useState(null);
   const [audioModalLang, setAudioModalLang] = useState("gu");
   const [downloadingType, setDownloadingType] = useState(null);
   const [previewPlayingType, setPreviewPlayingType] = useState(null);
@@ -3254,6 +3257,19 @@ function ShlokManagement() {
                                 </button>
                               )}
 
+                              {/* 🎬 9:16 AI 3D MOTION VIDEO GENERATOR & DOWNLOAD */}
+                              <button
+                                type="button"
+                                className="video-download-shlok-btn"
+                                onClick={() => {
+                                  stopAudioPreview();
+                                  setVideoModalShlok(shlok);
+                                }}
+                                title="આ શ્લોકનો 9:16 AI 3D મોશન વિડીયો બનાવો & ડાઉનલોડ કરો (Reels / Shorts)"
+                              >
+                                <Film className="btn-icon" size={15} /> 9:16 Video
+                              </button>
+
                               {canEditShloks && (
                                 <button
                                   type="button"
@@ -3941,6 +3957,16 @@ function ShlokManagement() {
             </div>
           </div>,
           document.body
+        )}
+
+        {/* =================================================
+            3. 9:16 AI 3D MOTION VIDEO GENERATOR MODAL
+        ================================================= */}
+        {videoModalShlok && (
+          <ShlokVideoGeneratorModal
+            shlok={videoModalShlok}
+            onClose={() => setVideoModalShlok(null)}
+          />
         )}
 
       </div>
