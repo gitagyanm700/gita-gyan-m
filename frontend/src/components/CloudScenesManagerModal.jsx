@@ -24,6 +24,7 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [previewIndex, setPreviewIndex] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -43,6 +44,22 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
       document.body.style.overflow = orig;
     };
   }, []);
+
+  // Keyboard navigation for Lightbox
+  useEffect(() => {
+    if (previewIndex === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setPreviewIndex(null);
+      if (e.key === "ArrowLeft") {
+        setPreviewIndex((idx) => (idx > 0 ? idx - 1 : idx));
+      }
+      if (e.key === "ArrowRight") {
+        setPreviewIndex((idx) => (idx < scenes.length - 1 ? idx + 1 : idx));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewIndex, scenes.length]);
 
   // Fetch Cloudinary scenes
   const loadScenes = async (forceRefresh = false) => {
@@ -280,18 +297,33 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* DRAG & DROP ZONE (If 0 scenes or want quick drop) */}
+          {/* COMPACT UPLOAD BANNER */}
           <div
-            className="cloud-scenes-dropzone"
+            className="cloud-scenes-compact-dropzone"
             onClick={() => fileInputRef.current && fileInputRef.current.click()}
           >
-            <ImageIcon size={32} style={{ color: "#fbbf24", margin: "0 auto 6px auto" }} />
-            <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.95rem" }}>
-              નવી 9:16 ઈમેજો અપલોડ કરવા માટે અહીં ક્લિક કરો
+            <div className="cloud-scenes-dropzone-left">
+              <ImageIcon size={22} style={{ color: "#fbbf24", flexShrink: 0 }} />
+              <div>
+                <div className="cloud-scenes-dropzone-text">
+                  <strong>નવી 9:16 ઈમેજો અપલોડ કરો</strong> (એકસાથે ૧૦, ૫૦, ૧૦૦ કે ૫૦૦ ઈમેજો સિલેક્ટ કરો)
+                </div>
+                <div className="cloud-scenes-dropzone-hint">
+                  JPG, PNG, WebP ફોર્મેટ • ક્લાઉડ CDN પર 9:16 વિડિયો સીન તરીકે સેવ થશે
+                </div>
+              </div>
             </div>
-            <p>
-              તમે તમારા કમ્પ્યુટરમાંથી એકસાથે ૧૦, ૫૦, ૧૦૦ કે ૫૦૦ ઈમેજો સિલેક્ટ કરી શકો છો (.jpg, .png, .webp)
-            </p>
+            <button
+              type="button"
+              className="cloud-scenes-upload-btn"
+              style={{ padding: "6px 14px", fontSize: "0.82rem" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current && fileInputRef.current.click();
+              }}
+            >
+              <Upload size={14} /> ફાઈલો પસંદ કરો
+            </button>
           </div>
 
           {/* GALLERY GRID */}
@@ -307,15 +339,26 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
           ) : (
             <div className="cloud-scenes-grid">
               {scenes.map((s, idx) => (
-                <div key={s.public_id || idx} className="cloud-scene-card">
+                <div
+                  key={s.public_id || idx}
+                  className="cloud-scene-card"
+                  onClick={() => setPreviewIndex(idx)}
+                  title="ક્લિક કરીને ફૂલ-સાઈઝ 9:16 માં જુઓ"
+                >
                   <img src={s.url} alt={`Scene ${idx + 1}`} loading="lazy" />
                   <span className="cloud-scene-badge">
                     #{idx + 1} • {s.format ? s.format.toUpperCase() : "9:16"}
                   </span>
+                  <div className="cloud-scene-zoom-hint">
+                    🔍 View Full
+                  </div>
                   <button
                     type="button"
                     className="cloud-scene-delete-btn"
-                    onClick={() => handleDelete(s.public_id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(s.public_id);
+                    }}
                     title="ડિલીટ કરો"
                   >
                     <Trash2 size={14} />
@@ -340,6 +383,63 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
             </div>
           </div>
         </div>
+
+        {/* FULLSCREEN LIGHTBOX PREVIEW */}
+        {previewIndex !== null && scenes[previewIndex] && (
+          <div
+            className="cloud-lightbox-overlay"
+            onClick={() => setPreviewIndex(null)}
+          >
+            <div
+              className="cloud-lightbox-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="cloud-lightbox-close"
+                onClick={() => setPreviewIndex(null)}
+                title="બંધ કરો (Esc)"
+              >
+                <X size={20} />
+              </button>
+
+              {previewIndex > 0 && (
+                <button
+                  type="button"
+                  className="cloud-lightbox-nav-btn prev"
+                  onClick={() => setPreviewIndex(previewIndex - 1)}
+                  title="પાછળ (Left Arrow)"
+                >
+                  ‹
+                </button>
+              )}
+
+              <img
+                src={scenes[previewIndex].url}
+                alt={`Scene ${previewIndex + 1}`}
+                className="cloud-lightbox-img"
+              />
+
+              {previewIndex < scenes.length - 1 && (
+                <button
+                  type="button"
+                  className="cloud-lightbox-nav-btn next"
+                  onClick={() => setPreviewIndex(previewIndex + 1)}
+                  title="આગળ (Right Arrow)"
+                >
+                  ›
+                </button>
+              )}
+
+              <div className="cloud-lightbox-title">
+                #{previewIndex + 1} • {scenes[previewIndex].public_id.split("/").pop()}
+                {scenes[previewIndex].width && scenes[previewIndex].height
+                  ? ` (${scenes[previewIndex].width} × ${scenes[previewIndex].height})`
+                  : ""}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body

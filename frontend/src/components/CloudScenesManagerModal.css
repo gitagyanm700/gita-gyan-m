@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(3, 9, 24, 0.88);
+  background: rgba(3, 9, 24, 0.90);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   z-index: 999999;
@@ -17,14 +17,14 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow-y: auto;
-  animation: cloudModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  animation: cloudModalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes cloudModalFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -34,8 +34,9 @@
 
 .cloud-scenes-modal-content {
   width: 100%;
-  max-width: 1040px;
-  max-height: 90vh;
+  max-width: 1140px;
+  height: 92vh;
+  max-height: 92vh;
   background: linear-gradient(
     145deg,
     rgba(10, 26, 68, 0.98) 0%,
@@ -51,12 +52,13 @@
 
 /* HEADER */
 .cloud-scenes-modal-header {
-  padding: 18px 24px;
-  background: rgba(4, 12, 34, 0.85);
+  padding: 16px 24px;
+  background: rgba(4, 12, 34, 0.92);
   border-bottom: 1px solid rgba(251, 191, 36, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .cloud-scenes-header-left {
@@ -66,8 +68,8 @@
 }
 
 .cloud-scenes-header-icon {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(59, 130, 246, 0.25));
   border: 1px solid rgba(251, 191, 36, 0.4);
@@ -86,7 +88,7 @@
 }
 
 .cloud-scenes-modal-subtitle {
-  margin: 3px 0 0 0;
+  margin: 2px 0 0 0;
   font-size: 0.82rem;
   color: #94a3b8;
 }
@@ -113,24 +115,27 @@
 
 /* BODY */
 .cloud-scenes-modal-body {
-  padding: 24px;
+  padding: 18px 24px 20px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
-/* STATS BAR */
+/* STATS & ACTIONS BAR */
 .cloud-scenes-stats-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.22);
   border-radius: 14px;
-  padding: 14px 18px;
+  padding: 12px 18px;
+  flex-shrink: 0;
 }
 
 .cloud-scenes-stat-item {
@@ -201,21 +206,58 @@
   box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
 }
 
-/* UPLOAD PROGRESS BOX */
+/* COMPACT UPLOAD BANNER */
+.cloud-scenes-compact-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1.5px dashed rgba(251, 191, 36, 0.35);
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.cloud-scenes-compact-dropzone:hover {
+  border-color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.cloud-scenes-dropzone-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cloud-scenes-dropzone-text {
+  font-size: 0.86rem;
+  color: #e2e8f0;
+}
+
+.cloud-scenes-dropzone-hint {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+/* PROGRESS BOX */
 .cloud-scenes-progress-box {
   background: rgba(15, 23, 42, 0.85);
   border: 1.5px solid rgba(59, 130, 246, 0.5);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 12px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .cloud-scenes-progress-info {
   display: flex;
   justify-content: space-between;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: #e2e8f0;
   font-weight: 600;
 }
@@ -235,91 +277,108 @@
   transition: width 0.3s ease;
 }
 
-/* DROPZONE */
-.cloud-scenes-dropzone {
-  border: 2px dashed rgba(251, 191, 36, 0.35);
-  border-radius: 16px;
-  padding: 26px 20px;
-  text-align: center;
-  background: rgba(15, 23, 42, 0.45);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.cloud-scenes-dropzone:hover {
-  border-color: #fbbf24;
-  background: rgba(245, 158, 11, 0.06);
-}
-
-.cloud-scenes-dropzone p {
-  margin: 6px 0 0 0;
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-/* GALLERY GRID */
+/* GALLERY GRID — PROPER 9:16 VERTICAL CARDS */
 .cloud-scenes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-  max-height: 480px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 18px;
+  flex: 1;
+  min-height: 340px;
   overflow-y: auto;
   padding: 4px;
 }
 
 .cloud-scene-card {
   position: relative;
+  width: 100%;
+  height: 300px;
+  min-height: 290px;
   aspect-ratio: 9 / 16;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  border: 1.5px solid rgba(251, 191, 36, 0.3);
   background: #020617;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  transition: transform 0.2s, border-color 0.2s;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, box-shadow 0.25s;
 }
 
 .cloud-scene-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.02);
   border-color: #fbbf24;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8), 0 0 16px rgba(245, 158, 11, 0.35);
 }
 
 .cloud-scene-card img {
   width: 100%;
   height: 100%;
+  min-height: 290px;
   object-fit: cover;
   display: block;
+  transition: transform 0.3s ease;
+}
+
+.cloud-scene-card:hover img {
+  transform: scale(1.04);
 }
 
 .cloud-scene-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  top: 10px;
+  left: 10px;
+  background: rgba(3, 9, 24, 0.80);
+  backdrop-filter: blur(6px);
   color: #fbbf24;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  z-index: 2;
+}
+
+.cloud-scene-zoom-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(3, 9, 24, 0.85);
+  border: 1px solid #fbbf24;
+  color: #fbbf24;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.cloud-scene-card:hover .cloud-scene-zoom-hint {
+  opacity: 1;
 }
 
 .cloud-scene-delete-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(239, 68, 68, 0.8);
-  border: none;
+  top: 10px;
+  right: 10px;
+  background: rgba(239, 68, 68, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s, background 0.2s;
+  z-index: 4;
 }
 
 .cloud-scene-card:hover .cloud-scene-delete-btn {
@@ -328,6 +387,7 @@
 
 .cloud-scene-delete-btn:hover {
   background: #dc2626;
+  transform: scale(1.1);
 }
 
 .cloud-scene-info-overlay {
@@ -335,13 +395,14 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 8px 10px;
+  padding: 12px 10px 8px 10px;
   background: linear-gradient(180deg, transparent 0%, rgba(2, 6, 23, 0.95) 100%);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #cbd5e1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  z-index: 2;
 }
 
 /* CLI SCRIPT INFO CARD */
@@ -349,20 +410,119 @@
   background: rgba(30, 41, 59, 0.5);
   border: 1px dashed rgba(148, 163, 184, 0.3);
   border-radius: 12px;
-  padding: 14px 18px;
-  font-size: 0.82rem;
+  padding: 12px 16px;
+  font-size: 0.80rem;
   color: #94a3b8;
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .cloud-scenes-cli-code {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
   padding: 3px 8px;
   border-radius: 6px;
   color: #38bdf8;
   font-family: monospace;
+}
+
+/* LIGHTBOX / FULL IMAGE PREVIEW MODAL */
+.cloud-lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.94);
+  backdrop-filter: blur(16px);
+  z-index: 1000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: cloudModalFadeIn 0.2s ease;
+}
+
+.cloud-lightbox-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cloud-lightbox-img {
+  max-width: 85vw;
+  max-height: 84vh;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.3);
+}
+
+.cloud-lightbox-close {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s;
+}
+
+.cloud-lightbox-close:hover {
+  transform: scale(1.15);
+}
+
+.cloud-lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(3, 9, 24, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  color: #fbbf24;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cloud-lightbox-nav-btn:hover {
+  background: #fbbf24;
+  color: #0f172a;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.cloud-lightbox-nav-btn.prev {
+  left: -60px;
+}
+
+.cloud-lightbox-nav-btn.next {
+  right: -60px;
+}
+
+.cloud-lightbox-title {
+  margin-top: 12px;
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 /* HEADER BUTTON IN SHLOK MANAGEMENT */
