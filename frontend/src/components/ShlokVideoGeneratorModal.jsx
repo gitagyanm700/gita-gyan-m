@@ -465,7 +465,7 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
                     <strong>દિવ્ય ગીતા સંદેશ (Life Guidance)</strong>
                     <p>{detectedScenes.scene3Name}</p>
                     <span className="step-sub">
-                      જીવન માર્ગદર્શન સંદેશ અને પવિત્ર ઓટ્રો (Outro).
+                      જીવન સંદેશ દરમિયાન દર ૫-૭ સેકન્ડે 3D દ્રશ્યો આપોઆપ બદલાતા રહેશે (Multi-Shot Montage).
                     </span>
                   </div>
                 </div>

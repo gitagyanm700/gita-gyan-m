@@ -1,7 +1,8 @@
 /**
  * ====================================================================
- * BHAGAVAD GITA - 9:16 HD CINEMATIC SHLOKA VIDEO ENGINE
+ * BHAGAVAD GITA - 9:16 HD CINEMATIC MULTI-SHOT VIDEO ENGINE
  * Multi-Language (Gujarati / Hindi / English)
+ * Continuous Multi-Shot Montage: Background changes dynamically every 5-7s
  * 9:16 Vertical Portrait Mythological Scenes (All Chapters 1-18)
  * Clean Text Formatting (HTML stripped, bulleted lists, decoded entities)
  * Teleprompter Auto-Scroll Subtitles (Zero text overflow)
@@ -13,7 +14,7 @@
 
 import { getValidToken } from "./authHelper.js";
 
-// 9:16 Vertical Portrait Scene Images
+// 9:16 Vertical Portrait Scene Images Library
 export const SCENE_IMAGES = {
   dhritarashtraPalace: "/images/scenes/scene_dhritarashtra_sanjaya_v916.jpg",
   duryodhanaDrona: "/images/scenes/scene_duryodhana_dronacharya_v916.jpg",
@@ -30,10 +31,6 @@ export const SCENE_IMAGES = {
 
 /**
  * Clean HTML strings into pure readable plain text
- * - Strips all HTML tags, style attributes, and node paths
- * - Converts <li> to bullet points (• )
- * - Converts <br>, <p>, <div> to appropriate linebreaks
- * - Decodes HTML entities (&nbsp;, &amp;, quotes, etc.)
  */
 export function cleanHtmlText(html) {
   if (!html) return "";
@@ -80,11 +77,9 @@ export function cleanHtmlText(html) {
 }
 
 /**
- * Intelligent Scene Detection for all shlokas in Gita
- * Determines Scene 1, Scene 2, and Scene 3 based on:
- * - Speaker (Dhritarashtra, Sanjaya, Arjuna, Krishna)
- * - Chapter and verse numbers (e.g. Ch1 Duryodhana/Drona vs Conch shells vs Arjuna Grief)
- * - Message content (Mentorship, Karma, Peace/Meditation, Devotion, Grief)
+ * Intelligent Multi-Shot Scene Sequence Generator for all shlokas
+ * Returns an array of dynamic shots for Scene 1, Scene 2, and Scene 3
+ * so that the background continuously transitions throughout the video!
  */
 export function detectShlokScenes(shlok) {
   const speaker = String(shlok.speaker || shlok.speakerGu || shlok.speakerHi || "").toLowerCase();
@@ -96,109 +91,114 @@ export function detectShlokScenes(shlok) {
   const cleanMsg = cleanHtmlText(rawMsg).toLowerCase();
 
   // -------------------------------------------------------------
-  // 1. SCENE 1 (Shloka Recitation & Speaker Context)
+  // 1. SCENE 1 SHOTS (Shloka Recitation & Speaker Context)
   // -------------------------------------------------------------
-  let scene1Bg = SCENE_IMAGES.krishnaUpdesh;
+  let scene1Shots = [SCENE_IMAGES.krishnaUpdesh, SCENE_IMAGES.kurukshetraConch];
   let scene1Name = "શ્રીકૃષ્ણ દિવ્ય ઉપદેશ";
   let speakerRole = "શ્રીભગવાન";
 
   if (speaker.includes("ધૃતરાષ્ટ્ર") || speaker.includes("धृतराष्ट्र") || speaker.includes("dhritarashtra")) {
-    scene1Bg = SCENE_IMAGES.dhritarashtraPalace;
+    scene1Shots = [SCENE_IMAGES.dhritarashtraPalace, SCENE_IMAGES.kurukshetraConch];
     scene1Name = "હસ્તિનાપુર રાજદરબાર (ધૃતરાષ્ટ્ર & સંજય)";
     speakerRole = "ધૃતરાષ્ટ્ર";
   } else if (speaker.includes("સંજય") || speaker.includes("संजय") || speaker.includes("sanjaya")) {
     speakerRole = "સંજય";
     if (chNum === 1 && sNum >= 2 && sNum <= 11) {
-      scene1Bg = SCENE_IMAGES.duryodhanaDrona;
+      scene1Shots = [SCENE_IMAGES.duryodhanaDrona, SCENE_IMAGES.kurukshetraConch];
       scene1Name = "દુર્યોધન & દ્રોણાચાર્ય (કુરુક્ષેત્ર)";
     } else if (chNum === 1 && sNum >= 12 && sNum <= 27) {
-      scene1Bg = SCENE_IMAGES.kurukshetraConch;
+      scene1Shots = [SCENE_IMAGES.kurukshetraConch, SCENE_IMAGES.duryodhanaDrona];
       scene1Name = "કુરુક્ષેત્ર મહાયુદ્ધ શંખનાદ & સૈન્ય વ્યૂહ";
     } else if ((chNum === 1 && sNum >= 47) || (chNum === 2 && sNum <= 10)) {
-      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Shots = [SCENE_IMAGES.arjunaGrief, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "અર્જુન વિષાદ (રથ પર શોકગ્રસ્ત)";
     } else {
-      scene1Bg = SCENE_IMAGES.kurukshetraConch;
+      scene1Shots = [SCENE_IMAGES.kurukshetraConch, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "કુરુક્ષેત્ર રણભૂમિ દ્રશ્ય";
     }
   } else if (speaker.includes("અર્જુન") || speaker.includes("अर्जुन") || speaker.includes("arjuna")) {
     speakerRole = "અર્જુન";
     if (chNum === 1 || (chNum === 2 && sNum <= 10)) {
-      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Shots = [SCENE_IMAGES.arjunaGrief, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "અર્જુન વિષાદ (ગાંડીવ ધનુષ ત્યાગ)";
     } else if (chNum === 10 || chNum === 11) {
-      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Shots = [SCENE_IMAGES.krishnaVishwaroop, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "વિશ્વરૂપ દર્શન પ્રાર્થના";
     } else {
-      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Shots = [SCENE_IMAGES.arjunaGrief, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "અર્જુન જિજ્ઞાસા & સંવાદ";
     }
   } else {
     // Shri Bhagavan (Lord Krishna)
     speakerRole = "શ્રીભગવાન";
     if (chNum === 11) {
-      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Shots = [SCENE_IMAGES.krishnaVishwaroop, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "વિરાટ વિશ્વરૂપ દર્શન";
     } else if (chNum === 6) {
-      scene1Bg = SCENE_IMAGES.peaceMeditation;
+      scene1Shots = [SCENE_IMAGES.peaceMeditation, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "ધ્યાનયોગ & મનની સ્થિરતા";
     } else if (chNum === 3 || chNum === 5) {
-      scene1Bg = SCENE_IMAGES.karmaAction;
+      scene1Shots = [SCENE_IMAGES.karmaAction, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "નિષ્કામ કર્મયોગ પથ";
     } else if (chNum === 10) {
-      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Shots = [SCENE_IMAGES.krishnaVishwaroop, SCENE_IMAGES.krishnaUpdesh];
       scene1Name = "વિભૂતિયોગ (દિવ્ય ઐશ્વર્ય)";
     } else {
-      scene1Bg = SCENE_IMAGES.krishnaUpdesh;
+      scene1Shots = [SCENE_IMAGES.krishnaUpdesh, SCENE_IMAGES.karmaAction];
       scene1Name = "શ્રીકૃષ્ણ દિવ્ય ઉપદેશ";
     }
   }
 
   // -------------------------------------------------------------
-  // 2. SCENE 2 (Translation Context & Verse Action)
+  // 2. SCENE 2 SHOTS (Translation Context & Verse Action)
   // -------------------------------------------------------------
-  let scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+  let scene2Shots = [SCENE_IMAGES.krishnaUpdesh, SCENE_IMAGES.kurukshetraConch];
   let scene2Name = "દિવ્ય અર્થબોધ";
 
   if (chNum === 1 && sNum === 1) {
-    scene2Bg = SCENE_IMAGES.dhritarashtraPalace;
+    scene2Shots = [SCENE_IMAGES.dhritarashtraPalace, SCENE_IMAGES.kurukshetraConch];
     scene2Name = "ધર્મક્ષેત્ર કુરુક્ષેત્ર પૂછપરછ";
   } else if (chNum === 1 && sNum >= 2 && sNum <= 11) {
-    scene2Bg = SCENE_IMAGES.duryodhanaDrona;
+    scene2Shots = [SCENE_IMAGES.duryodhanaDrona, SCENE_IMAGES.kurukshetraConch];
     scene2Name = "દુર્યોધન-દ્રોણાચાર્ય સંવાદ & સૈન્ય નિરીક્ષણ";
   } else if (chNum === 1 && sNum >= 12 && sNum <= 27) {
-    scene2Bg = SCENE_IMAGES.kurukshetraConch;
+    scene2Shots = [SCENE_IMAGES.kurukshetraConch, SCENE_IMAGES.duryodhanaDrona];
     scene2Name = "રણશિંગા, ઢોલ & દિવ્ય શંખનાદ";
   } else if (chNum === 1 && sNum >= 28) {
-    scene2Bg = SCENE_IMAGES.arjunaGrief;
+    scene2Shots = [SCENE_IMAGES.arjunaGrief, SCENE_IMAGES.kurukshetraConch];
     scene2Name = "અર્જુનનો શોક & આત્મીય મોહ";
   } else if (chNum === 2 && sNum <= 10) {
-    scene2Bg = SCENE_IMAGES.arjunaGrief;
+    scene2Shots = [SCENE_IMAGES.arjunaGrief, SCENE_IMAGES.krishnaUpdesh];
     scene2Name = "અર્જુન શરણાગતિ & વિષાદ";
   } else if (chNum === 2 && sNum > 10) {
-    scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+    scene2Shots = [SCENE_IMAGES.krishnaUpdesh, SCENE_IMAGES.peaceMeditation];
     scene2Name = "આત્મા અમર છે - સાંખ્ય દર્શન";
   } else if (chNum === 3 || chNum === 5) {
-    scene2Bg = SCENE_IMAGES.karmaAction;
+    scene2Shots = [SCENE_IMAGES.karmaAction, SCENE_IMAGES.krishnaUpdesh];
     scene2Name = "કર્મણ્યેવાધિકારસ્તે - કર્મયોગ";
   } else if (chNum === 6) {
-    scene2Bg = SCENE_IMAGES.peaceMeditation;
+    scene2Shots = [SCENE_IMAGES.peaceMeditation, SCENE_IMAGES.guidanceMentor];
     scene2Name = "ધ્યાનયોગ & આત્મસંયમ";
   } else if (chNum === 10 || chNum === 11) {
-    scene2Bg = SCENE_IMAGES.krishnaVishwaroop;
+    scene2Shots = [SCENE_IMAGES.krishnaVishwaroop, SCENE_IMAGES.krishnaUpdesh];
     scene2Name = "અનંત બ્રહ્માંડ - વિશ્વરૂપ દર્શન";
   } else {
-    scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+    scene2Shots = [SCENE_IMAGES.krishnaUpdesh, SCENE_IMAGES.karmaAction];
     scene2Name = "ભગવાન શ્રીકૃષ્ણનો દિવ્ય સંદેશ";
   }
 
   // -------------------------------------------------------------
-  // 3. SCENE 3 (Gita Life Message / Sandesh Context)
+  // 3. SCENE 3 SHOTS (Multi-Shot Montage for Gita Life Message)
+  // Continuous 3 to 4 shot transitions while message audio narrates!
   // -------------------------------------------------------------
-  let scene3Bg = SCENE_IMAGES.guidanceMentor;
+  let scene3Shots = [
+    SCENE_IMAGES.guidanceMentor,
+    SCENE_IMAGES.karmaAction,
+    SCENE_IMAGES.peaceMeditation,
+    SCENE_IMAGES.krishnaUpdesh,
+  ];
   let scene3Name = "જીવન માર્ગદર્શન & ગુરુ શરણ";
 
-  // Check keywords in message for contextual spiritual theme
   const mentorKeywords = [
     "માર્ગદર્શક", "ગુરુ", "સહારો", "સલાહ", "મેન્ટર", "ડર", "ભય", "અસુરક્ષા", "ગભરાઈ",
     "આશ્રય", "શરણ", "અનુભવી", "मार्गदर्शक", "गुरु", "डर", "भय", "आश्रय", "mentor",
@@ -225,31 +225,59 @@ export function detectShlokScenes(shlok) {
   ];
 
   if (mentorKeywords.some((k) => cleanMsg.includes(k))) {
-    scene3Bg = SCENE_IMAGES.guidanceMentor;
     scene3Name = "જીવન માર્ગદર્શન & ગુરુ શરણ";
+    scene3Shots = [
+      chNum === 1 && sNum === 2 ? SCENE_IMAGES.duryodhanaDrona : SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.karmaAction,
+      SCENE_IMAGES.peaceMeditation,
+    ];
   } else if (karmaKeywords.some((k) => cleanMsg.includes(k))) {
-    scene3Bg = SCENE_IMAGES.karmaAction;
     scene3Name = "કર્મયોગ & સતત પુરુષાર્થ";
+    scene3Shots = [
+      SCENE_IMAGES.karmaAction,
+      SCENE_IMAGES.krishnaUpdesh,
+      SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.peaceMeditation,
+    ];
   } else if (peaceKeywords.some((k) => cleanMsg.includes(k))) {
-    scene3Bg = SCENE_IMAGES.peaceMeditation;
     scene3Name = "માનસિક શાંતિ & ધ્યાન યોગ";
+    scene3Shots = [
+      SCENE_IMAGES.peaceMeditation,
+      SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.krishnaUpdesh,
+      SCENE_IMAGES.peaceMeditation,
+    ];
   } else if (devotionKeywords.some((k) => cleanMsg.includes(k))) {
-    scene3Bg = SCENE_IMAGES.krishnaVishwaroop;
     scene3Name = "ઈશ્વર ભક્તિ & શ્રદ્ધા સમર્પણ";
+    scene3Shots = [
+      SCENE_IMAGES.krishnaVishwaroop,
+      SCENE_IMAGES.krishnaUpdesh,
+      SCENE_IMAGES.peaceMeditation,
+      SCENE_IMAGES.karmaAction,
+    ];
   } else if (griefKeywords.some((k) => cleanMsg.includes(k))) {
-    scene3Bg = SCENE_IMAGES.guidanceMentor;
     scene3Name = "હતાશામાંથી મુક્તિ & માર્ગદર્શન";
-  } else {
-    scene3Bg = SCENE_IMAGES.krishnaUpdesh;
-    scene3Name = "દિવ્ય ગીતા જીવન બોધ";
+    scene3Shots = [
+      SCENE_IMAGES.arjunaGrief,
+      SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.krishnaUpdesh,
+      SCENE_IMAGES.peaceMeditation,
+    ];
   }
 
+  // Remove duplicate adjacent shots
+  scene3Shots = scene3Shots.filter((s, idx, arr) => idx === 0 || s !== arr[idx - 1]);
+
   return {
-    scene1: scene1Bg,
+    scene1Shots,
+    scene2Shots,
+    scene3Shots,
+    scene1: scene1Shots[0],
+    scene2: scene2Shots[0],
+    scene3: scene3Shots[0],
     scene1Name,
-    scene2: scene2Bg,
     scene2Name,
-    scene3: scene3Bg,
     scene3Name,
     speakerRole,
   };
@@ -262,12 +290,12 @@ function preloadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
+    img.onload = () => resolve({ src, img });
     img.onerror = () => {
       const fallback = new Image();
       fallback.crossOrigin = "anonymous";
-      fallback.onload = () => resolve(fallback);
-      fallback.onerror = () => resolve(null);
+      fallback.onload = () => resolve({ src, img: fallback });
+      fallback.onerror = () => resolve({ src, img: null });
       fallback.src = SCENE_IMAGES.defaultBg;
     };
     img.src = src;
@@ -332,9 +360,8 @@ function tokenizeCleanWords(text) {
  * Smart Word Wrap & Line Breakdown Helper with Teleprompter Metrics
  */
 function wrapContentLines(ctx, text, maxWidth) {
-  if (!text) return [];
+  if (!text) return { lines: [], totalWords: 0 };
 
-  // Split into paragraphs / bullet points
   const rawParagraphs = text.split("\n").filter((p) => p.trim().length > 0);
   const formattedLines = [];
   let globalWordCount = 0;
@@ -350,8 +377,6 @@ function wrapContentLines(ctx, text, maxWidth) {
     words.forEach((word) => {
       const testText = currentLineText ? `${currentLineText} ${word}` : word;
       const metrics = ctx.measureText(testText);
-
-      // Give bullet points 28px left margin
       const effectiveMax = isBullet && currentLineWords.length > 0 ? maxWidth - 24 : maxWidth;
 
       if (metrics.width <= effectiveMax) {
@@ -361,8 +386,7 @@ function wrapContentLines(ctx, text, maxWidth) {
         if (currentLineWords.length > 0) {
           formattedLines.push({
             text: currentLineText,
-            isBulletStart: isBullet && formattedLines.length === 0,
-            isBulletContinuation: isBullet && formattedLines.length > 0,
+            isBulletStart: isBullet && currentLineWords[0] === words[0],
             words: currentLineWords,
             startWordIdx: globalWordCount,
             endWordIdx: globalWordCount + currentLineWords.length - 1,
@@ -378,7 +402,6 @@ function wrapContentLines(ctx, text, maxWidth) {
       formattedLines.push({
         text: currentLineText,
         isBulletStart: isBullet,
-        isBulletContinuation: false,
         words: currentLineWords,
         startWordIdx: globalWordCount,
         endWordIdx: globalWordCount + currentLineWords.length - 1,
@@ -449,7 +472,7 @@ export async function createShlokVideoRenderer({
   height = 1280, // 9:16 Vertical format
   onProgress = () => {},
 }) {
-  onProgress({ stage: "init", percent: 5, message: "ઓડિયો અને 9:16 દિવ્ય દ્રશ્યો લોડ થઈ રહ્યા છે..." });
+  onProgress({ stage: "init", percent: 5, message: "ઓડિયો અને મલ્ટી-સીન 9:16 દ્રશ્યો લોડ થઈ રહ્યા છે..." });
 
   const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioCtxClass();
@@ -457,17 +480,30 @@ export async function createShlokVideoRenderer({
   const chNum = shlok.chapterNumber;
   const sNum = shlok.shlokNumber;
 
-  // 1. Intelligent 9:16 Scene Detection
+  // 1. Intelligent Multi-Shot 9:16 Scene Detection
   const scenes = detectShlokScenes(shlok);
 
-  // 2. Preload 9:16 vertical images
-  onProgress({ stage: "images", percent: 15, message: "9:16 સિનેમેટિક 3D આર્ટવર્ક લોડ થઈ રહ્યું છે..." });
-  const [imgScene1, imgScene2, imgScene3, imgLogo] = await Promise.all([
-    preloadImage(scenes.scene1),
-    preloadImage(scenes.scene2),
-    preloadImage(scenes.scene3),
-    preloadImage(SCENE_IMAGES.logo),
-  ]);
+  // 2. Preload all unique images needed across all scenes
+  onProgress({ stage: "images", percent: 15, message: "9:16 મલ્ટી-શોટ સિનેમેટિક આર્ટવર્ક લોડ થઈ રહ્યું છે..." });
+  const uniqueSrcs = [
+    ...new Set([
+      ...scenes.scene1Shots,
+      ...scenes.scene2Shots,
+      ...scenes.scene3Shots,
+      SCENE_IMAGES.logo,
+    ]),
+  ];
+
+  const loadedResults = await Promise.all(uniqueSrcs.map(preloadImage));
+  const imageMap = {};
+  loadedResults.forEach(({ src, img }) => {
+    imageMap[src] = img;
+  });
+
+  const imgScene1Shots = scenes.scene1Shots.map((src) => imageMap[src]).filter(Boolean);
+  const imgScene2Shots = scenes.scene2Shots.map((src) => imageMap[src]).filter(Boolean);
+  const imgScene3Shots = scenes.scene3Shots.map((src) => imageMap[src]).filter(Boolean);
+  const imgLogo = imageMap[SCENE_IMAGES.logo];
 
   // 3. Preload audio tracks for all 3 scenes
   onProgress({ stage: "audio", percent: 30, message: "સંસ્કૃત, અનુવાદ અને સંદેશ ઓડિયો તૈયાર થઈ રહ્યો છે..." });
@@ -479,10 +515,10 @@ export async function createShlokVideoRenderer({
 
   const saBuf = saBufRaw || createSilentBuffer(audioCtx, 6);
   const trBuf = trBufRaw || createSilentBuffer(audioCtx, 8);
-  const msgBuf = msgBufRaw || createSilentBuffer(audioCtx, 10);
+  const msgBuf = msgBufRaw || createSilentBuffer(audioCtx, 12);
 
-  // Scene timing calculation (with clean exit padding)
-  const SCENE_EXIT_PAUSE = 0.8; // Time given for text to exit cleanly
+  // Scene timing calculation
+  const SCENE_EXIT_PAUSE = 0.8;
   const INTRO_PAD = 0.6;
   const OUTRO_DURATION = 2.2;
 
@@ -497,8 +533,7 @@ export async function createShlokVideoRenderer({
   const tScene3End = tScene3Start + d3;
   const totalDuration = tScene3End + OUTRO_DURATION;
 
-  // 4. Extract and CLEAN texts based on selected language (No HTML tags!)
-  // Sanskrit: Use clean lines if available
+  // 4. Extract and CLEAN texts based on selected language (Zero HTML tags!)
   let sanskritLines = [];
   if (shlok.sanskritLine1 && shlok.sanskritLine2) {
     sanskritLines = [cleanHtmlText(shlok.sanskritLine1), cleanHtmlText(shlok.sanskritLine2)];
@@ -513,7 +548,6 @@ export async function createShlokVideoRenderer({
   }
   const cleanSanskritText = sanskritLines.join(" ");
 
-  // Translation: Clean HTML
   const rawTranslation =
     lang === "hi"
       ? shlok.translationHi || shlok.translation
@@ -522,7 +556,6 @@ export async function createShlokVideoRenderer({
       : shlok.translation || "";
   const cleanTranslationText = cleanHtmlText(rawTranslation);
 
-  // Message: Clean HTML
   const rawMessage =
     lang === "hi"
       ? shlok.messageHi || shlok.message
@@ -547,7 +580,6 @@ export async function createShlokVideoRenderer({
       : shlok.speaker || ""
   );
 
-  // Spoken word tokens for audio synchronization
   const saWords = tokenizeCleanWords(cleanSanskritText);
   const trWords = tokenizeCleanWords(cleanTranslationText);
   const msgWords = tokenizeCleanWords(cleanMessageText);
@@ -592,16 +624,23 @@ export async function createShlokVideoRenderer({
   }[lang] || labels.gu;
 
   /**
-   * Draw a 9:16 background image with subtle Ken Burns scale & pan
+   * Draw a single 9:16 background image with Ken Burns pan & zoom
    */
-  function drawKenBurnsImage(img, progress, alpha = 1) {
+  function drawSingleKenBurns(img, progress, shotIndex = 0, alpha = 1) {
     if (!img) return;
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-    // Ken burns zoom from 1.0 to 1.08 with gentle upward pan
+    // Dynamic panning direction based on shot index
     const scale = 1.0 + progress * 0.08;
-    const panY = -progress * 30;
+    let panX = 0;
+    let panY = -progress * 26;
+
+    if (shotIndex % 3 === 1) {
+      panY = progress * 24; // pan down
+    } else if (shotIndex % 3 === 2) {
+      panX = (progress - 0.5) * 30; // pan horizontally
+    }
 
     const imgAspect = img.width / img.height;
     const canvasAspect = width / height;
@@ -615,12 +654,12 @@ export async function createShlokVideoRenderer({
       drawH = drawW / imgAspect;
     }
 
-    const drawX = (width - drawW) / 2;
+    const drawX = (width - drawW) / 2 + panX;
     const drawY = (height - drawH) / 2 + panY;
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-    // Cinematic vertical vignette gradient (keeps artwork vibrant while subtitle card is crisp)
+    // Cinematic vignette gradient
     const grad = ctx.createLinearGradient(0, 0, 0, height);
     grad.addColorStop(0, "rgba(4, 10, 26, 0.70)");
     grad.addColorStop(0.20, "rgba(4, 10, 26, 0.35)");
@@ -631,6 +670,44 @@ export async function createShlokVideoRenderer({
     ctx.fillRect(0, 0, width, height);
 
     ctx.restore();
+  }
+
+  /**
+   * MULTI-SHOT MONTAGE RENDERER WITH SMOOTH CROSSFADES
+   * Automatically crossfades between shots every 5 to 7 seconds!
+   */
+  function drawMultiShotBackground(shots, elapsed, totalSceneDuration) {
+    if (!shots || shots.length === 0) return;
+    if (shots.length === 1) {
+      const p = Math.min(1, Math.max(0, elapsed / totalSceneDuration));
+      drawSingleKenBurns(shots[0], p, 0, 1);
+      return;
+    }
+
+    const N = shots.length;
+    const shotDur = totalSceneDuration / N;
+    const FADE = Math.min(0.9, shotDur * 0.28); // 0.9 second smooth crossfade
+
+    const idx = Math.min(N - 1, Math.max(0, Math.floor(elapsed / shotDur)));
+    const shotElapsed = elapsed - idx * shotDur;
+
+    if (idx > 0 && shotElapsed < FADE) {
+      // Smooth crossfade between previous shot and current shot
+      const fadeProgress = shotElapsed / FADE;
+      const prevShot = shots[idx - 1];
+      const currShot = shots[idx];
+
+      const prevElapsed = (idx - 1) * shotDur + (shotDur - FADE + shotElapsed);
+      const prevP = Math.min(1, prevElapsed / (idx * shotDur));
+      drawSingleKenBurns(prevShot, prevP, idx - 1, 1 - fadeProgress);
+
+      const currP = shotElapsed / shotDur;
+      drawSingleKenBurns(currShot, currP, idx, fadeProgress);
+    } else {
+      // Full active shot
+      const currP = Math.min(1, shotElapsed / shotDur);
+      drawSingleKenBurns(shots[idx], currP, idx, 1);
+    }
   }
 
   /**
@@ -737,24 +814,24 @@ export async function createShlokVideoRenderer({
     ctx.clearRect(0, 0, width, height);
 
     // ==========================================
-    // 1. DYNAMIC 9:16 SCENE BACKGROUND
+    // 1. DYNAMIC MULTI-SHOT 9:16 SCENE BACKGROUND
     // ==========================================
     if (t < tScene2Start) {
-      // SCENE 1: Shloka Recitation
-      const p1 = Math.min(1, Math.max(0, t / tScene1End));
-      drawKenBurnsImage(imgScene1, p1, 1);
+      // SCENE 1: Shloka Recitation (Multi-shot)
+      const elapsed1 = Math.max(0, t);
+      drawMultiShotBackground(imgScene1Shots, elapsed1, tScene1End);
     } else if (t < tScene3Start) {
-      // SCENE 2: Translation
-      const p2 = Math.min(1, Math.max(0, (t - tScene2Start) / d2));
-      drawKenBurnsImage(imgScene2, p2, 1);
+      // SCENE 2: Translation (Multi-shot)
+      const elapsed2 = Math.max(0, t - tScene2Start);
+      drawMultiShotBackground(imgScene2Shots, elapsed2, d2);
     } else if (t < tScene3End) {
-      // SCENE 3: Gita Life Message
-      const p3 = Math.min(1, Math.max(0, (t - tScene3Start) / d3));
-      drawKenBurnsImage(imgScene3, p3, 1);
+      // SCENE 3: Gita Life Message (Multi-shot Montage changes every 5-7s!)
+      const elapsed3 = Math.max(0, t - tScene3Start);
+      drawMultiShotBackground(imgScene3Shots, elapsed3, d3);
     } else {
       // OUTRO
       const pOut = Math.min(1, Math.max(0, (t - tScene3End) / OUTRO_DURATION));
-      drawKenBurnsImage(imgScene3, pOut, 1);
+      drawSingleKenBurns(imgScene3Shots[imgScene3Shots.length - 1], pOut, 0, 1);
     }
 
     // Golden celestial particles
@@ -773,7 +850,6 @@ export async function createShlokVideoRenderer({
       const elapsed1 = t - tIntroEnd;
       const progress1 = Math.min(1, elapsed1 / d1);
 
-      // Clean exit transition: During final SCENE_EXIT_PAUSE seconds, fades and slides down
       let alpha1 = 1;
       let slideY1 = 0;
       if (t > tScene1End) {
@@ -825,7 +901,6 @@ export async function createShlokVideoRenderer({
         const lineY = startY + idx * lineSpacing;
         const lineWords = line.split(" ").filter(Boolean);
 
-        // Check if words on this line have been reached in progress
         const lineStartWord = idx === 0 ? 0 : sanskritLines[0].split(" ").filter(Boolean).length;
         const isCurrentlySpoken = wordsCount1 >= lineStartWord && wordsCount1 < lineStartWord + lineWords.length;
         const isPast = wordsCount1 >= lineStartWord + lineWords.length;
@@ -847,7 +922,6 @@ export async function createShlokVideoRenderer({
         }
       });
 
-      // Bottom audio pulse bar
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
       ctx.restore();
@@ -904,7 +978,6 @@ export async function createShlokVideoRenderer({
       ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       const { lines: trLines } = wrapContentLines(ctx, cleanTranslationText, cardW - 60);
 
-      // Clip strictly inside the card so text NEVER overflows
       ctx.save();
       ctx.beginPath();
       roundRect(ctx, cardX + 15, cardY + 20, cardW - 30, cardH - 65, 12);
@@ -914,7 +987,6 @@ export async function createShlokVideoRenderer({
       const totalH = trLines.length * lineSpacing;
       const visibleH = cardH - 85;
 
-      // Teleprompter auto-scroll if lines exceed card height
       let scrollY = 0;
       if (totalH > visibleH) {
         let activeIdx = 0;
@@ -954,14 +1026,14 @@ export async function createShlokVideoRenderer({
         }
       });
 
-      ctx.restore(); // end clip
+      ctx.restore();
 
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
       ctx.restore();
     }
 
-    // ----- SCENE 3: GITA LIFE MESSAGE (Divine Life Wisdom) -----
+    // ----- SCENE 3: GITA LIFE MESSAGE (Continuous Multi-Shot Montage) -----
     if (t >= tScene3Start && t < tScene3End) {
       const elapsed3 = t - tScene3Start;
       const progress3 = Math.min(1, elapsed3 / d3);
@@ -1005,7 +1077,6 @@ export async function createShlokVideoRenderer({
       // Word-by-Word Message Reveal with Teleprompter Auto-Scroll
       const wordsCount3 = Math.floor(progress3 * msgWords.length);
 
-      // Dynamic font size based on message length for optimal readability
       let fontSize = 21;
       let lineSpacing = 36;
       if (msgWords.length > 120) {
@@ -1019,7 +1090,6 @@ export async function createShlokVideoRenderer({
       ctx.font = `500 ${fontSize}px 'Noto Sans Gujarati', 'Mukta', sans-serif`;
       const { lines: msgLines } = wrapContentLines(ctx, cleanMessageText, cardW - 60);
 
-      // Clip strictly inside the card so message NEVER spills onto the chariot or outside!
       ctx.save();
       ctx.beginPath();
       roundRect(ctx, cardX + 15, cardY + 25, cardW - 30, cardH - 70, 12);
@@ -1028,7 +1098,6 @@ export async function createShlokVideoRenderer({
       const totalH = msgLines.length * lineSpacing;
       const visibleH = cardH - 85;
 
-      // Teleprompter smooth scrolling: centers the line of the actively spoken word
       let scrollY = 0;
       if (totalH > visibleH) {
         let activeIdx = 0;
@@ -1070,7 +1139,7 @@ export async function createShlokVideoRenderer({
         }
       });
 
-      ctx.restore(); // end clip
+      ctx.restore();
 
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
@@ -1085,11 +1154,9 @@ export async function createShlokVideoRenderer({
       ctx.save();
       ctx.globalAlpha = outAlpha;
 
-      // Vignette wash
       ctx.fillStyle = "rgba(4, 12, 36, 0.75)";
       ctx.fillRect(0, 0, width, height);
 
-      // Centered Outro Logo
       const logoSize = 130;
       const logoX = width / 2 - logoSize / 2;
       const logoY = height / 2 - 120;
@@ -1100,7 +1167,6 @@ export async function createShlokVideoRenderer({
         ctx.drawImage(imgLogo, logoX, logoY, logoSize, logoSize);
       }
 
-      // Outro Titles
       ctx.fillStyle = "#fbbf24";
       ctx.font = "bold 28px 'Noto Sans Devanagari', 'Mukta', sans-serif";
       ctx.textAlign = "center";
@@ -1116,7 +1182,7 @@ export async function createShlokVideoRenderer({
     }
   }
 
-  onProgress({ stage: "ready", percent: 100, message: "9:16 વિડીયો એન્જિન તૈયાર છે!" });
+  onProgress({ stage: "ready", percent: 100, message: "9:16 મલ્ટી-શોટ વિડીયો તૈયાર છે!" });
 
   return {
     canvas,
@@ -1175,10 +1241,8 @@ export async function exportShlokVideoMP4({
 
   onProgress({ stage: "recording", percent: 0, message: "9:16 વિડીયો રેકોર્ડ થઈ રહ્યો છે..." });
 
-  // Web Audio destination node for capturing audio stream
   const destNode = audioCtx.createMediaStreamDestination();
 
-  // Create audio sources and schedule playback exactly at scene timestamps
   const saSource = audioCtx.createBufferSource();
   saSource.buffer = saBuf;
   saSource.connect(destNode);
@@ -1196,16 +1260,13 @@ export async function exportShlokVideoMP4({
   trSource.start(startTime + tScene2Start);
   msgSource.start(startTime + tScene3Start);
 
-  // Capture canvas video stream at 30 fps
   const canvasStream = canvas.captureStream(30);
 
-  // Combine audio tracks and video tracks
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...destNode.stream.getAudioTracks(),
   ]);
 
-  // Determine supported mimeType (MP4 or WebM)
   let mimeType = "video/webm;codecs=vp9,opus";
   if (MediaRecorder.isTypeSupported("video/mp4;codecs=avc1,mp4a.40.2")) {
     mimeType = "video/mp4;codecs=avc1,mp4a.40.2";
@@ -1219,7 +1280,7 @@ export async function exportShlokVideoMP4({
 
   const recorder = new MediaRecorder(combinedStream, {
     mimeType,
-    videoBitsPerSecond: 3500000, // 3.5 Mbps for crisp HD
+    videoBitsPerSecond: 3500000,
   });
 
   const recordedChunks = [];
@@ -1232,7 +1293,7 @@ export async function exportShlokVideoMP4({
   return new Promise((resolve, reject) => {
     recorder.onstop = () => {
       close();
-      const ext = "mp4"; // standard mp4 extension works universally for mobile devices
+      const ext = "mp4";
       const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] });
       resolve({ blob, ext, mimeType });
     };
