@@ -606,6 +606,97 @@ function wrapContentLines(ctx, text, maxWidth) {
 }
 
 /**
+ * Break Gita Life Message into sequential pedagogical sections:
+ * Point 1 -> Point 2 -> Example (Each rendered in its own dedicated card with large 23px font)
+ */
+export function parseMessageSections(rawHtml, lang = "gu") {
+  if (!rawHtml) return [];
+  const raw = String(rawHtml);
+
+  const gujaratiNums = ["૧", "૨", "૩", "૪", "૫"];
+  const hindiNums = ["१", "२", "३", "४", "५"];
+
+  const getBadge = (idx, isExample) => {
+    if (lang === "en") {
+      if (isExample) return "💡 Real-Life Example";
+      return idx === 0 ? "✨ 1. Life Wisdom" : `🎯 ${idx + 1}. Practical Action`;
+    }
+    if (lang === "hi") {
+      if (isExample) return "💡 वास्तविक उदाहरण";
+      return idx === 0 ? "✨ १. जीवन बोध" : `🎯 ${hindiNums[idx] || (idx + 1)}. व्यावहारिक आचरण`;
+    }
+    // Gujarati
+    if (isExample) return "💡 વાસ્તવિક ઉદાહરણ";
+    return idx === 0 ? "✨ ૧. જીવન બોધ" : `🎯 ${gujaratiNums[idx] || (idx + 1)}. વ્યવહારિક આચરણ`;
+  };
+
+  const sanitize = (t) => {
+    return cleanHtmlText(t)
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/\s*[:：]\s*/g, ", ")
+      .replace(/\s*([,।\.!?])\s*([,।\.!?])+/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  // 1. Try <li> tags
+  const liMatches = raw.match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+  if (liMatches && liMatches.length >= 2) {
+    return liMatches
+      .map((li, idx) => {
+        const text = sanitize(li);
+        const isExample = /ઉદાહરણ|उदाहरण|example/i.test(text.slice(0, 35));
+        return {
+          index: idx + 1,
+          isExample,
+          badge: getBadge(idx, isExample),
+          text,
+        };
+      })
+      .filter((s) => s.text.length > 5);
+  }
+
+  // 2. Paragraphs / double newlines fallback
+  const paras = raw
+    .replace(/<br\s*[\/]?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6])>/gi, "\n\n")
+    .split(/\n\s*\n/)
+    .map((p) => sanitize(p))
+    .filter((p) => p.length > 10);
+
+  if (paras.length >= 2) {
+    return paras.map((text, idx) => {
+      const isExample = /ઉદાહરણ|उदाहरण|example/i.test(text.slice(0, 35));
+      return {
+        index: idx + 1,
+        isExample,
+        badge: getBadge(idx, isExample),
+        text,
+      };
+    });
+  }
+
+  // Single block fallback
+  const singleText = sanitize(raw);
+  const isExample = /ઉદાહરણ|उदाहरण|example/i.test(singleText.slice(0, 35));
+  return [
+    {
+      index: 1,
+      isExample,
+      badge: isExample
+        ? getBadge(0, true)
+        : lang === "en"
+        ? "✨ Gita Message"
+        : lang === "hi"
+        ? "✨ गीता संदेश"
+        : "✨ દિવ્ય ગીતા સંદેશ",
+      text: singleText,
+    },
+  ];
+}
+
+/**
  * Floating Particle System for Celestial Golden Sparkles
  */
 class ParticleSystem {
@@ -755,7 +846,10 @@ export async function createShlokVideoRenderer({
       : lang === "en"
       ? shlok.messageEn || shlok.message
       : shlok.message || "";
-  const cleanMessageText = cleanHtmlText(rawMessage);
+
+  // Parse Gita Life Message into sequential Point 1 -> Point 2 -> Example
+  const msgSections = parseMessageSections(rawMessage, lang);
+  const cleanMessageText = msgSections.map((s) => s.text).join(" ");
 
   const chapterName = cleanHtmlText(
     lang === "hi"
@@ -775,6 +869,16 @@ export async function createShlokVideoRenderer({
 
   const saWords = tokenizeCleanWords(cleanSanskritText);
   const trWords = tokenizeCleanWords(cleanTranslationText);
+
+  // Distribute word offsets across sequential message sections
+  let cumulativeMsgWords = 0;
+  msgSections.forEach((sec) => {
+    sec.words = tokenizeCleanWords(sec.text);
+    sec.startWordIdx = cumulativeMsgWords;
+    cumulativeMsgWords += sec.words.length;
+    sec.endWordIdx = cumulativeMsgWords;
+  });
+  const totalMsgWords = Math.max(1, cumulativeMsgWords);
   const msgWords = tokenizeCleanWords(cleanMessageText);
 
   // Setup offscreen / live canvas
@@ -782,6 +886,13 @@ export async function createShlokVideoRenderer({
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
+
+  // Pre-wrap text for each section with prominent 23px font (identical to Gujarati Translation!)
+  ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
+  const maxMsgLineWidth = width - 80 - 60; // 580px
+  msgSections.forEach((sec) => {
+    sec.wrappedLines = wrapContentLines(ctx, sec.text, maxMsgLineWidth).lines;
+  });
 
   const particles = new ParticleSystem(45, width, height);
 
@@ -1243,116 +1354,138 @@ export async function createShlokVideoRenderer({
       ctx.restore();
     }
 
-    // ----- SCENE 3: GITA LIFE MESSAGE (Pure Typewriter + Multi-shot Montage) -----
+    // ----- SCENE 3: GITA LIFE MESSAGE (Sequential Point-by-Point Cards + Large 23px Font) -----
     if (t >= tScene3Start && t < tScene3End) {
       const elapsed3 = t - tScene3Start;
       const progress3 = Math.min(1, elapsed3 / d3);
+      const wordsCount3 = Math.floor(progress3 * totalMsgWords);
 
-      let alpha3 = 1;
-      let slideY3 = 0;
-      if (elapsed3 < 0.4) {
-        alpha3 = elapsed3 / 0.4;
+      // 1. Determine currently active section (Point 1 -> Point 2 -> Example)
+      let activeSecIdx = 0;
+      for (let i = 0; i < msgSections.length; i++) {
+        if (wordsCount3 >= msgSections[i].startWordIdx) {
+          activeSecIdx = i;
+        }
+      }
+      const activeSec = msgSections[activeSecIdx] || msgSections[0];
+
+      // 2. Section timing calculations
+      const secStartRatio = activeSec.startWordIdx / totalMsgWords;
+      const secEndRatio = activeSec.endWordIdx / totalMsgWords;
+      const secStartTime = secStartRatio * d3;
+      const secEndTime = secEndRatio * d3;
+      const secElapsed = elapsed3 - secStartTime;
+      const timeUntilEnd = secEndTime - elapsed3;
+
+      // 3. Smooth section transitions:
+      // Fade in & slide up when entering
+      // Fade out & slide up when leaving for the next point
+      const FADE_DUR = 0.28;
+      let secAlpha = 1;
+      let secSlideY = 0;
+
+      if (secElapsed < FADE_DUR) {
+        const p = Math.max(0, secElapsed / FADE_DUR);
+        secAlpha = p;
+        secSlideY = (1 - p) * 16;
+      } else if (timeUntilEnd < FADE_DUR && activeSecIdx < msgSections.length - 1) {
+        const p = Math.max(0, timeUntilEnd / FADE_DUR);
+        secAlpha = p;
+        secSlideY = (1 - p) * -16;
       }
 
       ctx.save();
-      ctx.globalAlpha = alpha3;
+      ctx.globalAlpha = secAlpha;
 
-      // Badge: Message
-      const badgeY = 130 + slideY3;
-      ctx.fillStyle = "rgba(245, 158, 11, 0.28)";
-      ctx.strokeStyle = "#f59e0b";
+      // 4. Badge: Point 1 / Point 2 / Real-Life Example
+      const badgeY = 130 + secSlideY;
+      const isEx = activeSec.isExample;
+      ctx.fillStyle = isEx ? "rgba(16, 185, 129, 0.25)" : "rgba(245, 158, 11, 0.25)";
+      ctx.strokeStyle = isEx ? "#10b981" : "#f59e0b";
       ctx.lineWidth = 1.5;
       roundRect(ctx, width / 2 - 145, badgeY, 290, 42, 21);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#fbbf24";
+      ctx.fillStyle = isEx ? "#6ee7b7" : "#fbbf24";
       ctx.font = "bold 18px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`✨  ${labels.msgBadge}`, width / 2, badgeY + 28);
+      ctx.fillText(activeSec.badge, width / 2, badgeY + 28);
 
-      // Message Card
+      // 5. Glass Card (Prominent 390px height, identical to Gujarati Translation!)
       const cardX = 40;
-      const cardY = 195 + slideY3;
+      const cardY = 195 + secSlideY;
       const cardW = width - 80;
-      const cardH = 460;
+      const cardH = 390;
 
-      ctx.fillStyle = "rgba(10, 25, 60, 0.90)";
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
+      ctx.fillStyle = "rgba(10, 25, 60, 0.92)";
+      ctx.strokeStyle = isEx ? "rgba(16, 185, 129, 0.55)" : "rgba(251, 191, 36, 0.55)";
       ctx.lineWidth = 2;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
       ctx.stroke();
 
-      // PURE TYPEWRITER REVEAL FOR MESSAGE:
-      // Words appear as spoken! Unspoken words are completely invisible!
-      const wordsCount3 = Math.floor(progress3 * msgWords.length);
+      // 6. Large 23px Font Typography & Centered Lines (Just like Gujarati Translation!)
+      const secWordCount = Math.max(0, wordsCount3 - activeSec.startWordIdx);
 
-      let fontSize = 21;
-      let lineSpacing = 36;
-      if (msgWords.length > 120) {
-        fontSize = 18;
-        lineSpacing = 30;
-      } else if (msgWords.length > 70) {
-        fontSize = 19;
-        lineSpacing = 33;
-      }
-
-      ctx.font = `500 ${fontSize}px 'Noto Sans Gujarati', 'Mukta', sans-serif`;
+      ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "left";
-      const { lines: msgLines } = wrapContentLines(ctx, cleanMessageText, cardW - 60);
+      const lineSpacing = 42;
 
       ctx.save();
       ctx.beginPath();
-      roundRect(ctx, cardX + 15, cardY + 25, cardW - 30, cardH - 70, 12);
+      roundRect(ctx, cardX + 15, cardY + 20, cardW - 30, cardH - 65, 12);
       ctx.clip();
 
-      const totalH = msgLines.length * lineSpacing;
+      const lines = activeSec.wrappedLines || [];
+      const totalH = lines.length * lineSpacing;
       const visibleH = cardH - 85;
 
       let scrollY = 0;
       if (totalH > visibleH) {
         let activeIdx = 0;
-        for (let i = 0; i < msgLines.length; i++) {
-          if (wordsCount3 >= msgLines[i].startWordIdx) {
+        for (let i = 0; i < lines.length; i++) {
+          if (secWordCount >= lines[i].startWordIdx) {
             activeIdx = i;
           }
         }
         const targetScroll = activeIdx * lineSpacing - visibleH / 2 + lineSpacing / 2;
-        scrollY = Math.max(0, Math.min(totalH - visibleH + 20, targetScroll));
+        scrollY = Math.max(0, Math.min(totalH - visibleH + 15, targetScroll));
       }
 
-      const startY = cardY + 55 - scrollY;
+      // Vertical auto-centering:
+      const verticalPad = totalH < visibleH ? Math.max(0, (visibleH - totalH) / 2) : 0;
+      const startY = cardY + 60 + verticalPad - scrollY;
 
-      msgLines.forEach((lineObj, idx) => {
+      lines.forEach((lineObj, idx) => {
         const lineY = startY + idx * lineSpacing;
         if (lineY < cardY - 20 || lineY > cardY + cardH + 20) return;
 
         // Skip entire line if audio has not reached it yet!
-        if (lineObj.startWordIdx > wordsCount3) return;
+        if (lineObj.startWordIdx > secWordCount) return;
 
-        let currentX = cardX + 32;
+        const fullLineWidth = ctx.measureText(lineObj.text).width;
+        let currentX = (width - fullLineWidth) / 2;
 
         lineObj.words.forEach((word, wIdx) => {
-          const globalWIdx = lineObj.startWordIdx + wIdx;
+          const wordIndexInSec = lineObj.startWordIdx + wIdx;
           const wordWithSpace = word + " ";
           const wordWidth = ctx.measureText(wordWithSpace).width;
 
           // Only draw if word has been reached by audio!
-          if (globalWIdx <= wordsCount3) {
-            const isSpeaking = globalWIdx === wordsCount3;
+          if (wordIndexInSec <= secWordCount) {
+            const isSpeaking = wordIndexInSec === secWordCount;
             if (isSpeaking) {
-              ctx.fillStyle = "#fde047";
-              ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
-              ctx.shadowBlur = 10;
+              ctx.fillStyle = isEx ? "#a7f3d0" : "#fde047";
+              ctx.shadowColor = isEx ? "rgba(16, 185, 129, 0.9)" : "rgba(251, 191, 36, 0.9)";
+              ctx.shadowBlur = 12;
             } else {
               ctx.fillStyle = "#ffffff";
               ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-              ctx.shadowBlur = 4;
+              ctx.shadowBlur = 5;
             }
             ctx.fillText(word, currentX, lineY);
           }
-          // Future words: NOT drawn!
 
           currentX += wordWidth;
         });
@@ -1360,6 +1493,7 @@ export async function createShlokVideoRenderer({
 
       ctx.restore();
 
+      // Audio waveform
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
       ctx.restore();
