@@ -1,0 +1,389 @@
+/* ====================================================================
+   CLOUD SCENES MANAGER MODAL CSS — 9:16 CLOUDINARY CDN GALLERY
+   Vedic Royal Gold & Deep Indigo Modern UI
+   ==================================================================== */
+
+.cloud-scenes-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(3, 9, 24, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  animation: cloudModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cloudModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cloud-scenes-modal-content {
+  width: 100%;
+  max-width: 1040px;
+  max-height: 90vh;
+  background: linear-gradient(
+    145deg,
+    rgba(10, 26, 68, 0.98) 0%,
+    rgba(6, 16, 44, 0.99) 100%
+  );
+  border: 1.5px solid rgba(251, 191, 36, 0.45);
+  border-radius: 22px;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 35px rgba(245, 158, 11, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.cloud-scenes-modal-header {
+  padding: 18px 24px;
+  background: rgba(4, 12, 34, 0.85);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cloud-scenes-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cloud-scenes-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(59, 130, 246, 0.25));
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fbbf24;
+}
+
+.cloud-scenes-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 0.3px;
+}
+
+.cloud-scenes-modal-subtitle {
+  margin: 3px 0 0 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.cloud-scenes-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cloud-scenes-close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* BODY */
+.cloud-scenes-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* STATS BAR */
+.cloud-scenes-stats-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+
+.cloud-scenes-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cloud-scenes-stat-badge {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.cloud-scenes-stat-label {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.cloud-scenes-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cloud-scenes-refresh-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cloud-scenes-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.cloud-scenes-upload-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  color: #0f172a;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  transition: all 0.2s;
+}
+
+.cloud-scenes-upload-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
+}
+
+/* UPLOAD PROGRESS BOX */
+.cloud-scenes-progress-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(59, 130, 246, 0.5);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cloud-scenes-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.86rem;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.cloud-scenes-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cloud-scenes-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #f59e0b);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+/* DROPZONE */
+.cloud-scenes-dropzone {
+  border: 2px dashed rgba(251, 191, 36, 0.35);
+  border-radius: 16px;
+  padding: 26px 20px;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cloud-scenes-dropzone:hover {
+  border-color: #fbbf24;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.cloud-scenes-dropzone p {
+  margin: 6px 0 0 0;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+/* GALLERY GRID */
+.cloud-scenes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.cloud-scene-card {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: #020617;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.cloud-scene-card:hover {
+  transform: translateY(-2px);
+  border-color: #fbbf24;
+}
+
+.cloud-scene-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cloud-scene-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.cloud-scene-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  color: #ffffff;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.cloud-scene-card:hover .cloud-scene-delete-btn {
+  opacity: 1;
+}
+
+.cloud-scene-delete-btn:hover {
+  background: #dc2626;
+}
+
+.cloud-scene-info-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 10px;
+  background: linear-gradient(180deg, transparent 0%, rgba(2, 6, 23, 0.95) 100%);
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* CLI SCRIPT INFO CARD */
+.cloud-scenes-cli-help {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cloud-scenes-cli-code {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+/* HEADER BUTTON IN SHLOK MANAGEMENT */
+.cloud-scenes-header-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(59, 130, 246, 0.20) 100%);
+  border: 1.5px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.cloud-scenes-header-btn:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: #fbbf24;
+  color: #ffffff;
+  transform: translateY(-1px);
+}

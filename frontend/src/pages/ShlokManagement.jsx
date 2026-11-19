@@ -52,6 +52,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import ShlokVideoGeneratorModal from "../components/ShlokVideoGeneratorModal.jsx";
+import CloudScenesManagerModal from "../components/CloudScenesManagerModal.jsx";
 import "./ShlokManagement.css";
 
 
@@ -608,6 +609,7 @@ function ShlokManagement() {
   ===================================================== */
   const [audioModalShlok, setAudioModalShlok] = useState(null);
   const [videoModalShlok, setVideoModalShlok] = useState(null);
+  const [showCloudScenesModal, setShowCloudScenesModal] = useState(false);
   const [audioModalLang, setAudioModalLang] = useState("gu");
   const [downloadingType, setDownloadingType] = useState(null);
   const [previewPlayingType, setPreviewPlayingType] = useState(null);
@@ -2271,15 +2273,25 @@ function ShlokManagement() {
             </h1>
           </div>
 
-          <button
-            type="button"
-            className="back-admin-btn"
-            onClick={() =>
-              navigate("/admin")
-            }
-          >
-            <ArrowLeft className="btn-icon" size={16} /> Admin Dashboard
-          </button>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="cloud-scenes-header-btn"
+              onClick={() => setShowCloudScenesModal(true)}
+              title="Cloudinary પર 9:16 વિડિયો સીન્સ અપલોડ & મેનેજ કરો"
+            >
+              ☁️ Cloud Scenes (CDN)
+            </button>
+            <button
+              type="button"
+              className="back-admin-btn"
+              onClick={() =>
+                navigate("/admin")
+              }
+            >
+              <ArrowLeft className="btn-icon" size={16} /> Admin Dashboard
+            </button>
+          </div>
         </div>
 
         {/* MESSAGES */}
@@ -3970,6 +3982,16 @@ function ShlokManagement() {
             />,
             document.body
           )}
+
+        {/* =================================================
+            4. CLOUDINARY 9:16 SCENES GALLERY MODAL
+        ================================================= */}
+        {showCloudScenesModal && (
+          <CloudScenesManagerModal
+            isOpen={showCloudScenesModal}
+            onClose={() => setShowCloudScenesModal(false)}
+          />
+        )}
 
       </div>
     </main>

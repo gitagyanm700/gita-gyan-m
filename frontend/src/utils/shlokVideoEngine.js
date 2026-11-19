@@ -47,6 +47,36 @@ export const SCENE_IMAGES = {
 };
 
 /**
+ * Cloudinary Live Scenes Cache & Fetcher
+ */
+let cloudScenesCache = null;
+
+export async function fetchCloudScenes(forceRefresh = false) {
+  if (cloudScenesCache && !forceRefresh) return cloudScenesCache;
+  try {
+    const isLocalHost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const base = isLocalHost
+      ? "http://localhost:5000"
+      : "https://bhagavad-gita-backend-jy1a.onrender.com";
+
+    const res = await fetch(`${base}/api/scenes${forceRefresh ? "?refresh=true" : ""}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.scenes) && data.scenes.length > 0) {
+        cloudScenesCache = data.scenes.map((s) => s.url);
+        return cloudScenesCache;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch cloud scenes from backend:", err.message);
+  }
+  return null;
+}
+
+/**
  * Clean HTML strings into pure readable plain text
  */
 export function cleanHtmlText(html) {
@@ -97,7 +127,7 @@ export function cleanHtmlText(html) {
  * Intelligent Multi-Shot 3D Scene Sequence Generator for all shlokas
  * Returns exclusively 9:16 vertical 3D mythological scene shots (changing every 2-3s)
  */
-export function detectShlokScenes(shlok) {
+export function detectShlokScenes(shlok, cloudPool = null) {
   const speaker = String(shlok.speaker || shlok.speakerGu || shlok.speakerHi || "").toLowerCase();
   const chNum = Number(shlok.chapterNumber) || 1;
   const sNum = Number(shlok.shlokNumber) || 1;
@@ -412,6 +442,20 @@ export function detectShlokScenes(shlok) {
     ];
   }
 
+  // If Cloudinary scene pool has images, inject them deterministically for this shloka
+  if (cloudPool && Array.isArray(cloudPool) && cloudPool.length > 0) {
+    const seed = (chNum * 37 + sNum * 13) % cloudPool.length;
+    const c1 = cloudPool[seed];
+    const c2 = cloudPool[(seed + 1) % cloudPool.length];
+    const c3 = cloudPool[(seed + 2) % cloudPool.length];
+    const c4 = cloudPool[(seed + 3) % cloudPool.length];
+    const c5 = cloudPool[(seed + 4) % cloudPool.length];
+
+    scene1Shots = [c1, scene1Shots[0], c2, scene1Shots[1] || c3];
+    scene2Shots = [c3, scene2Shots[0], c4, scene2Shots[1] || c1];
+    scene3Shots = [c5, scene3Shots[0], c1, scene3Shots[1] || c2, c4];
+  }
+
   // Filter out any duplicate adjacent images
   scene1Shots = scene1Shots.filter((s, idx, arr) => s && (idx === 0 || s !== arr[idx - 1]));
   scene2Shots = scene2Shots.filter((s, idx, arr) => s && (idx === 0 || s !== arr[idx - 1]));
@@ -628,8 +672,9 @@ export async function createShlokVideoRenderer({
   const chNum = shlok.chapterNumber;
   const sNum = shlok.shlokNumber;
 
-  // 1. Intelligent Multi-Shot 9:16 Scene Detection
-  const scenes = detectShlokScenes(shlok);
+  // 1. Intelligent Multi-Shot 9:16 Scene Detection (Using live Cloudinary CDN pool when available)
+  const cloudPool = await fetchCloudScenes();
+  const scenes = detectShlokScenes(shlok, cloudPool);
 
   // 2. Preload all unique images needed across all scenes
   onProgress({ stage: "images", percent: 15, message: "9:16 મલ્ટી-શોટ સિનેમેટિક આર્ટવર્ક લોડ થઈ રહ્યું છે..." });

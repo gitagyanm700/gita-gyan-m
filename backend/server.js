@@ -19,6 +19,7 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const appAnalyticsRoutes = require("./routes/appAnalyticsRoutes");
 const ttsRoutes = require("./routes/ttsRoutes");
+const sceneRoutes = require("./routes/sceneRoutes");
 const { scheduleStartupAudioPrecache } = require("./controllers/ttsController");
 const notificationController = require("./controllers/notificationController");
 
@@ -52,10 +53,10 @@ app.use(securityHeaders);
 // 3. Strict CORS Whitelist
 app.use(cors(corsOptions));
 
-// 4. Request Body Size Limiting (Prevents buffer overflow & DoS memory exhaustion)
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-app.use(express.text({ type: ["text/plain", "application/json"], limit: "1mb" }));
+// 4. Request Body Size Limiting (Allows high-throughput TTS sync & image uploads)
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.text({ type: ["text/plain", "application/json"], limit: "50mb" }));
 
 // 5. NoSQL Injection Sanitizer (Strips any malicious $ and . keys from body, query, and params)
 app.use(noSqlSanitizer);
@@ -85,6 +86,7 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/app-analytics", appAnalyticsRoutes);
 app.use("/api/tts", ttsRoutes);
+app.use("/api/scenes", sceneRoutes);
 
 // Root health check endpoint
 app.get("/", (req, res) => {
