@@ -6,7 +6,6 @@ import {
   Trash2,
   RefreshCw,
   X,
-  Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -192,7 +191,7 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
                 Cloudinary 9:16 Video Scenes Gallery
               </h2>
               <p className="cloud-scenes-modal-subtitle">
-                ક્લાઉડ CDN પર હોસ્ટ થયેલી 9:16 વર્ટિકલ ઈમેજો (કુલ: {scenes.length} / 500)
+                ક્લાઉડ CDN પર હોસ્ટ થયેલી 9:16 વર્ટિકલ ઈમેજો (.jpg, .png, .webp) • કુલ: {scenes.length} / 500
               </p>
             </div>
           </div>
@@ -296,35 +295,6 @@ export default function CloudScenesManagerModal({ isOpen, onClose }) {
               <AlertCircle size={16} /> {error}
             </div>
           )}
-
-          {/* COMPACT UPLOAD BANNER */}
-          <div
-            className="cloud-scenes-compact-dropzone"
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-          >
-            <div className="cloud-scenes-dropzone-left">
-              <ImageIcon size={22} style={{ color: "#fbbf24", flexShrink: 0 }} />
-              <div>
-                <div className="cloud-scenes-dropzone-text">
-                  <strong>નવી 9:16 ઈમેજો અપલોડ કરો</strong> (એકસાથે ૧૦, ૫૦, ૧૦૦ કે ૫૦૦ ઈમેજો સિલેક્ટ કરો)
-                </div>
-                <div className="cloud-scenes-dropzone-hint">
-                  JPG, PNG, WebP ફોર્મેટ • ક્લાઉડ CDN પર 9:16 વિડિયો સીન તરીકે સેવ થશે
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="cloud-scenes-upload-btn"
-              style={{ padding: "6px 14px", fontSize: "0.82rem" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current && fileInputRef.current.click();
-              }}
-            >
-              <Upload size={14} /> ફાઈલો પસંદ કરો
-            </button>
-          </div>
 
           {/* GALLERY GRID */}
           {loading ? (

@@ -206,42 +206,6 @@
   box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
 }
 
-/* COMPACT UPLOAD BANNER */
-.cloud-scenes-compact-dropzone {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  background: rgba(245, 158, 11, 0.06);
-  border: 1.5px dashed rgba(251, 191, 36, 0.35);
-  border-radius: 12px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.cloud-scenes-compact-dropzone:hover {
-  border-color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-}
-
-.cloud-scenes-dropzone-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.cloud-scenes-dropzone-text {
-  font-size: 0.86rem;
-  color: #e2e8f0;
-}
-
-.cloud-scenes-dropzone-hint {
-  font-size: 0.78rem;
-  color: #94a3b8;
-}
-
 /* PROGRESS BOX */
 .cloud-scenes-progress-box {
   background: rgba(15, 23, 42, 0.85);
