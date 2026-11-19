@@ -710,10 +710,10 @@ export async function createShlokVideoRenderer({
   const trBuf = trBufRaw || createSilentBuffer(audioCtx, 8);
   const msgBuf = msgBufRaw || createSilentBuffer(audioCtx, 12);
 
-  // Scene timing calculation (tight cinematic pacing, zero awkward gaps)
-  const SCENE_EXIT_PAUSE = 0.35;
-  const INTRO_PAD = 0.35;
-  const OUTRO_DURATION = 1.8;
+  // Scene timing calculation (100% continuous flow, zero gaps between scenes)
+  const SCENE_EXIT_PAUSE = 0.05;
+  const INTRO_PAD = 0.08;
+  const OUTRO_DURATION = 0.8;
 
   const tIntroEnd = INTRO_PAD;
   const d1 = saBuf.duration;

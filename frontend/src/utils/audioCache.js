@@ -438,14 +438,14 @@ export function extractCleanTextForSpeech(htmlString) {
   try {
     let preprocessed = String(htmlString)
       .replace(/<br\s*\/?>/gi, " ")
-      .replace(/<\/(p|div|li|h[1-6])>/gi, " . ")
+      .replace(/<\/(p|div|li|h[1-6])>/gi, " ")
       .replace(/&nbsp;/gi, " ")
       .replace(/&amp;/gi, "&");
     let text = preprocessed.replace(/<[^>]*>/g, "");
-    text = text.replace(/\s*[:：]\s*/g, " . ... ");
+    text = text.replace(/\s*[:：]\s*/g, ", ");
     text = text.replace(/[•\-\*]/g, " ");
+    text = text.replace(/\s*([,।\.!?])\s*([,।\.!?])+/g, "$1");
     text = text.replace(/\s+/g, " ").trim();
-    text = text.replace(/(\.\s*\.\.\.\s*)+/g, ". ... ");
     return text;
   } catch (e) {
     return String(htmlString).replace(/<[^>]*>/g, " ").trim();
