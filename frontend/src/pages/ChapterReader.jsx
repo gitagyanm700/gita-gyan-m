@@ -1510,7 +1510,7 @@ if (
     }
 
     const langCode = type === "sanskrit" ? "sa" : (isEnglish ? "en" : isHindi ? "hi" : "gu");
-    const customRate = type === "sanskrit" ? "-22%" : "-2%";
+    const customRate = type === "sanskrit" ? "-10%" : "-2%";
     scrollToSection(type);
 
     try {
@@ -1650,12 +1650,12 @@ if (
           if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
           autoPlayTimerRef.current = setTimeout(() => {
             startSpeech("translation", targetIdx);
-          }, 1000);
+          }, 350);
         } else if ((type === "sanskrit" || type === "translation") && hasMessage) {
           if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
           autoPlayTimerRef.current = setTimeout(() => {
             startSpeech("message", targetIdx);
-          }, 1000);
+          }, 350);
         } else {
           // Whole audio sequence for this shloka is completed!
           markShlokaAsReadAudio(targetShlokaObj);

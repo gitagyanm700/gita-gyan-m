@@ -410,22 +410,24 @@ export function formatSanskritForSpeech(shlokObj) {
     .filter(Boolean);
 
   const rhythmLines = rawLines
-    .map((line) => {
+    .map((line, idx, arr) => {
       let cleanLine = line.replace(/[|।॥]+$/g, "").trim();
       const words = cleanLine.split(/\s+/).filter((w) => !/^[|।॥\d\.\-०-९]+$/.test(w));
+      const isLast = idx === arr.length - 1;
+      const endMark = isLast ? " ।" : ",";
       if (words.length >= 4) {
         const half = Math.ceil(words.length / 2);
         const pada1 = words.slice(0, half).join(" ");
         const pada2 = words.slice(half).join(" ");
-        return `${pada1}, ${pada2} ।`;
+        return `${pada1}, ${pada2}${endMark}`;
       } else if (words.length > 0) {
-        return `${words.join(" ")} ।`;
+        return `${words.join(" ")}${endMark}`;
       }
       return "";
     })
     .filter(Boolean);
 
-  return rhythmLines.join("\n\n");
+  return rhythmLines.join(" ");
 }
 
 /**
@@ -512,7 +514,7 @@ export async function cacheSingleShlokaAudio(chapterNumber, shlokaObj, lang = "g
       fetchTasks.push(
         (async () => {
           try {
-            const saBlob = await fetchNeuralAudioBlob(saText, "sa", "-22%");
+            const saBlob = await fetchNeuralAudioBlob(saText, "sa", "-10%");
             if (saBlob) {
               await saveAudioToCache(chapterNumber, sNum, "sanskrit", "sa", saBlob);
               if (cachedKeySet) cachedKeySet.add(saKey);
@@ -615,7 +617,7 @@ function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startFromInde
           type: "sanskrit",
           lang: "sa",
           text: saText,
-          rate: "-22%",
+          rate: "-10%",
         });
       }
     }

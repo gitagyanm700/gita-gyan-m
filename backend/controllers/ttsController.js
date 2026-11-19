@@ -411,7 +411,7 @@ const downloadShlokAudio = async (req, res) => {
       if (!plainSa) {
         return res.status(404).json({ success: false, message: "Sanskrit shloka text not found." });
       }
-      audioBuffer = await synthesizeBuffer(plainSa, "sa", "-22%");
+      audioBuffer = await synthesizeBuffer(plainSa, "sa", "-10%");
       filename = `adhyay ${chapterNumber}-${shlokNumber} sanskrit.mp3`;
     } else if (type === "translation") {
       if (!plainTr) {
@@ -428,7 +428,7 @@ const downloadShlokAudio = async (req, res) => {
     } else {
       // type === "full" (Combine Sanskrit + Translation + Message in one continuous MP3)
       const [saBuf, trBuf, msgBuf] = await Promise.all([
-        plainSa ? synthesizeBuffer(plainSa, "sa", "-22%") : null,
+        plainSa ? synthesizeBuffer(plainSa, "sa", "-10%") : null,
         plainTr ? synthesizeBuffer(plainTr, lang, "-2%") : null,
         plainMsg ? synthesizeBuffer(plainMsg, lang, "-2%") : null,
       ]);

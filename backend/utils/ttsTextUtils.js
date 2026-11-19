@@ -72,22 +72,25 @@ function formatSanskritForSpeech(shlokObj) {
     .filter(Boolean);
 
   const rhythmLines = rawLines
-    .map((line) => {
+    .map((line, idx, arr) => {
       const cleanLine = line.replace(/[|।॥]+$/g, "").trim();
       const words = cleanLine.split(/\s+/).filter((w) => !/^[|।॥\d\.\-०-९]+$/.test(w));
+      const isLastLine = idx === arr.length - 1;
+      // Line 1 ends with gentle comma pause so Line 2 starts immediately without dead awkward gap!
+      const endMark = isLastLine ? " ।" : ",";
       if (words.length >= 4) {
         const half = Math.ceil(words.length / 2);
         const pada1 = words.slice(0, half).join(" ");
         const pada2 = words.slice(half).join(" ");
-        return `${pada1}, ${pada2} ।`;
+        return `${pada1}, ${pada2}${endMark}`;
       } else if (words.length > 0) {
-        return `${words.join(" ")} ।`;
+        return `${words.join(" ")}${endMark}`;
       }
       return "";
     })
     .filter(Boolean);
 
-  return rhythmLines.join("\n\n");
+  return rhythmLines.join(" ");
 }
 
 function normalizeTtsInputText(text) {
@@ -109,7 +112,7 @@ function getTtsSynthesisParams(text, lang = "gu", customRate = null) {
   const voiceLang = VOICE_MAP[lang] ? lang : "gu";
   const selectedVoice = VOICE_MAP[voiceLang].male;
   const prosodyOptions = {
-    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "-22%" : "-2%",
+    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "-10%" : "-2%",
     pitch: lang === "sa" ? "-2Hz" : "+0Hz",
   };
 
@@ -132,14 +135,14 @@ function buildShlokTtsTasks(shloka, languages = ["gu"]) {
 
   const saText = formatSanskritForSpeech(shloka);
   if (saText) {
-    const params = getTtsSynthesisParams(saText, "sa", "-22%");
+    const params = getTtsSynthesisParams(saText, "sa", "-10%");
     if (params) {
       tasks.push({
         label: `Ch ${ch} Sh ${sh} [Sanskrit]`,
         text: saText,
         cleanText: params.cleanText,
         lang: "sa",
-        rate: "-22%",
+        rate: "-10%",
         cacheKey: params.cacheKey,
       });
     }

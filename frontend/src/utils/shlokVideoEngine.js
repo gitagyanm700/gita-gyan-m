@@ -509,7 +509,7 @@ async function fetchAudioBuffer(audioCtx, chNum, sNum, type, lang) {
       : "https://bhagavad-gita-backend-jy1a.onrender.com";
 
     const res = await fetch(
-      `${base}/api/tts/download/shlok/${chNum}/${sNum}?type=${type}&lang=${lang}`,
+      `${base}/api/tts/download/shlok/${chNum}/${sNum}?type=${type}&lang=${lang}&smooth=true`,
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       }
@@ -710,10 +710,10 @@ export async function createShlokVideoRenderer({
   const trBuf = trBufRaw || createSilentBuffer(audioCtx, 8);
   const msgBuf = msgBufRaw || createSilentBuffer(audioCtx, 12);
 
-  // Scene timing calculation
-  const SCENE_EXIT_PAUSE = 0.8;
-  const INTRO_PAD = 0.6;
-  const OUTRO_DURATION = 2.2;
+  // Scene timing calculation (tight cinematic pacing, zero awkward gaps)
+  const SCENE_EXIT_PAUSE = 0.35;
+  const INTRO_PAD = 0.35;
+  const OUTRO_DURATION = 1.8;
 
   const tIntroEnd = INTRO_PAD;
   const d1 = saBuf.duration;
