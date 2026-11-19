@@ -3,7 +3,7 @@
    AUTO-UPDATE • OFFLINE CAPABLE • FAST CACHE • ZERO LATENCY
    ========================================================= */
 
-const CACHE_NAME = "bhagavad-gita-cache-v54";
+const CACHE_NAME = "bhagavad-gita-cache-v55";
 
 // Essential core shell assets to pre-cache on install
 const PRECACHE_ASSETS = [

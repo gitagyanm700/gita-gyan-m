@@ -3962,12 +3962,14 @@ function ShlokManagement() {
         {/* =================================================
             3. 9:16 AI 3D MOTION VIDEO GENERATOR MODAL
         ================================================= */}
-        {videoModalShlok && (
-          <ShlokVideoGeneratorModal
-            shlok={videoModalShlok}
-            onClose={() => setVideoModalShlok(null)}
-          />
-        )}
+        {videoModalShlok &&
+          createPortal(
+            <ShlokVideoGeneratorModal
+              shlok={videoModalShlok}
+              onClose={() => setVideoModalShlok(null)}
+            />,
+            document.body
+          )}
 
       </div>
     </main>
