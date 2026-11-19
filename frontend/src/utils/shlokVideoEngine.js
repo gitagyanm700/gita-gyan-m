@@ -445,15 +445,11 @@ export function detectShlokScenes(shlok, cloudPool = null) {
   // If Cloudinary scene pool has images, inject them deterministically for this shloka
   if (cloudPool && Array.isArray(cloudPool) && cloudPool.length > 0) {
     const seed = (chNum * 37 + sNum * 13) % cloudPool.length;
-    const c1 = cloudPool[seed];
-    const c2 = cloudPool[(seed + 1) % cloudPool.length];
-    const c3 = cloudPool[(seed + 2) % cloudPool.length];
-    const c4 = cloudPool[(seed + 3) % cloudPool.length];
-    const c5 = cloudPool[(seed + 4) % cloudPool.length];
+    const c = (offset) => cloudPool[(seed + offset) % cloudPool.length];
 
-    scene1Shots = [c1, scene1Shots[0], c2, scene1Shots[1] || c3];
-    scene2Shots = [c3, scene2Shots[0], c4, scene2Shots[1] || c1];
-    scene3Shots = [c5, scene3Shots[0], c1, scene3Shots[1] || c2, c4];
+    scene1Shots = [c(0), scene1Shots[0], c(1), scene1Shots[1] || c(2)];
+    scene2Shots = [c(2), scene2Shots[0], c(3), scene2Shots[1] || c(4)];
+    scene3Shots = [c(4), scene3Shots[0], c(5), c(6), scene3Shots[1] || c(7), c(8), c(9)];
   }
 
   // Filter out any duplicate adjacent images
@@ -789,6 +785,14 @@ export async function createShlokVideoRenderer({
   const imgScene3Shots = scenes.scene3Shots.map((src) => imageMap[src]).filter(Boolean);
   const imgLogo = imageMap[SCENE_IMAGES.logo];
 
+  // Combine all preloaded scene shots sequentially without consecutive duplicates
+  const allVideoShots = [];
+  [...imgScene1Shots, ...imgScene2Shots, ...imgScene3Shots].forEach((img) => {
+    if (img && (allVideoShots.length === 0 || allVideoShots[allVideoShots.length - 1] !== img)) {
+      allVideoShots.push(img);
+    }
+  });
+
   // 3. Preload audio tracks for all 3 scenes
   onProgress({ stage: "audio", percent: 30, message: "સંસ્કૃત, અનુવાદ અને સંદેશ ઓડિયો તૈયાર થઈ રહ્યો છે..." });
   const [saBufRaw, trBufRaw, msgBufRaw] = await Promise.all([
@@ -976,40 +980,55 @@ export async function createShlokVideoRenderer({
   }
 
   /**
-   * MULTI-SHOT MONTAGE RENDERER: CHANGES EVERY 4 SECONDS!
-   * Target shot duration: 4.0s per shot with 0.55s smooth dissolve
+   * DYNAMIC 9:16 MULTI-SHOT BACKGROUND MONTAGE
+   * User requirement:
+   * - First 15 seconds: image changes every 3 seconds (0s, 3s, 6s, 9s, 12s, 15s)
+   * - After 15 seconds: image changes every 5 seconds (15s, 20s, 25s, 30s, 35s, ...)
+   * Smooth Ken-Burns zoom + 0.55s cross-dissolve between shots.
    */
-  const TARGET_SHOT_DUR = 4.0;
+  function getShotInfo(t) {
+    if (t < 15.0) {
+      const shotDur = 3.0;
+      const idx = Math.max(0, Math.floor(t / shotDur));
+      const shotStart = idx * shotDur;
+      const shotElapsed = t - shotStart;
+      return { idx, shotDur, shotElapsed };
+    } else {
+      const shotDur = 5.0;
+      const past15 = t - 15.0;
+      const idx = 5 + Math.max(0, Math.floor(past15 / shotDur));
+      const shotStart = 15.0 + (idx - 5) * shotDur;
+      const shotElapsed = t - shotStart;
+      return { idx, shotDur, shotElapsed };
+    }
+  }
 
-  function drawMultiShotBackground(shots, elapsed, totalSceneDuration) {
-    if (!shots || shots.length === 0) return;
-    if (shots.length === 1) {
-      const p = Math.min(1, Math.max(0, elapsed / totalSceneDuration));
-      drawSingleKenBurns(shots[0], p, 0, 1);
+  function drawDynamicMultiShotBackground(t) {
+    if (!allVideoShots || allVideoShots.length === 0) return;
+    if (allVideoShots.length === 1) {
+      const p = Math.min(1, Math.max(0, t / (totalDuration || 20)));
+      drawSingleKenBurns(allVideoShots[0], p, 0, 1);
       return;
     }
 
-    const numShots = Math.max(1, Math.ceil(totalSceneDuration / TARGET_SHOT_DUR));
-    const shotDur = totalSceneDuration / numShots;
+    const { idx, shotDur, shotElapsed } = getShotInfo(t);
     const FADE = Math.min(0.55, shotDur * 0.15);
 
-    const virtualIdx = Math.min(numShots - 1, Math.max(0, Math.floor(elapsed / shotDur)));
-    const shotElapsed = elapsed - virtualIdx * shotDur;
+    const currImg = allVideoShots[idx % allVideoShots.length];
 
-    const currImg = shots[virtualIdx % shots.length];
-
-    if (virtualIdx > 0 && shotElapsed < FADE) {
-      const prevImg = shots[(virtualIdx - 1) % shots.length];
+    if (idx > 0 && shotElapsed < FADE) {
+      const prevInfo = getShotInfo(Math.max(0, t - shotElapsed - 0.02));
+      const prevImg = allVideoShots[(idx - 1) % allVideoShots.length];
       const fadeProgress = shotElapsed / FADE;
 
-      const prevP = Math.min(1, (shotDur - FADE + shotElapsed) / shotDur);
-      drawSingleKenBurns(prevImg, prevP, virtualIdx - 1, 1 - fadeProgress);
+      const prevP = Math.min(1, (prevInfo.shotDur - FADE + shotElapsed) / prevInfo.shotDur);
+      drawSingleKenBurns(prevImg, prevP, idx - 1, 1 - fadeProgress);
 
       const currP = shotElapsed / shotDur;
-      drawSingleKenBurns(currImg, currP, virtualIdx, fadeProgress);
+      drawSingleKenBurns(currImg, currP, idx, fadeProgress);
     } else {
       const currP = Math.min(1, shotElapsed / shotDur);
-      drawSingleKenBurns(currImg, currP, virtualIdx, 1);
+      drawSingleKenBurns(currImg, currP, idx, 1);
     }
   }
 
@@ -1118,25 +1137,10 @@ export async function createShlokVideoRenderer({
 
     // ==========================================
     // 1. DYNAMIC MULTI-SHOT 9:16 SCENE BACKGROUND
-    // Changes every 2-3 seconds throughout the video!
+    // First 15 seconds: changes every 3s
+    // After 15 seconds: changes every 5s
     // ==========================================
-    if (t < tScene2Start) {
-      // SCENE 1: Shloka Recitation (Multi-shot every 2-3s)
-      const elapsed1 = Math.max(0, t);
-      drawMultiShotBackground(imgScene1Shots, elapsed1, tScene1End);
-    } else if (t < tScene3Start) {
-      // SCENE 2: Translation (Multi-shot every 2-3s)
-      const elapsed2 = Math.max(0, t - tScene2Start);
-      drawMultiShotBackground(imgScene2Shots, elapsed2, d2);
-    } else if (t < tScene3End) {
-      // SCENE 3: Gita Life Message (Multi-shot every 2-3s!)
-      const elapsed3 = Math.max(0, t - tScene3Start);
-      drawMultiShotBackground(imgScene3Shots, elapsed3, d3);
-    } else {
-      // OUTRO
-      const pOut = Math.min(1, Math.max(0, (t - tScene3End) / OUTRO_DURATION));
-      drawSingleKenBurns(imgScene3Shots[imgScene3Shots.length - 1], pOut, 0, 1);
-    }
+    drawDynamicMultiShotBackground(t);
 
     // Golden celestial particles
     particles.update();
