@@ -281,11 +281,11 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
     }
   };
 
-  // AI Prompts for external tools (Luma, Kling, Leonardo, Runway)
+  // Dynamic AI Prompts for external tools (Luma, Kling, Leonardo, Runway)
   const aiPrompts = {
-    scene1: `Cinematic 3D animation of ancient mythological setting in India, blind King Dhritarashtra in royal opulent robes seated on an ornate golden throne in Hastinapur palace, royal charioteer Sanjaya standing reverently beside him explaining the battle of Kurukshetra, warm torch lighting, epic Indian Vedic atmosphere, photorealistic 8K render.`,
-    scene2: `Epic 3D battlefield of Kurukshetra, majestic golden chariot stationed between two massive assembled armies of Kauravas and Pandavas, blowing war conch shells, dramatic dust particles, mythological cinematic lighting, dynamic perspective, 8K render.`,
-    scene3: `Lord Krishna as the divine charioteer in Kurukshetra, holding the reins of white celestial horses, golden pitambara silk, peacock feather in haloed crown, raising hand in supreme divine preaching (updesh / abhaya mudra), radiant golden sunlight rays illuminating the cosmos, hyper-realistic 3D masterpiece.`,
+    scene1: `9:16 vertical portrait cinematic 3D render of Bhagavad Gita: ${detectedScenes.scene1Name}. Ancient Vedic atmosphere, dramatic volumetric lighting, ultra-detailed Unreal Engine 5 render, 8K masterpiece.`,
+    scene2: `9:16 vertical portrait epic 3D scene of Kurukshetra battlefield: ${detectedScenes.scene2Name}. Golden armor, war banners, dust clouds, dramatic sky, photorealistic 8K mythological art.`,
+    scene3: `9:16 vertical portrait spiritual 3D scene of Bhagavad Gita wisdom: ${detectedScenes.scene3Name}. Golden divine light, sacred Vedic symbols, serene transcendental energy, masterpiece.`,
   };
 
   const copyPrompt = (key, text) => {
@@ -441,13 +441,7 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
                   <span className="step-num">1</span>
                   <div className="step-info">
                     <strong>શ્લોક ગાન & વક્તા દર્શન</strong>
-                    <p>
-                      {shlok.speaker?.includes("ધૃતરાષ્ટ્ર")
-                        ? "હસ્તિનાપુર રાજદરબાર: ધૃતરાષ્ટ્ર & સંજય સંવાદ"
-                        : shlok.speaker?.includes("અર્જુન")
-                        ? "કુરુક્ષેત્ર રથ: અર્જુન વિષાદ & સંવાદ"
-                        : "કુરુક્ષેત્ર સુવર્ણ રથ: ભગવાન શ્રીકૃષ્ણ"}
-                    </p>
+                    <p>{detectedScenes.scene1Name}</p>
                     <span className="step-sub">
                       સંસ્કૃત શ્લોક બોલાતાની સાથે શબ્દો ચમકશે અને પૂર્ણ થતાં જ સ્ક્રીન પરથી હટી જશે.
                     </span>
@@ -458,7 +452,7 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
                   <span className="step-num">2</span>
                   <div className="step-info">
                     <strong>અનુવાદ ({lang === "gu" ? "ગુજરાતી" : lang === "hi" ? "हिन्दी" : "English"})</strong>
-                    <p>મહાભારત કુરુક્ષેત્ર યુદ્ધભૂમિ દ્રશ્ય</p>
+                    <p>{detectedScenes.scene2Name}</p>
                     <span className="step-sub">
                       અવાજ મુજબ અનુવાદ લખાશે અને પૂર્ણ થતાં જ સ્ક્રીન પરથી હટી જશે.
                     </span>
@@ -469,7 +463,7 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
                   <span className="step-num">3</span>
                   <div className="step-info">
                     <strong>દિવ્ય ગીતા સંદેશ (Life Guidance)</strong>
-                    <p>શ્રીકૃષ્ણ ઉપદેશ / અધ્યાત્મ વૃક્ષ / વિશ્વરૂપ દ્રશ્ય</p>
+                    <p>{detectedScenes.scene3Name}</p>
                     <span className="step-sub">
                       જીવન માર્ગદર્શન સંદેશ અને પવિત્ર ઓટ્રો (Outro).
                     </span>

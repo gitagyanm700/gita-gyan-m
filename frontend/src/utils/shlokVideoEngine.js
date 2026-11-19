@@ -2,8 +2,10 @@
  * ====================================================================
  * BHAGAVAD GITA - 9:16 HD CINEMATIC SHLOKA VIDEO ENGINE
  * Multi-Language (Gujarati / Hindi / English)
- * Dynamic Story Scenes (Dhritarashtra, Arjuna, Krishna, Gita Wisdom)
- * Synchronized Typewriter / Karaoke Subtitles
+ * 9:16 Vertical Portrait Mythological Scenes (All Chapters 1-18)
+ * Clean Text Formatting (HTML stripped, bulleted lists, decoded entities)
+ * Teleprompter Auto-Scroll Subtitles (Zero text overflow)
+ * Synchronized Typewriter / Karaoke Golden Highlighting
  * Clean Scene Exits (Shloka fades out -> Translation fades out -> Message)
  * Pure Client-Side GPU Canvas + Web Audio + MediaRecorder (Zero Server Cost)
  * ====================================================================
@@ -11,71 +13,250 @@
 
 import { getValidToken } from "./authHelper.js";
 
-// Scene background image paths
+// 9:16 Vertical Portrait Scene Images
 export const SCENE_IMAGES = {
-  dhritarashtra: "/images/scenes/scene_dhritarashtra_sanjaya.jpg",
-  arjuna: "/images/scenes/scene_arjuna_chariot.jpg",
-  krishna: "/images/scenes/scene_krishna_updesh.jpg",
-  wisdom: "/images/scenes/scene_gita_wisdom.jpg",
-  defaultBg: "/images/gita-background-mobile.jpg",
+  dhritarashtraPalace: "/images/scenes/scene_dhritarashtra_sanjaya_v916.jpg",
+  duryodhanaDrona: "/images/scenes/scene_duryodhana_dronacharya_v916.jpg",
+  kurukshetraConch: "/images/scenes/scene_kurukshetra_conch_armies_v916.jpg",
+  arjunaGrief: "/images/scenes/scene_arjuna_grief_chariot_v916.jpg",
+  krishnaUpdesh: "/images/scenes/scene_krishna_updesh_v916.jpg",
+  krishnaVishwaroop: "/images/scenes/scene_krishna_vishwaroop_v916.jpg",
+  guidanceMentor: "/images/scenes/scene_guidance_mentor_guru_v916.jpg",
+  karmaAction: "/images/scenes/scene_karma_action_duty_v916.jpg",
+  peaceMeditation: "/images/scenes/scene_peace_meditation_mind_v916.jpg",
+  defaultBg: "/images/scenes/scene_krishna_updesh_v916.jpg",
   logo: "/icons/logo-circle.png",
 };
 
 /**
- * Determine the visual scene based on speaker and chapter context
+ * Clean HTML strings into pure readable plain text
+ * - Strips all HTML tags, style attributes, and node paths
+ * - Converts <li> to bullet points (• )
+ * - Converts <br>, <p>, <div> to appropriate linebreaks
+ * - Decodes HTML entities (&nbsp;, &amp;, quotes, etc.)
+ */
+export function cleanHtmlText(html) {
+  if (!html) return "";
+  let text = String(html);
+
+  // 1. Convert block tags & line breaks
+  text = text
+    .replace(/<br\s*[\/]?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<\/li>/gi, "")
+    .replace(/<\/ul>/gi, "\n")
+    .replace(/<\/ol>/gi, "\n");
+
+  // 2. Strip all remaining HTML tags and inline attributes
+  text = text.replace(/<[^>]*>/g, "");
+
+  // 3. Decode common HTML entities
+  text = text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&ndash;/gi, "-")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&#\d+;/gi, (m) => {
+      const code = parseInt(m.slice(2, -1), 10);
+      return !isNaN(code) ? String.fromCharCode(code) : " ";
+    });
+
+  // 4. Normalize whitespace
+  text = text
+    .split("\n")
+    .map((line) => line.trim().replace(/[ \t]+/g, " "))
+    .filter((line) => line.length > 0)
+    .join("\n");
+
+  return text.trim();
+}
+
+/**
+ * Intelligent Scene Detection for all shlokas in Gita
+ * Determines Scene 1, Scene 2, and Scene 3 based on:
+ * - Speaker (Dhritarashtra, Sanjaya, Arjuna, Krishna)
+ * - Chapter and verse numbers (e.g. Ch1 Duryodhana/Drona vs Conch shells vs Arjuna Grief)
+ * - Message content (Mentorship, Karma, Peace/Meditation, Devotion, Grief)
  */
 export function detectShlokScenes(shlok) {
-  const speaker = String(shlok.speaker || shlok.speakerGu || "").toLowerCase();
+  const speaker = String(shlok.speaker || shlok.speakerGu || shlok.speakerHi || "").toLowerCase();
   const chNum = Number(shlok.chapterNumber) || 1;
+  const sNum = Number(shlok.shlokNumber) || 1;
 
-  // Scene 1 Background (Shloka Recitation)
-  let scene1Bg = SCENE_IMAGES.krishna;
+  // Clean strings for semantic analysis
+  const rawMsg = String(shlok.message || shlok.messageGu || shlok.messageHi || shlok.messageEn || "");
+  const cleanMsg = cleanHtmlText(rawMsg).toLowerCase();
+
+  // -------------------------------------------------------------
+  // 1. SCENE 1 (Shloka Recitation & Speaker Context)
+  // -------------------------------------------------------------
+  let scene1Bg = SCENE_IMAGES.krishnaUpdesh;
+  let scene1Name = "શ્રીકૃષ્ણ દિવ્ય ઉપદેશ";
   let speakerRole = "શ્રીભગવાન";
 
   if (speaker.includes("ધૃતરાષ્ટ્ર") || speaker.includes("धृतराष्ट्र") || speaker.includes("dhritarashtra")) {
-    scene1Bg = SCENE_IMAGES.dhritarashtra;
+    scene1Bg = SCENE_IMAGES.dhritarashtraPalace;
+    scene1Name = "હસ્તિનાપુર રાજદરબાર (ધૃતરાષ્ટ્ર & સંજય)";
     speakerRole = "ધૃતરાષ્ટ્ર";
   } else if (speaker.includes("સંજય") || speaker.includes("संजय") || speaker.includes("sanjaya")) {
-    scene1Bg = SCENE_IMAGES.arjuna;
     speakerRole = "સંજય";
+    if (chNum === 1 && sNum >= 2 && sNum <= 11) {
+      scene1Bg = SCENE_IMAGES.duryodhanaDrona;
+      scene1Name = "દુર્યોધન & દ્રોણાચાર્ય (કુરુક્ષેત્ર)";
+    } else if (chNum === 1 && sNum >= 12 && sNum <= 27) {
+      scene1Bg = SCENE_IMAGES.kurukshetraConch;
+      scene1Name = "કુરુક્ષેત્ર મહાયુદ્ધ શંખનાદ & સૈન્ય વ્યૂહ";
+    } else if ((chNum === 1 && sNum >= 47) || (chNum === 2 && sNum <= 10)) {
+      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Name = "અર્જુન વિષાદ (રથ પર શોકગ્રસ્ત)";
+    } else {
+      scene1Bg = SCENE_IMAGES.kurukshetraConch;
+      scene1Name = "કુરુક્ષેત્ર રણભૂમિ દ્રશ્ય";
+    }
   } else if (speaker.includes("અર્જુન") || speaker.includes("अर्जुन") || speaker.includes("arjuna")) {
-    scene1Bg = SCENE_IMAGES.arjuna;
     speakerRole = "અર્જુન";
+    if (chNum === 1 || (chNum === 2 && sNum <= 10)) {
+      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Name = "અર્જુન વિષાદ (ગાંડીવ ધનુષ ત્યાગ)";
+    } else if (chNum === 10 || chNum === 11) {
+      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Name = "વિશ્વરૂપ દર્શન પ્રાર્થના";
+    } else {
+      scene1Bg = SCENE_IMAGES.arjunaGrief;
+      scene1Name = "અર્જુન જિજ્ઞાસા & સંવાદ";
+    }
   } else {
-    scene1Bg = SCENE_IMAGES.krishna;
+    // Shri Bhagavan (Lord Krishna)
     speakerRole = "શ્રીભગવાન";
+    if (chNum === 11) {
+      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Name = "વિરાટ વિશ્વરૂપ દર્શન";
+    } else if (chNum === 6) {
+      scene1Bg = SCENE_IMAGES.peaceMeditation;
+      scene1Name = "ધ્યાનયોગ & મનની સ્થિરતા";
+    } else if (chNum === 3 || chNum === 5) {
+      scene1Bg = SCENE_IMAGES.karmaAction;
+      scene1Name = "નિષ્કામ કર્મયોગ પથ";
+    } else if (chNum === 10) {
+      scene1Bg = SCENE_IMAGES.krishnaVishwaroop;
+      scene1Name = "વિભૂતિયોગ (દિવ્ય ઐશ્વર્ય)";
+    } else {
+      scene1Bg = SCENE_IMAGES.krishnaUpdesh;
+      scene1Name = "શ્રીકૃષ્ણ દિવ્ય ઉપદેશ";
+    }
   }
 
-  // Scene 2 Background (Translation Context)
-  let scene2Bg = SCENE_IMAGES.arjuna;
-  if (chNum === 11) {
-    scene2Bg = `/images/chapter-11.jpg`;
-  } else if (scene1Bg === SCENE_IMAGES.dhritarashtra) {
-    scene2Bg = SCENE_IMAGES.arjuna;
+  // -------------------------------------------------------------
+  // 2. SCENE 2 (Translation Context & Verse Action)
+  // -------------------------------------------------------------
+  let scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+  let scene2Name = "દિવ્ય અર્થબોધ";
+
+  if (chNum === 1 && sNum === 1) {
+    scene2Bg = SCENE_IMAGES.dhritarashtraPalace;
+    scene2Name = "ધર્મક્ષેત્ર કુરુક્ષેત્ર પૂછપરછ";
+  } else if (chNum === 1 && sNum >= 2 && sNum <= 11) {
+    scene2Bg = SCENE_IMAGES.duryodhanaDrona;
+    scene2Name = "દુર્યોધન-દ્રોણાચાર્ય સંવાદ & સૈન્ય નિરીક્ષણ";
+  } else if (chNum === 1 && sNum >= 12 && sNum <= 27) {
+    scene2Bg = SCENE_IMAGES.kurukshetraConch;
+    scene2Name = "રણશિંગા, ઢોલ & દિવ્ય શંખનાદ";
+  } else if (chNum === 1 && sNum >= 28) {
+    scene2Bg = SCENE_IMAGES.arjunaGrief;
+    scene2Name = "અર્જુનનો શોક & આત્મીય મોહ";
+  } else if (chNum === 2 && sNum <= 10) {
+    scene2Bg = SCENE_IMAGES.arjunaGrief;
+    scene2Name = "અર્જુન શરણાગતિ & વિષાદ";
+  } else if (chNum === 2 && sNum > 10) {
+    scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+    scene2Name = "આત્મા અમર છે - સાંખ્ય દર્શન";
+  } else if (chNum === 3 || chNum === 5) {
+    scene2Bg = SCENE_IMAGES.karmaAction;
+    scene2Name = "કર્મણ્યેવાધિકારસ્તે - કર્મયોગ";
+  } else if (chNum === 6) {
+    scene2Bg = SCENE_IMAGES.peaceMeditation;
+    scene2Name = "ધ્યાનયોગ & આત્મસંયમ";
+  } else if (chNum === 10 || chNum === 11) {
+    scene2Bg = SCENE_IMAGES.krishnaVishwaroop;
+    scene2Name = "અનંત બ્રહ્માંડ - વિશ્વરૂપ દર્શન";
   } else {
-    scene2Bg = `/images/chapter-${chNum}.jpg`;
+    scene2Bg = SCENE_IMAGES.krishnaUpdesh;
+    scene2Name = "ભગવાન શ્રીકૃષ્ણનો દિવ્ય સંદેશ";
   }
 
-  // Scene 3 Background (Gita Life Message)
-  let scene3Bg = SCENE_IMAGES.wisdom;
-  if (chNum === 11) {
-    scene3Bg = `/images/chapter-11.jpg`;
-  } else if (chNum >= 2 && chNum <= 6) {
-    scene3Bg = SCENE_IMAGES.wisdom;
+  // -------------------------------------------------------------
+  // 3. SCENE 3 (Gita Life Message / Sandesh Context)
+  // -------------------------------------------------------------
+  let scene3Bg = SCENE_IMAGES.guidanceMentor;
+  let scene3Name = "જીવન માર્ગદર્શન & ગુરુ શરણ";
+
+  // Check keywords in message for contextual spiritual theme
+  const mentorKeywords = [
+    "માર્ગદર્શક", "ગુરુ", "સહારો", "સલાહ", "મેન્ટર", "ડર", "ભય", "અસુરક્ષા", "ગભરાઈ",
+    "આશ્રય", "શરણ", "અનુભવી", "मार्गदर्शक", "गुरु", "डर", "भय", "आश्रय", "mentor",
+    "guide", "guidance", "fear", "insecurity", "counsel", "teacher"
+  ];
+  const karmaKeywords = [
+    "કર્મ", "મહેનત", "પરિશ્રમ", "કર્તવ્ય", "ફળ", "પરિણામ", "કામ", "પુરુષાર્થ",
+    "ધ્યેય", "કર્મયોગ", "સફળતા", "પ્રયત્ન", "कर्म", "मेहनत", "कर्तव्य", "फल",
+    "action", "duty", "work", "effort", "karma", "success"
+  ];
+  const peaceKeywords = [
+    "મન", "શાંતિ", "ધ્યાન", "સ્થિરતા", "વિચારો", "એકાગ્રતા", "સંયમ", "ધીરજ", "મન શાંત",
+    "તણાવ", "शांत", "मन", "ध्यान", "स्थिरता", "एकाग्रता", "peace", "mind", "meditation",
+    "calm", "focus", "patience", "mental"
+  ];
+  const devotionKeywords = [
+    "ભક્તિ", "શ્રદ્ધા", "સમર્પણ", "વિશ્વાસ", "ઈશ્વર", "ભગવાન", "કૃષ્ણ", "બ્રહ્માંડ",
+    "પરમાત્મા", "આત્મા", "भक्ति", "श्रद्धा", "समर्पण", "भगवान", "ईश्वर", "devotion",
+    "faith", "surrender", "god", "divine", "universe"
+  ];
+  const griefKeywords = [
+    "શોક", "દુઃખ", "હતાશા", "નિરાશા", "ચિંતા", "વિષાદ", "ઉદાસી", "शोक", "दुःख",
+    "grief", "sadness", "depression"
+  ];
+
+  if (mentorKeywords.some((k) => cleanMsg.includes(k))) {
+    scene3Bg = SCENE_IMAGES.guidanceMentor;
+    scene3Name = "જીવન માર્ગદર્શન & ગુરુ શરણ";
+  } else if (karmaKeywords.some((k) => cleanMsg.includes(k))) {
+    scene3Bg = SCENE_IMAGES.karmaAction;
+    scene3Name = "કર્મયોગ & સતત પુરુષાર્થ";
+  } else if (peaceKeywords.some((k) => cleanMsg.includes(k))) {
+    scene3Bg = SCENE_IMAGES.peaceMeditation;
+    scene3Name = "માનસિક શાંતિ & ધ્યાન યોગ";
+  } else if (devotionKeywords.some((k) => cleanMsg.includes(k))) {
+    scene3Bg = SCENE_IMAGES.krishnaVishwaroop;
+    scene3Name = "ઈશ્વર ભક્તિ & શ્રદ્ધા સમર્પણ";
+  } else if (griefKeywords.some((k) => cleanMsg.includes(k))) {
+    scene3Bg = SCENE_IMAGES.guidanceMentor;
+    scene3Name = "હતાશામાંથી મુક્તિ & માર્ગદર્શન";
   } else {
-    scene3Bg = SCENE_IMAGES.krishna;
+    scene3Bg = SCENE_IMAGES.krishnaUpdesh;
+    scene3Name = "દિવ્ય ગીતા જીવન બોધ";
   }
 
   return {
     scene1: scene1Bg,
+    scene1Name,
     scene2: scene2Bg,
+    scene2Name,
     scene3: scene3Bg,
+    scene3Name,
     speakerRole,
   };
 }
 
 /**
- * Preload an HTMLImageElement
+ * Preload an HTMLImageElement safely
  */
 function preloadImage(src) {
   return new Promise((resolve) => {
@@ -83,7 +264,6 @@ function preloadImage(src) {
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => {
-      // Fallback to default background on error
       const fallback = new Image();
       fallback.crossOrigin = "anonymous";
       fallback.onload = () => resolve(fallback);
@@ -129,7 +309,7 @@ async function fetchAudioBuffer(audioCtx, chNum, sNum, type, lang) {
 }
 
 /**
- * Create a silent audio buffer fallback if network fails
+ * Fallback silent audio buffer
  */
 function createSilentBuffer(audioCtx, durationSec = 5) {
   const rate = audioCtx.sampleRate || 44100;
@@ -137,37 +317,77 @@ function createSilentBuffer(audioCtx, durationSec = 5) {
 }
 
 /**
- * Clean text into word tokens
+ * Clean text into word tokens for audio speech synchronization
  */
-function tokenizeText(text) {
+function tokenizeCleanWords(text) {
   if (!text) return [];
-  // Split by whitespace
   return text
+    .replace(/[•\-\*\:\|।॥,;"'()\[\]{}]/g, " ")
     .trim()
     .split(/\s+/)
     .filter((w) => w.length > 0);
 }
 
 /**
- * Word wrap helper for canvas
+ * Smart Word Wrap & Line Breakdown Helper with Teleprompter Metrics
  */
-function wrapText(ctx, text, maxWidth) {
-  const words = text.split(" ");
-  const lines = [];
-  let currentLine = words[0] || "";
+function wrapContentLines(ctx, text, maxWidth) {
+  if (!text) return [];
 
-  for (let i = 1; i < words.length; i++) {
-    const word = words[i];
-    const width = ctx.measureText(currentLine + " " + word).width;
-    if (width < maxWidth) {
-      currentLine += " " + word;
-    } else {
-      lines.push(currentLine);
-      currentLine = word;
+  // Split into paragraphs / bullet points
+  const rawParagraphs = text.split("\n").filter((p) => p.trim().length > 0);
+  const formattedLines = [];
+  let globalWordCount = 0;
+
+  rawParagraphs.forEach((paragraph) => {
+    const isBullet = paragraph.startsWith("• ");
+    const cleanPara = isBullet ? paragraph.slice(2).trim() : paragraph.trim();
+    const words = cleanPara.split(/\s+/).filter(Boolean);
+
+    let currentLineWords = [];
+    let currentLineText = "";
+
+    words.forEach((word) => {
+      const testText = currentLineText ? `${currentLineText} ${word}` : word;
+      const metrics = ctx.measureText(testText);
+
+      // Give bullet points 28px left margin
+      const effectiveMax = isBullet && currentLineWords.length > 0 ? maxWidth - 24 : maxWidth;
+
+      if (metrics.width <= effectiveMax) {
+        currentLineWords.push(word);
+        currentLineText = testText;
+      } else {
+        if (currentLineWords.length > 0) {
+          formattedLines.push({
+            text: currentLineText,
+            isBulletStart: isBullet && formattedLines.length === 0,
+            isBulletContinuation: isBullet && formattedLines.length > 0,
+            words: currentLineWords,
+            startWordIdx: globalWordCount,
+            endWordIdx: globalWordCount + currentLineWords.length - 1,
+          });
+          globalWordCount += currentLineWords.length;
+        }
+        currentLineWords = [word];
+        currentLineText = word;
+      }
+    });
+
+    if (currentLineWords.length > 0) {
+      formattedLines.push({
+        text: currentLineText,
+        isBulletStart: isBullet,
+        isBulletContinuation: false,
+        words: currentLineWords,
+        startWordIdx: globalWordCount,
+        endWordIdx: globalWordCount + currentLineWords.length - 1,
+      });
+      globalWordCount += currentLineWords.length;
     }
-  }
-  if (currentLine) lines.push(currentLine);
-  return lines;
+  });
+
+  return { lines: formattedLines, totalWords: globalWordCount };
 }
 
 /**
@@ -226,10 +446,10 @@ export async function createShlokVideoRenderer({
   shlok,
   lang = "gu",
   width = 720,
-  height = 1280, // 9:16 Aspect Ratio
+  height = 1280, // 9:16 Vertical format
   onProgress = () => {},
 }) {
-  onProgress({ stage: "init", percent: 5, message: "ઓડિયો અને દિવ્ય દ્રશ્યો લોડ થઈ રહ્યા છે..." });
+  onProgress({ stage: "init", percent: 5, message: "ઓડિયો અને 9:16 દિવ્ય દ્રશ્યો લોડ થઈ રહ્યા છે..." });
 
   const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioCtxClass();
@@ -237,11 +457,11 @@ export async function createShlokVideoRenderer({
   const chNum = shlok.chapterNumber;
   const sNum = shlok.shlokNumber;
 
-  // 1. Scene detection
+  // 1. Intelligent 9:16 Scene Detection
   const scenes = detectShlokScenes(shlok);
 
-  // 2. Preload images
-  onProgress({ stage: "images", percent: 15, message: "3D બેકગ્રાઉન્ડ આર્ટવર્ક લોડ થઈ રહ્યું છે..." });
+  // 2. Preload 9:16 vertical images
+  onProgress({ stage: "images", percent: 15, message: "9:16 સિનેમેટિક 3D આર્ટવર્ક લોડ થઈ રહ્યું છે..." });
   const [imgScene1, imgScene2, imgScene3, imgLogo] = await Promise.all([
     preloadImage(scenes.scene1),
     preloadImage(scenes.scene2),
@@ -277,43 +497,60 @@ export async function createShlokVideoRenderer({
   const tScene3End = tScene3Start + d3;
   const totalDuration = tScene3End + OUTRO_DURATION;
 
-  // Extract texts based on selected language
-  const sanskritText = String(shlok.sanskrit || "").trim();
-  const translationText = String(
+  // 4. Extract and CLEAN texts based on selected language (No HTML tags!)
+  // Sanskrit: Use clean lines if available
+  let sanskritLines = [];
+  if (shlok.sanskritLine1 && shlok.sanskritLine2) {
+    sanskritLines = [cleanHtmlText(shlok.sanskritLine1), cleanHtmlText(shlok.sanskritLine2)];
+  } else {
+    const rawSa = cleanHtmlText(shlok.sanskrit || "");
+    const parts = rawSa.split(/[।॥\n]/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      sanskritLines = [parts[0] + " ।", parts[1] + ` ॥ ${sNum} ॥`];
+    } else {
+      sanskritLines = [rawSa];
+    }
+  }
+  const cleanSanskritText = sanskritLines.join(" ");
+
+  // Translation: Clean HTML
+  const rawTranslation =
     lang === "hi"
       ? shlok.translationHi || shlok.translation
       : lang === "en"
       ? shlok.translationEn || shlok.translation
-      : shlok.translation || ""
-  ).trim();
+      : shlok.translation || "";
+  const cleanTranslationText = cleanHtmlText(rawTranslation);
 
-  const messageText = String(
+  // Message: Clean HTML
+  const rawMessage =
     lang === "hi"
       ? shlok.messageHi || shlok.message
       : lang === "en"
       ? shlok.messageEn || shlok.message
-      : shlok.message || ""
-  ).trim();
+      : shlok.message || "";
+  const cleanMessageText = cleanHtmlText(rawMessage);
 
-  const chapterName = String(
+  const chapterName = cleanHtmlText(
     lang === "hi"
       ? shlok.chapterNameHi || shlok.chapterName
       : lang === "en"
       ? shlok.chapterNameEn || shlok.chapterName
       : shlok.chapterName || ""
-  ).trim();
+  );
 
-  const speakerName = String(
+  const speakerName = cleanHtmlText(
     lang === "hi"
       ? shlok.speakerHi || shlok.speaker
       : lang === "en"
       ? shlok.speakerEn || shlok.speaker
       : shlok.speaker || ""
-  ).trim();
+  );
 
-  const saWords = tokenizeText(sanskritText);
-  const trWords = tokenizeText(translationText);
-  const msgWords = tokenizeText(messageText);
+  // Spoken word tokens for audio synchronization
+  const saWords = tokenizeCleanWords(cleanSanskritText);
+  const trWords = tokenizeCleanWords(cleanTranslationText);
+  const msgWords = tokenizeCleanWords(cleanMessageText);
 
   // Setup offscreen / live canvas
   const canvas = document.createElement("canvas");
@@ -321,7 +558,7 @@ export async function createShlokVideoRenderer({
   canvas.height = height;
   const ctx = canvas.getContext("2d");
 
-  const particles = new ParticleSystem(40, width, height);
+  const particles = new ParticleSystem(45, width, height);
 
   // UI labels per language
   const labels = {
@@ -355,16 +592,16 @@ export async function createShlokVideoRenderer({
   }[lang] || labels.gu;
 
   /**
-   * Draw a background image with 3D Ken Burns scale & pan
+   * Draw a 9:16 background image with subtle Ken Burns scale & pan
    */
   function drawKenBurnsImage(img, progress, alpha = 1) {
     if (!img) return;
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-    // Ken burns zoom from 1.0 to 1.12
-    const scale = 1.0 + progress * 0.12;
-    const panY = -progress * 40;
+    // Ken burns zoom from 1.0 to 1.08 with gentle upward pan
+    const scale = 1.0 + progress * 0.08;
+    const panY = -progress * 30;
 
     const imgAspect = img.width / img.height;
     const canvasAspect = width / height;
@@ -383,12 +620,13 @@ export async function createShlokVideoRenderer({
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-    // Deep atmospheric gradient vignette
+    // Cinematic vertical vignette gradient (keeps artwork vibrant while subtitle card is crisp)
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, "rgba(5, 12, 30, 0.72)");
-    grad.addColorStop(0.35, "rgba(5, 12, 30, 0.40)");
-    grad.addColorStop(0.65, "rgba(5, 12, 30, 0.75)");
-    grad.addColorStop(1, "rgba(2, 6, 18, 0.94)");
+    grad.addColorStop(0, "rgba(4, 10, 26, 0.70)");
+    grad.addColorStop(0.20, "rgba(4, 10, 26, 0.35)");
+    grad.addColorStop(0.60, "rgba(4, 10, 26, 0.35)");
+    grad.addColorStop(0.85, "rgba(3, 7, 20, 0.75)");
+    grad.addColorStop(1, "rgba(2, 5, 15, 0.95)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 
@@ -396,86 +634,9 @@ export async function createShlokVideoRenderer({
   }
 
   /**
-   * Draw Decorative Golden Border & Badges
+   * Helper to draw rounded rectangle on canvas
    */
-  function drawDecorations(currentTime) {
-    ctx.save();
-
-    // Outer border thin gold line
-    ctx.strokeStyle = "rgba(251, 191, 36, 0.40)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(16, 16, width - 32, height - 32);
-
-    // Inner gold corner accents
-    const cornerSize = 24;
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 3;
-
-    // Top-left
-    ctx.beginPath();
-    ctx.moveTo(22, 22 + cornerSize);
-    ctx.lineTo(22, 22);
-    ctx.lineTo(22 + cornerSize, 22);
-    ctx.stroke();
-
-    // Top-right
-    ctx.beginPath();
-    ctx.moveTo(width - 22 - cornerSize, 22);
-    ctx.lineTo(width - 22, 22);
-    ctx.lineTo(width - 22, 22 + cornerSize);
-    ctx.stroke();
-
-    // Bottom-left
-    ctx.beginPath();
-    ctx.moveTo(22, height - 22 - cornerSize);
-    ctx.lineTo(22, height - 22);
-    ctx.lineTo(22 + cornerSize, height - 22);
-    ctx.stroke();
-
-    // Bottom-right
-    ctx.beginPath();
-    ctx.moveTo(width - 22 - cornerSize, height - 22);
-    ctx.lineTo(width - 22, height - 22);
-    ctx.lineTo(width - 22, height - 22 - cornerSize);
-    ctx.stroke();
-
-    // Top Header Pill: Chapter & Shlok
-    ctx.fillStyle = "rgba(10, 30, 80, 0.75)";
-    ctx.strokeStyle = "rgba(251, 191, 36, 0.50)";
-    ctx.lineWidth = 1.5;
-
-    const pillW = width - 80;
-    const pillH = 46;
-    const pillX = 40;
-    const pillY = 38;
-
-    roundRect(ctx, pillX, pillY, pillW, pillH, 23);
-    ctx.fill();
-    ctx.stroke();
-
-    // Mini Logo Icon
-    if (imgLogo) {
-      ctx.drawImage(imgLogo, pillX + 8, pillY + 6, 34, 34);
-    }
-
-    // Header Text
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 17px 'Noto Sans Gujarati', 'Mukta', sans-serif";
-    ctx.textAlign = "center";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-    ctx.shadowBlur = 4;
-    ctx.fillText(`${labels.chapter}  •  ${labels.shlok}`, width / 2 + 12, pillY + 29);
-
-    // Bottom subtle brand label
-    ctx.fillStyle = "rgba(251, 191, 36, 0.70)";
-    ctx.font = "600 13px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("શ્રીમદ્ભગવદ્ગીતા • Gita Gyan", width / 2, height - 28);
-
-    ctx.restore();
-  }
-
-  function roundRect(ctx, x, y, w, h, r) {
+  function roundRect(ctx, x, y, w, h, r = 16) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.lineTo(x + w - r, y);
@@ -490,16 +651,96 @@ export async function createShlokVideoRenderer({
   }
 
   /**
-   * Render single frame at exact timestamp `t`
+   * Draw Decorative Golden Border & Badges
+   */
+  function drawDecorations(t) {
+    ctx.save();
+
+    // 1. Outer Golden Border
+    ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(18, 18, width - 36, height - 36);
+
+    // 2. Corner Ornaments (Vedic style)
+    const corners = [
+      [18, 18, 1, 1],
+      [width - 18, 18, -1, 1],
+      [18, height - 18, 1, -1],
+      [width - 18, height - 18, -1, -1],
+    ];
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 3;
+    corners.forEach(([cx, cy, dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + dy * 28);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + dx * 28, cy);
+      ctx.stroke();
+
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(cx + dx * 8, cy + dy * 8, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 3. Top Header Pill with Bhagavad Gita Branding
+    const pillW = width - 80;
+    const pillH = 46;
+    const pillX = 40;
+    const pillY = 32;
+
+    ctx.fillStyle = "rgba(10, 24, 60, 0.85)";
+    ctx.strokeStyle = "rgba(251, 191, 36, 0.50)";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, pillX, pillY, pillW, pillH, 23);
+    ctx.fill();
+    ctx.stroke();
+
+    // Mini Logo Icon
+    if (imgLogo) {
+      ctx.drawImage(imgLogo, pillX + 8, pillY + 6, 34, 34);
+    }
+
+    // Header Text
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 17px 'Noto Sans Gujarati', 'Mukta', sans-serif";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+    ctx.shadowBlur = 6;
+    ctx.fillText(`${labels.chapter}  •  ${labels.shlok}`, width / 2 + 10, pillY + 29);
+
+    ctx.restore();
+  }
+
+  /**
+   * Bottom Audio Waveform Visualizer
+   */
+  function drawAudioWaveform(ctx, x, y, w, h, t) {
+    ctx.save();
+    const bars = 24;
+    const barW = w / bars - 4;
+    for (let i = 0; i < bars; i++) {
+      const barH = Math.abs(Math.sin(t * 5 + i * 0.45)) * h;
+      const barX = x + i * (barW + 4);
+      const barY = y + (h - barH) / 2;
+      ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
+      roundRect(ctx, barX, barY, barW, Math.max(3, barH), 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Main Frame Renderer (called at any timestamp t in seconds)
    */
   function renderFrame(t) {
     ctx.clearRect(0, 0, width, height);
 
     // ==========================================
-    // 1. SCENE SELECTION & BACKGROUND BLEND
+    // 1. DYNAMIC 9:16 SCENE BACKGROUND
     // ==========================================
     if (t < tScene2Start) {
-      // SCENE 1: Shloka
+      // SCENE 1: Shloka Recitation
       const p1 = Math.min(1, Math.max(0, t / tScene1End));
       drawKenBurnsImage(imgScene1, p1, 1);
     } else if (t < tScene3Start) {
@@ -507,7 +748,7 @@ export async function createShlokVideoRenderer({
       const p2 = Math.min(1, Math.max(0, (t - tScene2Start) / d2));
       drawKenBurnsImage(imgScene2, p2, 1);
     } else if (t < tScene3End) {
-      // SCENE 3: Message
+      // SCENE 3: Gita Life Message
       const p3 = Math.min(1, Math.max(0, (t - tScene3Start) / d3));
       drawKenBurnsImage(imgScene3, p3, 1);
     } else {
@@ -516,11 +757,11 @@ export async function createShlokVideoRenderer({
       drawKenBurnsImage(imgScene3, pOut, 1);
     }
 
-    // Particles
+    // Golden celestial particles
     particles.update();
     particles.draw(ctx);
 
-    // Header & Frame
+    // Top header branding & golden frame
     drawDecorations(t);
 
     // ==========================================
@@ -532,7 +773,7 @@ export async function createShlokVideoRenderer({
       const elapsed1 = t - tIntroEnd;
       const progress1 = Math.min(1, elapsed1 / d1);
 
-      // Exit transition: during last SCENE_EXIT_PAUSE seconds, text fades & slides down
+      // Clean exit transition: During final SCENE_EXIT_PAUSE seconds, fades and slides down
       let alpha1 = 1;
       let slideY1 = 0;
       if (t > tScene1End) {
@@ -546,17 +787,17 @@ export async function createShlokVideoRenderer({
 
       // Badge: Speaker
       const badgeY = 130 + slideY1;
-      ctx.fillStyle = "rgba(251, 191, 36, 0.20)";
+      ctx.fillStyle = "rgba(251, 191, 36, 0.22)";
       ctx.strokeStyle = "#fbbf24";
       ctx.lineWidth = 1.5;
-      roundRect(ctx, width / 2 - 130, badgeY, 260, 40, 20);
+      roundRect(ctx, width / 2 - 140, badgeY, 280, 42, 21);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = "#fbbf24";
-      ctx.font = "bold 18px 'Noto Sans Devanagari', 'Mukta', sans-serif";
+      ctx.font = "bold 19px 'Noto Sans Devanagari', 'Mukta', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(labels.shlokBadge, width / 2, badgeY + 26);
+      ctx.fillText(labels.shlokBadge, width / 2, badgeY + 28);
 
       // Glass Card for Sanskrit Verse
       const cardX = 40;
@@ -564,8 +805,8 @@ export async function createShlokVideoRenderer({
       const cardW = width - 80;
       const cardH = 340;
 
-      ctx.fillStyle = "rgba(6, 18, 48, 0.82)";
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
+      ctx.fillStyle = "rgba(6, 18, 48, 0.88)";
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.50)";
       ctx.lineWidth = 2;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
@@ -573,31 +814,36 @@ export async function createShlokVideoRenderer({
 
       // Word-by-Word Sanskrit Typewriter / Karaoke
       const wordsCount1 = Math.floor(progress1 * saWords.length);
-      const visibleSanskrit = saWords.slice(0, wordsCount1 + 1).join(" ");
 
-      ctx.fillStyle = "#ffffff";
       ctx.font = "bold 26px 'Noto Sans Devanagari', 'Yatra One', serif";
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(251, 191, 36, 0.6)";
-      ctx.shadowBlur = 12;
 
-      // Split into 2 or 4 verse lines
-      const rawLines = sanskritText.split(/[\n।॥]/).filter((l) => l.trim().length > 0);
-      const lines = rawLines.length > 0 ? rawLines : wrapText(ctx, sanskritText, cardW - 50);
+      const startY = cardY + 110;
+      const lineSpacing = 56;
 
-      const startY = cardY + 70;
-      const lineSpacing = 48;
-
-      lines.forEach((line, idx) => {
+      sanskritLines.forEach((line, idx) => {
         const lineY = startY + idx * lineSpacing;
-        // Check how much of this line is revealed
-        const isRevealed = line.split(" ").some((w) => visibleSanskrit.includes(w));
-        if (isRevealed) {
+        const lineWords = line.split(" ").filter(Boolean);
+
+        // Check if words on this line have been reached in progress
+        const lineStartWord = idx === 0 ? 0 : sanskritLines[0].split(" ").filter(Boolean).length;
+        const isCurrentlySpoken = wordsCount1 >= lineStartWord && wordsCount1 < lineStartWord + lineWords.length;
+        const isPast = wordsCount1 >= lineStartWord + lineWords.length;
+
+        if (isCurrentlySpoken) {
           ctx.fillStyle = "#fbbf24";
-          ctx.fillText(line.trim() + " ॥", width / 2, lineY);
+          ctx.shadowColor = "rgba(251, 191, 36, 0.8)";
+          ctx.shadowBlur = 15;
+          ctx.fillText(line, width / 2, lineY);
+        } else if (isPast) {
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+          ctx.shadowBlur = 8;
+          ctx.fillText(line, width / 2, lineY);
         } else {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-          ctx.fillText(line.trim(), width / 2, lineY);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.shadowBlur = 0;
+          ctx.fillText(line, width / 2, lineY);
         }
       });
 
@@ -612,7 +858,6 @@ export async function createShlokVideoRenderer({
       const elapsed2 = t - tScene2Start;
       const progress2 = Math.min(1, elapsed2 / d2);
 
-      // Entry fade in (0.4s) & Exit fade out (0.6s)
       let alpha2 = 1;
       let slideY2 = 0;
       if (elapsed2 < 0.4) {
@@ -631,23 +876,23 @@ export async function createShlokVideoRenderer({
       ctx.fillStyle = "rgba(37, 99, 235, 0.28)";
       ctx.strokeStyle = "#60a5fa";
       ctx.lineWidth = 1.5;
-      roundRect(ctx, width / 2 - 140, badgeY, 280, 40, 20);
+      roundRect(ctx, width / 2 - 140, badgeY, 280, 42, 21);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = "#93c5fd";
-      ctx.font = "bold 17px 'Noto Sans Gujarati', 'Mukta', sans-serif";
+      ctx.font = "bold 18px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`📖  ${labels.transBadge}`, width / 2, badgeY + 26);
+      ctx.fillText(`📖  ${labels.transBadge}`, width / 2, badgeY + 28);
 
       // Translation Glass Card
       const cardX = 40;
       const cardY = 195 + slideY2;
       const cardW = width - 80;
-      const cardH = 380;
+      const cardH = 390;
 
-      ctx.fillStyle = "rgba(8, 24, 60, 0.86)";
-      ctx.strokeStyle = "rgba(96, 165, 250, 0.50)";
+      ctx.fillStyle = "rgba(8, 24, 60, 0.90)";
+      ctx.strokeStyle = "rgba(96, 165, 250, 0.55)";
       ctx.lineWidth = 2;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
@@ -657,42 +902,66 @@ export async function createShlokVideoRenderer({
       const wordsCount2 = Math.floor(progress2 * trWords.length);
 
       ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
-      ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-      ctx.shadowBlur = 6;
+      const { lines: trLines } = wrapContentLines(ctx, cleanTranslationText, cardW - 60);
 
-      const lines = wrapText(ctx, translationText, cardW - 50);
-      const startY = cardY + 65;
+      // Clip strictly inside the card so text NEVER overflows
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, cardX + 15, cardY + 20, cardW - 30, cardH - 65, 12);
+      ctx.clip();
+
       const lineSpacing = 42;
+      const totalH = trLines.length * lineSpacing;
+      const visibleH = cardH - 85;
 
-      // Draw lines with active spoken word highlighting
-      let cumulativeWordCount = 0;
-      lines.forEach((line, idx) => {
-        const lineY = startY + idx * lineSpacing;
-        const lineWords = line.split(" ");
-
-        if (cumulativeWordCount + lineWords.length <= wordsCount2) {
-          // Fully spoken line
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(line, width / 2, lineY);
-        } else if (cumulativeWordCount <= wordsCount2) {
-          // Currently speaking line
-          ctx.fillStyle = "#fbbf24";
-          ctx.fillText(line, width / 2, lineY);
-        } else {
-          // Future line (faint)
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-          ctx.fillText(line, width / 2, lineY);
+      // Teleprompter auto-scroll if lines exceed card height
+      let scrollY = 0;
+      if (totalH > visibleH) {
+        let activeIdx = 0;
+        for (let i = 0; i < trLines.length; i++) {
+          if (wordsCount2 >= trLines[i].startWordIdx) {
+            activeIdx = i;
+          }
         }
-        cumulativeWordCount += lineWords.length;
+        const targetScroll = activeIdx * lineSpacing - visibleH / 2 + lineSpacing / 2;
+        scrollY = Math.max(0, Math.min(totalH - visibleH + 15, targetScroll));
+      }
+
+      const startY = cardY + 65 - scrollY;
+
+      ctx.textAlign = "center";
+      trLines.forEach((lineObj, idx) => {
+        const lineY = startY + idx * lineSpacing;
+        if (lineY < cardY - 20 || lineY > cardY + cardH + 20) return;
+
+        const isFullySpoken = lineObj.endWordIdx <= wordsCount2;
+        const isSpeaking = wordsCount2 >= lineObj.startWordIdx && wordsCount2 <= lineObj.endWordIdx;
+
+        if (isSpeaking) {
+          ctx.fillStyle = "#fbbf24";
+          ctx.shadowColor = "rgba(251, 191, 36, 0.8)";
+          ctx.shadowBlur = 10;
+          ctx.fillText(lineObj.text, width / 2, lineY);
+        } else if (isFullySpoken) {
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+          ctx.shadowBlur = 6;
+          ctx.fillText(lineObj.text, width / 2, lineY);
+        } else {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.shadowBlur = 0;
+          ctx.fillText(lineObj.text, width / 2, lineY);
+        }
       });
+
+      ctx.restore(); // end clip
 
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
       ctx.restore();
     }
 
-    // ----- SCENE 3: GITA LIFE MESSAGE (Divine Guidance) -----
+    // ----- SCENE 3: GITA LIFE MESSAGE (Divine Life Wisdom) -----
     if (t >= tScene3Start && t < tScene3End) {
       const elapsed3 = t - tScene3Start;
       const progress3 = Math.min(1, elapsed3 / d3);
@@ -711,54 +980,97 @@ export async function createShlokVideoRenderer({
       ctx.fillStyle = "rgba(245, 158, 11, 0.28)";
       ctx.strokeStyle = "#f59e0b";
       ctx.lineWidth = 1.5;
-      roundRect(ctx, width / 2 - 145, badgeY, 290, 40, 20);
+      roundRect(ctx, width / 2 - 145, badgeY, 290, 42, 21);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = "#fbbf24";
-      ctx.font = "bold 17px 'Noto Sans Gujarati', 'Mukta', sans-serif";
+      ctx.font = "bold 18px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(`✨  ${labels.msgBadge}`, width / 2, badgeY + 26);
+      ctx.fillText(`✨  ${labels.msgBadge}`, width / 2, badgeY + 28);
 
       // Message Card
       const cardX = 40;
       const cardY = 195 + slideY3;
       const cardW = width - 80;
-      const cardH = 430;
+      const cardH = 460;
 
-      ctx.fillStyle = "rgba(10, 25, 60, 0.88)";
+      ctx.fillStyle = "rgba(10, 25, 60, 0.90)";
       ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
       ctx.lineWidth = 2;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
       ctx.stroke();
 
-      // Word-by-Word Message Reveal
+      // Word-by-Word Message Reveal with Teleprompter Auto-Scroll
       const wordsCount3 = Math.floor(progress3 * msgWords.length);
 
-      ctx.font = "500 22px 'Noto Sans Gujarati', 'Mukta', sans-serif";
-      ctx.textAlign = "center";
+      // Dynamic font size based on message length for optimal readability
+      let fontSize = 21;
+      let lineSpacing = 36;
+      if (msgWords.length > 120) {
+        fontSize = 18;
+        lineSpacing = 30;
+      } else if (msgWords.length > 70) {
+        fontSize = 19;
+        lineSpacing = 33;
+      }
 
-      const lines = wrapText(ctx, messageText, cardW - 50);
-      const startY = cardY + 60;
-      const lineSpacing = 38;
+      ctx.font = `500 ${fontSize}px 'Noto Sans Gujarati', 'Mukta', sans-serif`;
+      const { lines: msgLines } = wrapContentLines(ctx, cleanMessageText, cardW - 60);
 
-      let cumulativeWords = 0;
-      lines.forEach((line, idx) => {
-        const lineY = startY + idx * lineSpacing;
-        const lineWords = line.split(" ");
-        if (cumulativeWords + lineWords.length <= wordsCount3) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(line, width / 2, lineY);
-        } else if (cumulativeWords <= wordsCount3) {
-          ctx.fillStyle = "#fde047";
-          ctx.fillText(line, width / 2, lineY);
-        } else {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-          ctx.fillText(line, width / 2, lineY);
+      // Clip strictly inside the card so message NEVER spills onto the chariot or outside!
+      ctx.save();
+      ctx.beginPath();
+      roundRect(ctx, cardX + 15, cardY + 25, cardW - 30, cardH - 70, 12);
+      ctx.clip();
+
+      const totalH = msgLines.length * lineSpacing;
+      const visibleH = cardH - 85;
+
+      // Teleprompter smooth scrolling: centers the line of the actively spoken word
+      let scrollY = 0;
+      if (totalH > visibleH) {
+        let activeIdx = 0;
+        for (let i = 0; i < msgLines.length; i++) {
+          if (wordsCount3 >= msgLines[i].startWordIdx) {
+            activeIdx = i;
+          }
         }
-        cumulativeWords += lineWords.length;
+        const targetScroll = activeIdx * lineSpacing - visibleH / 2 + lineSpacing / 2;
+        scrollY = Math.max(0, Math.min(totalH - visibleH + 20, targetScroll));
+      }
+
+      const startY = cardY + 55 - scrollY;
+      ctx.textAlign = "left";
+
+      msgLines.forEach((lineObj, idx) => {
+        const lineY = startY + idx * lineSpacing;
+        if (lineY < cardY - 20 || lineY > cardY + cardH + 20) return;
+
+        const isFullySpoken = lineObj.endWordIdx <= wordsCount3;
+        const isSpeaking = wordsCount3 >= lineObj.startWordIdx && wordsCount3 <= lineObj.endWordIdx;
+
+        const lineX = cardX + 32;
+
+        if (isSpeaking) {
+          ctx.fillStyle = "#fde047";
+          ctx.shadowColor = "rgba(251, 191, 36, 0.75)";
+          ctx.shadowBlur = 8;
+          ctx.fillText(lineObj.text, lineX, lineY);
+        } else if (isFullySpoken) {
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+          ctx.shadowBlur = 4;
+          ctx.fillText(lineObj.text, lineX, lineY);
+        } else {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.shadowBlur = 0;
+          ctx.fillText(lineObj.text, lineX, lineY);
+        }
       });
+
+      ctx.restore(); // end clip
 
       drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
 
@@ -768,13 +1080,17 @@ export async function createShlokVideoRenderer({
     // ----- OUTRO (Final 2 seconds) -----
     if (t >= tScene3End) {
       const outElapsed = t - tScene3End;
-      const outAlpha = Math.min(1, outElapsed / 0.6);
+      const outAlpha = Math.min(1, outElapsed / 0.8);
 
       ctx.save();
       ctx.globalAlpha = outAlpha;
 
-      // Central glowing circle with Logo
-      const logoSize = 110;
+      // Vignette wash
+      ctx.fillStyle = "rgba(4, 12, 36, 0.75)";
+      ctx.fillRect(0, 0, width, height);
+
+      // Centered Outro Logo
+      const logoSize = 130;
       const logoX = width / 2 - logoSize / 2;
       const logoY = height / 2 - 120;
 
@@ -790,32 +1106,17 @@ export async function createShlokVideoRenderer({
       ctx.textAlign = "center";
       ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
       ctx.shadowBlur = 8;
-      ctx.fillText(labels.outroTop, width / 2, logoY + logoSize + 50);
+      ctx.fillText(labels.outroTop, width / 2, logoY + logoSize + 55);
 
       ctx.fillStyle = "#ffffff";
       ctx.font = "600 20px 'Noto Sans Gujarati', 'Mukta', sans-serif";
-      ctx.fillText(labels.outroBottom, width / 2, logoY + logoSize + 95);
+      ctx.fillText(labels.outroBottom, width / 2, logoY + logoSize + 100);
 
       ctx.restore();
     }
   }
 
-  function drawAudioWaveform(ctx, x, y, w, h, t) {
-    ctx.save();
-    const bars = 24;
-    const barW = w / bars - 4;
-    for (let i = 0; i < bars; i++) {
-      const barH = Math.abs(Math.sin(t * 5 + i * 0.4)) * h;
-      const barX = x + i * (barW + 4);
-      const barY = y + (h - barH) / 2;
-      ctx.fillStyle = "rgba(251, 191, 36, 0.70)";
-      roundRect(ctx, barX, barY, barW, Math.max(3, barH), 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  onProgress({ stage: "ready", percent: 100, message: "રેન્ડરર તૈયાર છે!" });
+  onProgress({ stage: "ready", percent: 100, message: "9:16 વિડીયો એન્જિન તૈયાર છે!" });
 
   return {
     canvas,
@@ -830,6 +1131,7 @@ export async function createShlokVideoRenderer({
     tScene3Start,
     tScene3End,
     tIntroEnd,
+    detectedScenes: scenes,
     renderFrame,
     close: () => {
       try {
@@ -840,7 +1142,7 @@ export async function createShlokVideoRenderer({
 }
 
 /**
- * Record and Export Shloka Canvas Video as MP4 / WebM
+ * Record and Export Shloka Canvas Video as 9:16 MP4 / WebM
  */
 export async function exportShlokVideoMP4({
   shlok,
@@ -930,7 +1232,7 @@ export async function exportShlokVideoMP4({
   return new Promise((resolve, reject) => {
     recorder.onstop = () => {
       close();
-      const ext = mimeType.includes("mp4") ? "mp4" : "mp4"; // standard mp4 extension works universally
+      const ext = "mp4"; // standard mp4 extension works universally for mobile devices
       const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] });
       resolve({ blob, ext, mimeType });
     };
@@ -952,7 +1254,7 @@ export async function exportShlokVideoMP4({
       onProgress({
         stage: "recording",
         percent,
-        message: `વિડીયો રેન્ડર થઈ રહ્યો છે: ${percent}%...`,
+        message: `9:16 વિડીયો રેન્ડર થઈ રહ્યો છે: ${percent}%...`,
       });
 
       if (now < totalDuration) {
