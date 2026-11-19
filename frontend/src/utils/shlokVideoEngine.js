@@ -865,10 +865,10 @@ export async function createShlokVideoRenderer({
   }
 
   /**
-   * MULTI-SHOT MONTAGE RENDERER: CHANGES EVERY 2 TO 3 SECONDS!
-   * Target shot duration: 2.4s per shot with 0.4s smooth dissolve
+   * MULTI-SHOT MONTAGE RENDERER: CHANGES EVERY 4 SECONDS!
+   * Target shot duration: 4.0s per shot with 0.55s smooth dissolve
    */
-  const TARGET_SHOT_DUR = 2.4;
+  const TARGET_SHOT_DUR = 4.0;
 
   function drawMultiShotBackground(shots, elapsed, totalSceneDuration) {
     if (!shots || shots.length === 0) return;
@@ -880,7 +880,7 @@ export async function createShlokVideoRenderer({
 
     const numShots = Math.max(1, Math.ceil(totalSceneDuration / TARGET_SHOT_DUR));
     const shotDur = totalSceneDuration / numShots;
-    const FADE = Math.min(0.40, shotDur * 0.25);
+    const FADE = Math.min(0.55, shotDur * 0.15);
 
     const virtualIdx = Math.min(numShots - 1, Math.max(0, Math.floor(elapsed / shotDur)));
     const shotElapsed = elapsed - virtualIdx * shotDur;
