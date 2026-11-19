@@ -124,6 +124,75 @@ export function cleanHtmlText(html) {
 }
 
 /**
+ * Intelligent Sanskrit Shloka Verse Formatter
+ * Accurately parses shlokas into 2 authentic, beautifully balanced lines.
+ * Handles Devanagari dandas (। / ॥), ASCII pipes (| / ||), newlines, and strips speaker intro text
+ * (since speaker is already displayed in the speaker badge above the card).
+ */
+export function getSanskritLines(shlok, sNum = 1) {
+  if (shlok.sanskritLine1 && shlok.sanskritLine2) {
+    return [
+      cleanHtmlText(shlok.sanskritLine1).trim(),
+      cleanHtmlText(shlok.sanskritLine2).trim(),
+    ];
+  }
+
+  const raw = cleanHtmlText(shlok.sanskrit || "").trim();
+  // Normalize all pipe variations to Vedic dandas
+  const normalized = raw
+    .replace(/\|\|/g, "॥")
+    .replace(/\|/g, "।")
+    .replace(/\s+/g, " ");
+
+  // Split by danda, double danda, or newline
+  const rawParts = normalized
+    .split(/[।॥\n]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  // Filter out any standalone shloka numbers like '15', '१५'
+  const textParts = rawParts.filter((p) => !/^[\d०-૯0-9\s]+$/.test(p));
+
+  // Convert shloka number to Devanagari numerals
+  const devNum = String(sNum).replace(/[0-9]/g, (d) => "०१२३४५६७૮૯"[d] || "०१२३४५६७८९"[d] || d);
+
+  if (textParts.length === 0) {
+    return [raw];
+  }
+
+  // If there are 3 or more parts and one of them is speaker info (e.g. 'अर्जुन उवाच'),
+  // filter it out since it's already shown in the speaker badge!
+  const nonSpeakerParts = textParts.filter(
+    (p) => !/(श्रीभगवान|अर्जुन|धृतराष्ट्र|सञ्जय|युधिष्ठिर)?\s*उवाच/i.test(p)
+  );
+  const partsToUse = nonSpeakerParts.length >= 2 ? nonSpeakerParts : textParts;
+
+  if (partsToUse.length === 1) {
+    // If only 1 long line without dandas, split evenly across words into 2 lines
+    const words = partsToUse[0].split(/\s+/).filter(Boolean);
+    if (words.length >= 4) {
+      const mid = Math.ceil(words.length / 2);
+      return [
+        words.slice(0, mid).join(" ") + " ।",
+        words.slice(mid).join(" ") + ` ॥ ${devNum} ॥`,
+      ];
+    }
+    return [partsToUse[0] + ` ॥ ${devNum} ॥`];
+  } else if (partsToUse.length === 2) {
+    return [
+      partsToUse[0].replace(/[।॥]+$/, "").trim() + " ।",
+      partsToUse[1].replace(/[।॥]+$/, "").trim() + ` ॥ ${devNum} ॥`,
+    ];
+  } else {
+    // 3 or more lines: format each line cleanly
+    return partsToUse.map((tp, idx) => {
+      const cleanTp = tp.replace(/[।॥]+$/, "").trim();
+      return idx === partsToUse.length - 1 ? cleanTp + ` ॥ ${devNum} ॥` : cleanTp + " ।";
+    });
+  }
+}
+
+/**
  * Intelligent Multi-Shot 3D Scene Sequence Generator for all shlokas
  * Returns exclusively 9:16 vertical 3D mythological scene shots (changing every 2-3s)
  */
@@ -822,18 +891,7 @@ export async function createShlokVideoRenderer({
   const totalDuration = tScene3End + OUTRO_DURATION;
 
   // 4. Extract and CLEAN texts based on selected language (Zero HTML tags!)
-  let sanskritLines = [];
-  if (shlok.sanskritLine1 && shlok.sanskritLine2) {
-    sanskritLines = [cleanHtmlText(shlok.sanskritLine1), cleanHtmlText(shlok.sanskritLine2)];
-  } else {
-    const rawSa = cleanHtmlText(shlok.sanskrit || "");
-    const parts = rawSa.split(/[।॥\n]/).map((s) => s.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      sanskritLines = [parts[0] + " ।", parts[1] + ` ॥ ${sNum} ॥`];
-    } else {
-      sanskritLines = [rawSa];
-    }
-  }
+  const sanskritLines = getSanskritLines(shlok, sNum);
   const cleanSanskritText = sanskritLines.join(" ");
 
   const rawTranslation =
@@ -1197,21 +1255,47 @@ export async function createShlokVideoRenderer({
       ctx.fill();
       ctx.stroke();
 
+      // Responsive Sanskrit Verse Auto-fitting (Guaranteed to fit 100% inside the card)
+      const maxLineWidthAllowed = cardW - 46;
+      let finalSanskritLines = [];
+
+      let saFontSize = 25;
+      ctx.font = `bold ${saFontSize}px 'Noto Sans Devanagari', 'Yatra One', serif`;
+
+      let maxLineW = Math.max(...sanskritLines.map((l) => ctx.measureText(l).width), 0);
+      while (maxLineW > maxLineWidthAllowed && saFontSize > 18) {
+        saFontSize -= 1;
+        ctx.font = `bold ${saFontSize}px 'Noto Sans Devanagari', 'Yatra One', serif`;
+        maxLineW = Math.max(...sanskritLines.map((l) => ctx.measureText(l).width), 0);
+      }
+
+      sanskritLines.forEach((line) => {
+        if (ctx.measureText(line).width <= maxLineWidthAllowed) {
+          finalSanskritLines.push(line);
+        } else {
+          const { lines: wrapped } = wrapContentLines(ctx, line, maxLineWidthAllowed);
+          wrapped.forEach((wl) => finalSanskritLines.push(wl.text));
+        }
+      });
+
       // PURE TYPEWRITER REVEAL: Words appear as recited; future words are INVISIBLE!
-      const wordsCount1 = Math.floor(progress1 * saWords.length);
+      const totalSaLineWords = finalSanskritLines.reduce(
+        (acc, l) => acc + l.split(/\s+/).filter(Boolean).length,
+        0
+      );
+      const wordsCount1 = Math.min(totalSaLineWords, Math.floor(progress1 * totalSaLineWords));
 
-      ctx.font = "bold 26px 'Noto Sans Devanagari', 'Yatra One', serif";
       ctx.textAlign = "left";
-
-      const startY = cardY + 115;
-      const lineSpacing = 58;
+      const lineSpacing = Math.round(saFontSize * 2.15);
+      const totalTextH = (finalSanskritLines.length - 1) * lineSpacing;
+      const startY = cardY + Math.max(88, (cardH - 55 - totalTextH) / 2 + 10);
 
       let globalWordOffset = 0;
-      sanskritLines.forEach((line, lineIdx) => {
+      finalSanskritLines.forEach((line, lineIdx) => {
         const lineY = startY + lineIdx * lineSpacing;
         const lineWords = line.split(" ").filter(Boolean);
         const fullLineWidth = ctx.measureText(line).width;
-        let currentX = (width - fullLineWidth) / 2;
+        let currentX = Math.max(cardX + 22, (width - fullLineWidth) / 2);
 
         lineWords.forEach((word) => {
           const wordWithSpace = word + " ";
@@ -1219,7 +1303,8 @@ export async function createShlokVideoRenderer({
 
           // Only render if word has been reached by audio!
           if (globalWordOffset <= wordsCount1) {
-            const isCurrentlySpoken = globalWordOffset === wordsCount1;
+            const isPunctuation = /^[।॥\d०-૯|\/\s]+$/.test(word);
+            const isCurrentlySpoken = !isPunctuation && globalWordOffset === wordsCount1;
             if (isCurrentlySpoken) {
               ctx.fillStyle = "#fbbf24";
               ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
