@@ -511,13 +511,21 @@ export function detectShlokScenes(shlok, cloudPool = null) {
     ];
   }
 
-  // Select EXACTLY 10 images for this video (no more, no less)
+  // Select EXACTLY 10 distinct images for this video (unique combination for every shloka)
   let video10Shots = [];
   if (cloudPool && Array.isArray(cloudPool) && cloudPool.length > 0) {
-    const seed = (chNum * 37 + sNum * 13) % cloudPool.length;
-    for (let i = 0; i < 10; i++) {
-      video10Shots.push(cloudPool[(seed + i) % cloudPool.length]);
+    // Deterministic pseudo-random shuffle per shloka so every single video has a completely unique mix
+    const pool = [...cloudPool];
+    let seed = chNum * 7919 + sNum * 104729;
+    const random = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
     }
+    video10Shots = pool.slice(0, 10);
   } else {
     const combinedDefaults = [
       ...scene1Shots,
