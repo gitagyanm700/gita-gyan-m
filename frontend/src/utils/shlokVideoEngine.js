@@ -511,28 +511,42 @@ export function detectShlokScenes(shlok, cloudPool = null) {
     ];
   }
 
-  // If Cloudinary scene pool has images, inject them deterministically for this shloka
+  // Select EXACTLY 10 images for this video (no more, no less)
+  let video10Shots = [];
   if (cloudPool && Array.isArray(cloudPool) && cloudPool.length > 0) {
     const seed = (chNum * 37 + sNum * 13) % cloudPool.length;
-    const c = (offset) => cloudPool[(seed + offset) % cloudPool.length];
-
-    scene1Shots = [c(0), scene1Shots[0], c(1), scene1Shots[1] || c(2)];
-    scene2Shots = [c(2), scene2Shots[0], c(3), scene2Shots[1] || c(4)];
-    scene3Shots = [c(4), scene3Shots[0], c(5), c(6), scene3Shots[1] || c(7), c(8), c(9)];
+    for (let i = 0; i < 10; i++) {
+      video10Shots.push(cloudPool[(seed + i) % cloudPool.length]);
+    }
+  } else {
+    const combinedDefaults = [
+      ...scene1Shots,
+      ...scene2Shots,
+      ...scene3Shots,
+      SCENE_IMAGES.krishnaUpdesh,
+      SCENE_IMAGES.battleChariot,
+      SCENE_IMAGES.karmaAction,
+      SCENE_IMAGES.peaceMeditation,
+      SCENE_IMAGES.krishnaVishwaroop,
+      SCENE_IMAGES.guidanceMentor,
+      SCENE_IMAGES.duryodhanaDrona,
+    ];
+    video10Shots = [...new Set(combinedDefaults)].filter(Boolean).slice(0, 10);
   }
 
-  // Filter out any duplicate adjacent images
-  scene1Shots = scene1Shots.filter((s, idx, arr) => s && (idx === 0 || s !== arr[idx - 1]));
-  scene2Shots = scene2Shots.filter((s, idx, arr) => s && (idx === 0 || s !== arr[idx - 1]));
-  scene3Shots = scene3Shots.filter((s, idx, arr) => s && (idx === 0 || s !== arr[idx - 1]));
+  // Assign distinct slices of these 10 images to scenes
+  scene1Shots = video10Shots.slice(0, 3);
+  scene2Shots = video10Shots.slice(3, 5);
+  scene3Shots = video10Shots.slice(5, 10);
 
   return {
+    video10Shots,
     scene1Shots,
     scene2Shots,
     scene3Shots,
-    scene1: scene1Shots[0],
-    scene2: scene2Shots[0],
-    scene3: scene3Shots[0],
+    scene1: video10Shots[0],
+    scene2: video10Shots[3] || video10Shots[0],
+    scene3: video10Shots[5] || video10Shots[0],
     scene1Name,
     scene2Name,
     scene3Name,
@@ -832,13 +846,11 @@ export async function createShlokVideoRenderer({
   const cloudPool = await fetchCloudScenes();
   const scenes = detectShlokScenes(shlok, cloudPool);
 
-  // 2. Preload all unique images needed across all scenes
+  // 2. Preload EXACTLY 10 unique video images (+ logo)
   onProgress({ stage: "images", percent: 15, message: "9:16 મલ્ટી-શોટ સિનેમેટિક આર્ટવર્ક લોડ થઈ રહ્યું છે..." });
   const uniqueSrcs = [
     ...new Set([
-      ...scenes.scene1Shots,
-      ...scenes.scene2Shots,
-      ...scenes.scene3Shots,
+      ...(scenes.video10Shots || scenes.scene1Shots),
       SCENE_IMAGES.logo,
     ]),
   ].filter(Boolean);
@@ -849,18 +861,16 @@ export async function createShlokVideoRenderer({
     imageMap[src] = img;
   });
 
-  const imgScene1Shots = scenes.scene1Shots.map((src) => imageMap[src]).filter(Boolean);
-  const imgScene2Shots = scenes.scene2Shots.map((src) => imageMap[src]).filter(Boolean);
-  const imgScene3Shots = scenes.scene3Shots.map((src) => imageMap[src]).filter(Boolean);
+  const imgScene1Shots = (scenes.scene1Shots || []).map((src) => imageMap[src]).filter(Boolean);
+  const imgScene2Shots = (scenes.scene2Shots || []).map((src) => imageMap[src]).filter(Boolean);
+  const imgScene3Shots = (scenes.scene3Shots || []).map((src) => imageMap[src]).filter(Boolean);
   const imgLogo = imageMap[SCENE_IMAGES.logo];
 
-  // Combine all preloaded scene shots sequentially without consecutive duplicates
-  const allVideoShots = [];
-  [...imgScene1Shots, ...imgScene2Shots, ...imgScene3Shots].forEach((img) => {
-    if (img && (allVideoShots.length === 0 || allVideoShots[allVideoShots.length - 1] !== img)) {
-      allVideoShots.push(img);
-    }
-  });
+  // Exactly 10 distinct images for this video (never more than 10; repeats in loop when finished)
+  const allVideoShots = (scenes.video10Shots || [...imgScene1Shots, ...imgScene2Shots, ...imgScene3Shots])
+    .map((src) => (typeof src === "string" ? imageMap[src] : src))
+    .filter(Boolean)
+    .slice(0, 10);
 
   // 3. Preload audio tracks for all 3 scenes
   onProgress({ stage: "audio", percent: 30, message: "સંસ્કૃત, અનુવાદ અને સંદેશ ઓડિયો તૈયાર થઈ રહ્યો છે..." });
@@ -1039,13 +1049,14 @@ export async function createShlokVideoRenderer({
 
   /**
    * DYNAMIC 9:16 MULTI-SHOT BACKGROUND MONTAGE
-   * User requirement:
-   * - First 15 seconds: image changes every 3 seconds (0s, 3s, 6s, 9s, 12s, 15s)
-   * - After 15 seconds: image changes every 5 seconds (15s, 20s, 25s, 30s, 35s, ...)
+   * User requirements:
+   * - First 9 seconds: image changes every 3 seconds (0s to 3s, 3s to 6s, 6s to 9s)
+   * - After 9 seconds: image changes every 5 seconds (9s to 14s, 14s to 19s, 19s to 24s, ...)
+   * - Exactly 10 images per video: once all 10 images are shown, they repeat in loop (no extra images!)
    * Smooth Ken-Burns zoom + 0.55s cross-dissolve between shots.
    */
   function getShotInfo(t) {
-    if (t < 15.0) {
+    if (t < 9.0) {
       const shotDur = 3.0;
       const idx = Math.max(0, Math.floor(t / shotDur));
       const shotStart = idx * shotDur;
@@ -1053,9 +1064,9 @@ export async function createShlokVideoRenderer({
       return { idx, shotDur, shotElapsed };
     } else {
       const shotDur = 5.0;
-      const past15 = t - 15.0;
-      const idx = 5 + Math.max(0, Math.floor(past15 / shotDur));
-      const shotStart = 15.0 + (idx - 5) * shotDur;
+      const past9 = t - 9.0;
+      const idx = 3 + Math.max(0, Math.floor(past9 / shotDur));
+      const shotStart = 9.0 + (idx - 3) * shotDur;
       const shotElapsed = t - shotStart;
       return { idx, shotDur, shotElapsed };
     }
