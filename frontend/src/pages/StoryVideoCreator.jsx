@@ -23,7 +23,6 @@ import {
   Eye,
   X,
   Volume2,
-  RotateCcw,
   FolderArchive,
   PlusCircle,
   Clock,
@@ -365,24 +364,6 @@ export default function StoryVideoCreator() {
         return sc;
       })
     );
-  }
-
-  // Reset / Clear Draft to start fresh
-  async function handleResetProject() {
-    if (
-      window.confirm(
-        "શું તમે ખરેખર નવો વિડીયો પ્રોજેક્ટ શરૂ કરવા માંગો છો? આનાથી વર્તમાન વિગતો રીસેટ થશે."
-      )
-    ) {
-      stopAudioPreview();
-      await clearStoryDraft();
-      setTitle("શ્રીકૃષ્ણ બોધ વાર્તા");
-      setLang("gu");
-      setAspectRatio("9:16");
-      setSubtitlePos("auto");
-      setVoice("male");
-      setScenes(INITIAL_SCENES);
-    }
   }
 
   // Scene CRUD
@@ -815,16 +796,6 @@ export default function StoryVideoCreator() {
             >
               <Sparkles size={16} />
               <span>આખી વાર્તા ઓટો-વિભાજિત કરો (Auto-Split Story)</span>
-            </button>
-
-            <button
-              type="button"
-              className="reset-tool-btn"
-              onClick={handleResetProject}
-              title="વર્તમાન ડ્રાફ્ટ સાફ કરો અને નવો વિડીયો શરૂ કરો"
-            >
-              <RotateCcw size={15} />
-              <span>નવો પ્રોજેક્ટ (New Story)</span>
             </button>
           </div>
 

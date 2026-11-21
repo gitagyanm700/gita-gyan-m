@@ -667,27 +667,6 @@
   display: block;
 }
 
-.reset-tool-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.reset-tool-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
 /* Header Action Buttons (New Project & Library) */
 .story-studio-header-actions {
   display: flex;
