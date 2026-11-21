@@ -202,7 +202,10 @@ export function loadImg(src) {
       return;
     }
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // NEVER set crossOrigin on blob: or data: URLs to avoid CORS taints or load failures
+    if (typeof src === "string" && !src.startsWith("blob:") && !src.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => resolve(img);
     img.onerror = () => {
       console.warn("Failed to load image:", src);
@@ -729,9 +732,31 @@ export async function exportStoryVideo({
 
   const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame, close } = renderer;
 
-  onProgress({ stage: "recording", percent: 0, message: "વિડીયો રેકોર્ડ થઈ રહ્યો છે..." });
+  onProgress({ stage: "recording", percent: 0, message: "વિડીયો રેકોર્ડિંગ શરૂ થઈ રહ્યું છે..." });
+
+  // Ensure AudioContext is actively running before capturing stream
+  try {
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+  } catch (e) {
+    console.warn("AudioContext resume failed:", e);
+  }
 
   const destNode = audioCtx.createMediaStreamDestination();
+
+  // Keep audio stream continuously active with inaudible zero-gain oscillator to prevent MediaRecorder starvation
+  const silentOsc = audioCtx.createOscillator();
+  const silentGain = audioCtx.createGain();
+  silentGain.gain.value = 0;
+  silentOsc.connect(silentGain);
+  silentGain.connect(destNode);
+  try {
+    silentOsc.start();
+  } catch (e) {
+    // ignore
+  }
+
   const startTime = audioCtx.currentTime + 0.1;
 
   // Schedule all scene audio tracks
@@ -744,27 +769,52 @@ export async function exportStoryVideo({
     }
   });
 
+  // Pre-render frame 0 so the canvas stream has an active bitmap
+  renderFrame(0);
+
   const canvasStream = canvas.captureStream(30);
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...destNode.stream.getAudioTracks(),
   ]);
 
-  let mimeType = "video/webm;codecs=vp9,opus";
-  if (MediaRecorder.isTypeSupported("video/mp4;codecs=avc1,mp4a.40.2")) {
-    mimeType = "video/mp4;codecs=avc1,mp4a.40.2";
-  } else if (MediaRecorder.isTypeSupported("video/mp4")) {
-    mimeType = "video/mp4";
-  } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
-    mimeType = "video/webm;codecs=vp8,opus";
-  } else if (MediaRecorder.isTypeSupported("video/webm")) {
-    mimeType = "video/webm";
+  // Robust codec candidate fallback (prioritizes stable WebM on Chrome/Edge, MP4 on Safari/iOS)
+  const candidateTypes = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4;codecs=avc1,mp4a.40.2",
+    "video/mp4",
+  ];
+
+  let recorder = null;
+  let mimeType = "";
+
+  for (const type of candidateTypes) {
+    if (typeof MediaRecorder.isTypeSupported === "function" && !MediaRecorder.isTypeSupported(type)) {
+      continue;
+    }
+    try {
+      recorder = new MediaRecorder(combinedStream, {
+        mimeType: type,
+        videoBitsPerSecond: 3000000,
+      });
+      mimeType = type;
+      break;
+    } catch (e) {
+      console.warn(`MediaRecorder failed with type ${type}:`, e);
+    }
   }
 
-  const recorder = new MediaRecorder(combinedStream, {
-    mimeType,
-    videoBitsPerSecond: 3800000,
-  });
+  if (!recorder) {
+    try {
+      recorder = new MediaRecorder(combinedStream);
+      mimeType = recorder.mimeType || "video/webm";
+    } catch (err) {
+      close();
+      throw new Error(`બ્રાઉઝરમાં વિડિઓ રેકોર્ડિંગ સપોર્ટ ઉપલબ્ધ નથી: ${err?.message || err?.name || err}`);
+    }
+  }
 
   const recordedChunks = [];
   recorder.ondataavailable = (e) => {
@@ -774,23 +824,54 @@ export async function exportStoryVideo({
   };
 
   return new Promise((resolve, reject) => {
+    let stopped = false;
+
     recorder.onstop = () => {
+      stopped = true;
+      try {
+        silentOsc.stop();
+      } catch (e) {}
       close();
-      const ext = "mp4";
-      const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] });
+
+      const isMp4 = mimeType.toLowerCase().includes("mp4");
+      const ext = isMp4 ? "mp4" : "webm";
+      const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] || "video/webm" });
       resolve({ blob, ext, mimeType, duration: totalDuration });
     };
 
     recorder.onerror = (e) => {
+      stopped = true;
+      try {
+        silentOsc.stop();
+      } catch (err) {}
       close();
-      reject(e);
+
+      const detailed =
+        e?.error?.message ||
+        e?.error?.name ||
+        e?.message ||
+        e?.name ||
+        "મીડિયા રેકોર્ડરમાં ક્ષતિ આવી";
+      console.error("MediaRecorder error:", e);
+      reject(new Error(detailed));
     };
 
-    recorder.start();
+    try {
+      recorder.start(1000); // 1-second chunks
+    } catch (startErr) {
+      try {
+        silentOsc.stop();
+      } catch (e) {}
+      close();
+      reject(new Error(`રેકોર્ડિંગ શરૂ કરવામાં નિષ્ફળ: ${startErr?.message || startErr?.name || startErr}`));
+      return;
+    }
 
     const startPerfTime = performance.now();
 
     function recordLoop() {
+      if (stopped || recorder.state !== "recording") return;
+
       const now = (performance.now() - startPerfTime) / 1000;
       renderFrame(now);
 
@@ -805,14 +886,18 @@ export async function exportStoryVideo({
         requestAnimationFrame(recordLoop);
       } else {
         setTimeout(() => {
-          if (recorder.state === "recording") {
-            recorder.stop();
+          try {
+            if (recorder.state === "recording") {
+              recorder.stop();
+            }
+          } catch (stopErr) {
+            console.warn("Error stopping recorder:", stopErr);
           }
-        }, 300);
+        }, 350);
       }
     }
 
-    recordLoop();
+    requestAnimationFrame(recordLoop);
   });
 }
 

@@ -388,7 +388,12 @@ export default function StoryVideoCreator() {
       });
     } catch (err) {
       console.error("Audio export failed:", err);
-      alert(`ઓડિયો એક્સપોર્ટ નિષ્ફળ: ${err.message}`);
+      const errMsg =
+        err?.message ||
+        err?.name ||
+        (typeof err === "string" ? err : JSON.stringify(err)) ||
+        "અજ્ઞાત ક્ષતિ આવી";
+      alert(`ઓડિયો એક્સપોર્ટ નિષ્ફળ: ${errMsg}`);
       setIsExporting(false);
     }
   }
@@ -436,7 +441,12 @@ export default function StoryVideoCreator() {
       });
     } catch (err) {
       console.error("Video export failed:", err);
-      alert(`વિડીયો એક્સપોર્ટ નિષ્ફળ: ${err.message}`);
+      const errMsg =
+        err?.message ||
+        err?.name ||
+        (typeof err === "string" ? err : JSON.stringify(err)) ||
+        "અજ્ઞાત ક્ષતિ આવી";
+      alert(`વિડીયો એક્સપોર્ટ નિષ્ફળ: ${errMsg}`);
       setIsExporting(false);
     }
   }
