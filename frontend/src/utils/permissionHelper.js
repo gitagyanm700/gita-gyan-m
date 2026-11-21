@@ -26,15 +26,23 @@ export const PERMISSION_KEYS = {
   MANAGE_USERS: "manage_users",
   DELETE_USERS: "delete_users",
   MANAGE_ADMINS: "manage_admins",
+  GENERATE_SHLOK_VIDEO: "generate_shlok_video",
   MANAGE_VIDEO_STUDIO: "manage_video_studio",
 };
 
 export const ALL_PERMISSIONS = [
   {
+    id: "generate_shlok_video",
+    nameGu: "શ્લોક 9:16 વિડીયો (Shlok Video Generator)",
+    nameHi: "श्लोक 9:16 वीडियो (Shlok Video Generator)",
+    nameEn: "Shlok 9:16 Video Generator",
+    category: "shloks",
+  },
+  {
     id: "manage_video_studio",
-    nameGu: "વિડીયો સ્ટુડિયો (Story Video Studio)",
-    nameHi: "वीडियो स्टूडियो (Story Video Studio)",
-    nameEn: "Story Video Studio",
+    nameGu: "સ્ટોરી વિડીયો સ્ટુડિયો (Story Video Studio)",
+    nameHi: "स्टोरी वीडियो स्टूडियो (Story Video Studio)",
+    nameEn: "Story Video Studio (Custom Videos)",
     category: "shloks",
   },
   {

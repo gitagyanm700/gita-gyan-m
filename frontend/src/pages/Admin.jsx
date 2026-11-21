@@ -125,7 +125,8 @@ function Admin() {
     hasPermission(loggedInUser, "edit_shloks") ||
     hasPermission(loggedInUser, "delete_shloks") ||
     hasPermission(loggedInUser, "manage_shloks") ||
-    hasPermission(loggedInUser, "download_audio");
+    hasPermission(loggedInUser, "download_audio") ||
+    hasPermission(loggedInUser, "generate_shlok_video");
   const canAccessQuizAdmin =
     hasPermission(loggedInUser, "add_quiz") ||
     hasPermission(loggedInUser, "edit_quiz") ||
@@ -133,9 +134,7 @@ function Admin() {
     hasPermission(loggedInUser, "share_quiz") ||
     hasPermission(loggedInUser, "manage_quiz");
   const canAccessVideoStudio =
-    isSuperAdmin ||
-    hasPermission(loggedInUser, "manage_video_studio") ||
-    canAccessShlokAdmin;
+    isSuperAdmin || hasPermission(loggedInUser, "manage_video_studio");
   const canViewAnalytics = hasPermission(loggedInUser, "view_analytics");
   const canManageFeedbacks = hasPermission(loggedInUser, "manage_feedbacks");
   const canDeleteFeedbacks = hasPermission(loggedInUser, "delete_feedbacks");

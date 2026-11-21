@@ -500,6 +500,7 @@ function ShlokManagement() {
   const canEditShloks = hasPermission(user, "edit_shloks") || hasPermission(user, "manage_shloks");
   const canDeleteShloks = hasPermission(user, "delete_shloks");
   const canDownloadAudio = isSuperAdmin || hasPermission(user, "download_audio");
+  const canGenerateShlokVideo = isSuperAdmin || hasPermission(user, "generate_shlok_video");
 
   /* =====================================================
      STATE
@@ -2274,14 +2275,16 @@ function ShlokManagement() {
           </div>
 
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="cloud-scenes-header-btn"
-              onClick={() => setShowCloudScenesModal(true)}
-              title="Cloudinary પર 9:16 વિડિયો સીન્સ અપલોડ & મેનેજ કરો"
-            >
-              ☁️ Cloud Scenes (CDN)
-            </button>
+            {canGenerateShlokVideo && (
+              <button
+                type="button"
+                className="cloud-scenes-header-btn"
+                onClick={() => setShowCloudScenesModal(true)}
+                title="Cloudinary પર 9:16 વિડિયો સીન્સ અપલોડ & મેનેજ કરો"
+              >
+                ☁️ Cloud Scenes (CDN)
+              </button>
+            )}
             <button
               type="button"
               className="back-admin-btn"
@@ -3270,17 +3273,19 @@ function ShlokManagement() {
                               )}
 
                               {/* 🎬 9:16 AI 3D MOTION VIDEO GENERATOR & DOWNLOAD */}
-                              <button
-                                type="button"
-                                className="video-download-shlok-btn"
-                                onClick={() => {
-                                  stopAudioPreview();
-                                  setVideoModalShlok(shlok);
-                                }}
-                                title="આ શ્લોકનો 9:16 AI 3D મોશન વિડીયો બનાવો & ડાઉનલોડ કરો (Reels / Shorts)"
-                              >
-                                <Film className="btn-icon" size={15} /> 9:16 Video
-                              </button>
+                              {canGenerateShlokVideo && (
+                                <button
+                                  type="button"
+                                  className="video-download-shlok-btn"
+                                  onClick={() => {
+                                    stopAudioPreview();
+                                    setVideoModalShlok(shlok);
+                                  }}
+                                  title="આ શ્લોકનો 9:16 AI 3D મોશન વિડીયો બનાવો & ડાઉનલોડ કરો (Reels / Shorts)"
+                                >
+                                  <Film className="btn-icon" size={15} /> 9:16 Video
+                                </button>
+                              )}
 
                               {canEditShloks && (
                                 <button
@@ -3974,7 +3979,8 @@ function ShlokManagement() {
         {/* =================================================
             3. 9:16 AI 3D MOTION VIDEO GENERATOR MODAL
         ================================================= */}
-        {videoModalShlok &&
+        {canGenerateShlokVideo &&
+          videoModalShlok &&
           createPortal(
             <ShlokVideoGeneratorModal
               shlok={videoModalShlok}
@@ -3986,7 +3992,7 @@ function ShlokManagement() {
         {/* =================================================
             4. CLOUDINARY 9:16 SCENES GALLERY MODAL
         ================================================= */}
-        {showCloudScenesModal && (
+        {canGenerateShlokVideo && showCloudScenesModal && (
           <CloudScenesManagerModal
             isOpen={showCloudScenesModal}
             onClose={() => setShowCloudScenesModal(false)}

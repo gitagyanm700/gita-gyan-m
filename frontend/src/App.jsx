@@ -515,7 +515,7 @@ function AnimatedRoutes() {
             <Route
               path="/admin/shloks"
               element={
-                <AdminRoute permission={["add_shloks", "edit_shloks", "delete_shloks", "manage_shloks", "download_audio"]}>
+                <AdminRoute permission={["add_shloks", "edit_shloks", "delete_shloks", "manage_shloks", "download_audio", "generate_shlok_video"]}>
                   <ShlokManagement />
                 </AdminRoute>
               }
@@ -543,7 +543,7 @@ function AnimatedRoutes() {
             <Route
               path="/admin/video-creator"
               element={
-                <AdminRoute permission={["manage_video_studio", "add_shloks", "edit_shloks", "manage_shloks"]}>
+                <AdminRoute permission={["manage_video_studio"]}>
                   <StoryVideoCreator />
                 </AdminRoute>
               }

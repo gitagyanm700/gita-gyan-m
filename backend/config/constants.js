@@ -26,6 +26,8 @@ const ALL_PERMISSIONS = [
   "delete_shloks",
   "manage_shloks",
   "download_audio",
+  "generate_shlok_video",
+  "manage_video_studio",
   "add_quiz",
   "edit_quiz",
   "delete_quiz",
