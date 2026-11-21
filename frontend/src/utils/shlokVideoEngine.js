@@ -1261,15 +1261,15 @@ export async function createShlokVideoRenderer({
       ctx.textAlign = "center";
       ctx.fillText(labels.shlokBadge, width / 2, badgeY + 28);
 
-      // Glass Card for Sanskrit Verse
+      // Glass Card for Sanskrit Verse (Translucent & Compact so background art is clearly visible)
       const cardX = 40;
-      const cardY = 195 + slideY1;
+      const cardY = 200 + slideY1;
       const cardW = width - 80;
-      const cardH = 340;
+      const cardH = 220;
 
-      ctx.fillStyle = "rgba(6, 18, 48, 0.88)";
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.50)";
-      ctx.lineWidth = 2;
+      ctx.fillStyle = "rgba(4, 12, 34, 0.45)";
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.40)";
+      ctx.lineWidth = 1.5;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
       ctx.stroke();
@@ -1307,7 +1307,7 @@ export async function createShlokVideoRenderer({
       ctx.textAlign = "left";
       const lineSpacing = Math.round(saFontSize * 2.15);
       const totalTextH = (finalSanskritLines.length - 1) * lineSpacing;
-      const startY = cardY + Math.max(88, (cardH - 55 - totalTextH) / 2 + 10);
+      const startY = cardY + Math.max(50, (cardH - 35 - totalTextH) / 2 + 5);
 
       let globalWordOffset = 0;
       finalSanskritLines.forEach((line, lineIdx) => {
@@ -1320,19 +1320,11 @@ export async function createShlokVideoRenderer({
           const wordWithSpace = word + " ";
           const wordWidth = ctx.measureText(wordWithSpace).width;
 
-          // Only render if word has been reached by audio!
+          // Only render if word has been reached by audio (pure typewriter reveal, NO highlight)
           if (globalWordOffset <= wordsCount1) {
-            const isPunctuation = /^[।॥\d०-૯|\/\s]+$/.test(word);
-            const isCurrentlySpoken = !isPunctuation && globalWordOffset === wordsCount1;
-            if (isCurrentlySpoken) {
-              ctx.fillStyle = "#fbbf24";
-              ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
-              ctx.shadowBlur = 15;
-            } else {
-              ctx.fillStyle = "#ffffff";
-              ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-              ctx.shadowBlur = 6;
-            }
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
           // Future words: NOT drawn!
@@ -1342,7 +1334,7 @@ export async function createShlokVideoRenderer({
         });
       });
 
-      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
+      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 26, 240, 16, t);
 
       ctx.restore();
     }
@@ -1379,15 +1371,15 @@ export async function createShlokVideoRenderer({
       ctx.textAlign = "center";
       ctx.fillText(`📖  ${labels.transBadge}`, width / 2, badgeY + 28);
 
-      // Translation Glass Card
+      // Translation Glass Card (Translucent & Compact so background art is clearly visible)
       const cardX = 40;
-      const cardY = 195 + slideY2;
+      const cardY = 200 + slideY2;
       const cardW = width - 80;
-      const cardH = 390;
+      const cardH = 240;
 
-      ctx.fillStyle = "rgba(8, 24, 60, 0.90)";
-      ctx.strokeStyle = "rgba(96, 165, 250, 0.55)";
-      ctx.lineWidth = 2;
+      ctx.fillStyle = "rgba(4, 14, 38, 0.45)";
+      ctx.strokeStyle = "rgba(96, 165, 250, 0.40)";
+      ctx.lineWidth = 1.5;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
       ctx.stroke();
@@ -1401,12 +1393,12 @@ export async function createShlokVideoRenderer({
 
       ctx.save();
       ctx.beginPath();
-      roundRect(ctx, cardX + 15, cardY + 20, cardW - 30, cardH - 65, 12);
+      roundRect(ctx, cardX + 15, cardY + 15, cardW - 30, cardH - 50, 12);
       ctx.clip();
 
-      const lineSpacing = 42;
+      const lineSpacing = 40;
       const totalH = trLines.length * lineSpacing;
-      const visibleH = cardH - 85;
+      const visibleH = cardH - 65;
 
       let scrollY = 0;
       if (totalH > visibleH) {
@@ -1420,7 +1412,7 @@ export async function createShlokVideoRenderer({
         scrollY = Math.max(0, Math.min(totalH - visibleH + 15, targetScroll));
       }
 
-      const startY = cardY + 65 - scrollY;
+      const startY = cardY + 50 - scrollY;
 
       trLines.forEach((lineObj, idx) => {
         const lineY = startY + idx * lineSpacing;
@@ -1437,17 +1429,11 @@ export async function createShlokVideoRenderer({
           const wordWithSpace = word + " ";
           const wordWidth = ctx.measureText(wordWithSpace).width;
 
+          // Pure typewriter reveal: words appear as spoken in pure high-contrast white (NO yellow/green highlight)
           if (globalWIdx <= wordsCount2) {
-            const isSpeaking = globalWIdx === wordsCount2;
-            if (isSpeaking) {
-              ctx.fillStyle = "#fbbf24";
-              ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
-              ctx.shadowBlur = 12;
-            } else {
-              ctx.fillStyle = "#ffffff";
-              ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-              ctx.shadowBlur = 6;
-            }
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
 
@@ -1457,7 +1443,7 @@ export async function createShlokVideoRenderer({
 
       ctx.restore();
 
-      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
+      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 26, 240, 16, t);
 
       ctx.restore();
     }
@@ -1520,34 +1506,34 @@ export async function createShlokVideoRenderer({
       ctx.textAlign = "center";
       ctx.fillText(activeSec.badge, width / 2, badgeY + 28);
 
-      // 5. Glass Card (Prominent 390px height, identical to Gujarati Translation!)
+      // 5. Glass Card (Translucent & Compact 240px height so background art is visible!)
       const cardX = 40;
-      const cardY = 195 + secSlideY;
+      const cardY = 200 + secSlideY;
       const cardW = width - 80;
-      const cardH = 390;
+      const cardH = 240;
 
-      ctx.fillStyle = "rgba(10, 25, 60, 0.92)";
-      ctx.strokeStyle = isEx ? "rgba(16, 185, 129, 0.55)" : "rgba(251, 191, 36, 0.55)";
-      ctx.lineWidth = 2;
+      ctx.fillStyle = "rgba(4, 14, 38, 0.45)";
+      ctx.strokeStyle = isEx ? "rgba(16, 185, 129, 0.40)" : "rgba(251, 191, 36, 0.40)";
+      ctx.lineWidth = 1.5;
       roundRect(ctx, cardX, cardY, cardW, cardH, 20);
       ctx.fill();
       ctx.stroke();
 
-      // 6. Large 23px Font Typography & Centered Lines (Just like Gujarati Translation!)
+      // 6. Large 23px Font Typography & Centered Lines
       const secWordCount = Math.max(0, wordsCount3 - activeSec.startWordIdx);
 
       ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "left";
-      const lineSpacing = 42;
+      const lineSpacing = 40;
 
       ctx.save();
       ctx.beginPath();
-      roundRect(ctx, cardX + 15, cardY + 20, cardW - 30, cardH - 65, 12);
+      roundRect(ctx, cardX + 15, cardY + 15, cardW - 30, cardH - 50, 12);
       ctx.clip();
 
       const lines = activeSec.wrappedLines || [];
       const totalH = lines.length * lineSpacing;
-      const visibleH = cardH - 85;
+      const visibleH = cardH - 65;
 
       let scrollY = 0;
       if (totalH > visibleH) {
@@ -1563,7 +1549,7 @@ export async function createShlokVideoRenderer({
 
       // Vertical auto-centering:
       const verticalPad = totalH < visibleH ? Math.max(0, (visibleH - totalH) / 2) : 0;
-      const startY = cardY + 60 + verticalPad - scrollY;
+      const startY = cardY + 50 + verticalPad - scrollY;
 
       lines.forEach((lineObj, idx) => {
         const lineY = startY + idx * lineSpacing;
@@ -1580,18 +1566,11 @@ export async function createShlokVideoRenderer({
           const wordWithSpace = word + " ";
           const wordWidth = ctx.measureText(wordWithSpace).width;
 
-          // Only draw if word has been reached by audio!
+          // Pure typewriter reveal: words appear as spoken in pure high-contrast white (NO yellow/green highlight)
           if (wordIndexInSec <= secWordCount) {
-            const isSpeaking = wordIndexInSec === secWordCount;
-            if (isSpeaking) {
-              ctx.fillStyle = isEx ? "#a7f3d0" : "#fde047";
-              ctx.shadowColor = isEx ? "rgba(16, 185, 129, 0.9)" : "rgba(251, 191, 36, 0.9)";
-              ctx.shadowBlur = 12;
-            } else {
-              ctx.fillStyle = "#ffffff";
-              ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-              ctx.shadowBlur = 5;
-            }
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
 
@@ -1602,7 +1581,7 @@ export async function createShlokVideoRenderer({
       ctx.restore();
 
       // Audio waveform
-      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 35, 240, 20, t);
+      drawAudioWaveform(ctx, width / 2 - 120, cardY + cardH - 26, 240, 16, t);
 
       ctx.restore();
     }
