@@ -105,12 +105,15 @@ function normalizeTtsInputText(text) {
   return cleanText.replace(/\s+/g, " ").trim();
 }
 
-function getTtsSynthesisParams(text, lang = "gu", customRate = null) {
+function getTtsSynthesisParams(text, lang = "gu", customRate = null, voice = "male") {
   const cleanText = normalizeTtsInputText(text);
   if (!cleanText) return null;
 
   const voiceLang = VOICE_MAP[lang] ? lang : "gu";
-  const selectedVoice = VOICE_MAP[voiceLang].male;
+  const voiceGender = voice === "female" ? "female" : "male";
+  const selectedVoice =
+    (VOICE_MAP[voiceLang] && VOICE_MAP[voiceLang][voiceGender]) ||
+    VOICE_MAP[voiceLang].male;
   const prosodyOptions = {
     rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "-10%" : "-2%",
     pitch: lang === "sa" ? "-2Hz" : "+0Hz",

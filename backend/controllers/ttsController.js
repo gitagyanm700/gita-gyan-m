@@ -50,8 +50,8 @@ function setMemoryCache(cacheKey, buffer) {
 /**
  * Core synthesis helper with non-blocking dual-layer caching (Memory + Disk) & in-flight deduplication
  */
-const synthesizeBuffer = async (text, lang = "gu", customRate = null, { cacheInMemory = true } = {}) => {
-  const params = getTtsSynthesisParams(text, lang, customRate);
+const synthesizeBuffer = async (text, lang = "gu", customRate = null, { cacheInMemory = true, voice = "male" } = {}) => {
+  const params = getTtsSynthesisParams(text, lang, customRate, voice);
   if (!params) return null;
 
   const { cleanText, selectedVoice, prosodyOptions, cacheKey } = params;
@@ -119,7 +119,7 @@ const synthesizeBuffer = async (text, lang = "gu", customRate = null, { cacheInM
 
 const generateSpeech = async (req, res) => {
   try {
-    const { text, lang = "gu", rate } = req.body || {};
+    const { text, lang = "gu", rate, voice = "male" } = req.body || {};
     if (!text || typeof text !== "string" || !text.trim()) {
       return res.status(400).json({
         success: false,
@@ -127,7 +127,7 @@ const generateSpeech = async (req, res) => {
       });
     }
 
-    const audioBuffer = await synthesizeBuffer(text, lang, rate);
+    const audioBuffer = await synthesizeBuffer(text, lang, rate, { voice });
     if (!audioBuffer) {
       return res.status(500).json({
         success: false,

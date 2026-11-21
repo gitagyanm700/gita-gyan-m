@@ -88,6 +88,13 @@ export default function StoryVideoCreator() {
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const previewAnimFrameRef = useRef(null);
 
+  // Invalidate cached scene audio buffers if language or voice changes so chosen voice is always used
+  useEffect(() => {
+    setScenes((prev) =>
+      prev.map((s) => ({ ...s, audioBuffer: null, audioDuration: 0 }))
+    );
+  }, [lang, voice]);
+
   // Cleanup blob URLs and AudioContext on unmount
   useEffect(() => {
     return () => {
@@ -328,6 +335,9 @@ export default function StoryVideoCreator() {
         aspectRatio,
         subtitlePos,
         title,
+        lang,
+        voice,
+        logoSrc: "/icons/logo-circle.png",
         onProgress: (p) => setProgress(p),
       });
 
@@ -372,11 +382,19 @@ export default function StoryVideoCreator() {
         aspectRatio,
         subtitlePos,
         title,
+        lang,
+        voice,
+        logoSrc: "/icons/logo-circle.png",
         onProgress: () => {},
       });
 
       previewRendererRef.current = renderer;
       const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame } = renderer;
+
+      // Ensure AudioContext is active and not suspended by browser autoplay policy
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
 
       // Mount canvas into DOM container
       const container = previewCanvasRef.current;

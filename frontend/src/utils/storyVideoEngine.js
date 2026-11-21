@@ -2,13 +2,13 @@
  * Story Video Studio - Custom Multi-Scene Video & Audio Generator
  * Bhagavad Gita - Gita Gyan M
  *
- * Features:
- * 1. Supports 9:16 (Reels/Shorts) & 16:9 (YouTube/Landscape)
- * 2. Scene-by-Scene Script & Image matching
- * 3. Pure typewriter text reveal synced with TTS audio (Zero jarring highlight)
- * 4. Translucent glass subtitle cards with deep drop shadow for 100% readability
- * 5. Audio only download (.WAV / .MP3)
- * 6. Zero server disk usage: images and audio processed client-side via memory URLs & Web Audio
+ * Updates:
+ * 1. High-reliability dual-backend TTS fetch (Render Cloud + Localhost fallback)
+ * 2. True Male & Female voice support
+ * 3. Noticeable cinematic Ken Burns camera drift & zoom ("hale chale tevi motion")
+ * 4. Header displays Story Name ONLY (no "Scene 1/2/3")
+ * 5. Compact spacing: Subtitle box moved right beneath header pill (cardY = 96) so deities are completely visible
+ * 6. Outro screen includes glowing logo from /icons/logo-circle.png
  */
 
 // Format / Aspect Ratio Dimensions
@@ -124,38 +124,64 @@ export function concatenateAudioBuffers(audioCtx, buffers, pauseDuration = 0.5) 
 
 /**
  * Fetch Audio from Backend TTS API (/api/tts/speak)
+ * Tries cloud Render backend and localhost with full male/female voice support
  */
 export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male") {
   if (!text || !text.trim()) {
     return createSilentBuffer(audioCtx, 3);
   }
 
-  const base =
-    typeof window !== "undefined" && window.location.origin.includes("localhost")
-      ? "http://localhost:5000"
-      : "";
+  const isLocalHost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
 
-  try {
-    const res = await fetch(`${base}/api/tts/speak`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text.trim(), lang, voice }),
-    });
+  // Determine priority order: if localhost, try 5000 first, else cloud first
+  const endpoints = isLocalHost
+    ? [
+        "http://localhost:5000",
+        "https://bhagavad-gita-backend-jy1a.onrender.com",
+      ]
+    : [
+        "https://bhagavad-gita-backend-jy1a.onrender.com",
+        "http://localhost:5000",
+      ];
 
-    if (!res.ok) {
-      throw new Error(`TTS API failed: ${res.status} ${res.statusText}`);
+  for (const base of endpoints) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 12000); // 12s timeout per endpoint
+
+      const res = await fetch(`${base}/api/tts/speak`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: text.trim(),
+          lang: lang || "gu",
+          voice: voice === "female" ? "female" : "male",
+        }),
+        signal: ctrl.signal,
+      });
+
+      clearTimeout(tid);
+
+      if (res.ok) {
+        const arrayBuffer = await res.arrayBuffer();
+        if (arrayBuffer && arrayBuffer.byteLength > 200) {
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          return audioBuffer;
+        }
+      }
+    } catch (err) {
+      // Continue to next endpoint
+      console.warn(`TTS fetch failed on ${base}:`, err.message);
     }
-
-    const arrayBuffer = await res.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    return audioBuffer;
-  } catch (err) {
-    console.warn("Could not fetch TTS audio, using silent fallback:", err);
-    // Rough estimate: ~150 words per minute => 2.5 words/sec
-    const wordCount = text.trim().split(/\s+/).length;
-    const estDuration = Math.max(3, Math.round(wordCount / 2.5));
-    return createSilentBuffer(audioCtx, estDuration);
   }
+
+  console.warn("Could not fetch TTS audio from any backend, using silent fallback");
+  const wordCount = text.trim().split(/\s+/).length;
+  const estDuration = Math.max(3, Math.round(wordCount / 2.5));
+  return createSilentBuffer(audioCtx, estDuration);
 }
 
 /**
@@ -196,7 +222,7 @@ export function roundRect(ctx, x, y, w, h, radius = 12) {
   ctx.arcTo(x + w, y, x + w, y + h, r);
   ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
+  ctx.arcTo(x, y + x, y, r);
   ctx.closePath();
 }
 
@@ -268,11 +294,10 @@ export function drawWaveform(ctx, x, y, w, h, t, isPlaying = true) {
 }
 
 /**
- * Draw Ken-Burns animated cover image
+ * Draw Ken-Burns animated cover image with authentic 3D cinematic camera drift & push-in zoom
  */
 function drawKenBurnsCover(ctx, img, width, height, progress, shotIdx = 0) {
   if (!img) {
-    // Beautiful divine gradient fallback if image is missing
     const grad = ctx.createLinearGradient(0, 0, width, height);
     grad.addColorStop(0, "#081b3a");
     grad.addColorStop(0.5, "#0b224d");
@@ -283,15 +308,31 @@ function drawKenBurnsCover(ctx, img, width, height, progress, shotIdx = 0) {
   }
 
   ctx.save();
-  const scale = 1.05 + progress * 0.08;
-  let panX = (progress - 0.5) * 22;
-  let panY = -progress * 20;
 
-  if (shotIdx % 3 === 1) {
-    panY = progress * 20;
-    panX = -(progress - 0.5) * 18;
-  } else if (shotIdx % 3 === 2) {
-    panX = (progress - 0.5) * 26;
+  // Dynamic continuous motion:
+  // 1. Slow, elegant zoom in (scale from 1.06 to 1.19)
+  const scale = 1.06 + progress * 0.13;
+
+  // 2. Continuous 3D camera pan / drift depending on shotIdx:
+  let panX = 0;
+  let panY = 0;
+
+  if (shotIdx % 4 === 0) {
+    // Gentle drift from left to right & upward
+    panX = (progress - 0.5) * 55;
+    panY = -progress * 38;
+  } else if (shotIdx % 4 === 1) {
+    // Gentle drift from right to left & downward
+    panX = -(progress - 0.5) * 55;
+    panY = progress * 32;
+  } else if (shotIdx % 4 === 2) {
+    // Center push-in with gentle horizontal sway
+    panX = Math.sin(progress * Math.PI) * 35;
+    panY = -progress * 45;
+  } else {
+    // Diagonal pan
+    panX = (progress - 0.5) * 45;
+    panY = (progress - 0.5) * 45;
   }
 
   const imgAspect = img.width / img.height;
@@ -332,11 +373,20 @@ export async function createStoryVideoRenderer({
   aspectRatio = "9:16",
   subtitlePos = "auto", // "auto" | "top" | "center" | "bottom"
   title = "શ્રીમદ્ ભગવદ્ ગીતા બોધ",
-  logoSrc = "/logo.png",
+  logoSrc = "/icons/logo-circle.png",
+  lang = "gu",
+  voice = "male",
   onProgress = () => {},
 }) {
   const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioCtxClass();
+  if (audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const dims = ASPECT_RATIOS[aspectRatio] || ASPECT_RATIOS["9:16"];
   const width = dims.width;
@@ -350,8 +400,8 @@ export async function createStoryVideoRenderer({
 
   onProgress({ stage: "init", percent: 10, message: "ચિત્રો અને ઓડિયો લોડ થઈ રહ્યા છે..." });
 
-  // 1. Preload logo
-  const imgLogo = await loadImg(logoSrc);
+  // 1. Preload logo from reliable path
+  const imgLogo = await loadImg(logoSrc || "/icons/logo-circle.png");
 
   // 2. Preload scene images and calculate timings
   const loadedScenes = [];
@@ -366,13 +416,18 @@ export async function createStoryVideoRenderer({
     onProgress({
       stage: "scenes",
       percent: Math.round(15 + (i / scenes.length) * 45),
-      message: `સીન ${i + 1}/${scenes.length} તૈયાર થઈ રહ્યો છે...`,
+      message: `સીન ${i + 1}/${scenes.length} ઓડિયો અને ચિત્ર તૈયાર થઈ રહ્યા છે...`,
     });
 
     const img = sc.imageSrc ? await loadImg(sc.imageSrc) : null;
     let audioBuf = sc.audioBuffer;
     if (!audioBuf && sc.text) {
-      audioBuf = await fetchSceneAudio(audioCtx, sc.text, sc.lang || "gu", sc.voice || "male");
+      audioBuf = await fetchSceneAudio(
+        audioCtx,
+        sc.text,
+        sc.lang || lang || "gu",
+        sc.voice || voice || "male"
+      );
     } else if (!audioBuf) {
       audioBuf = createSilentBuffer(audioCtx, 3);
     }
@@ -436,10 +491,8 @@ export async function createStoryVideoRenderer({
       const FADE_TIME = 0.35;
       if (sceneElapsed < FADE_TIME && activeIdx > 0) {
         const prevScene = loadedScenes[activeIdx - 1];
-        // Draw previous scene image fully
         drawKenBurnsCover(ctx, prevScene.img, width, height, 1, activeIdx - 1);
 
-        // Crossfade new scene on top
         ctx.save();
         ctx.globalAlpha = sceneElapsed / FADE_TIME;
         drawKenBurnsCover(ctx, activeScene.img, width, height, sceneProg, activeIdx);
@@ -449,35 +502,36 @@ export async function createStoryVideoRenderer({
       }
     }
 
-    // 3. Render Top Pill Header
+    // 3. Render Top Pill Header (Displays Story Name ONLY - No "Scene 1/2/3"!)
     ctx.save();
-    const pillW = isPortrait ? width - 80 : 380;
-    const pillH = 46;
+    const pillW = isPortrait ? width - 80 : 420;
+    const pillH = 44;
     const pillX = isPortrait ? 40 : 40;
-    const pillY = isPortrait ? 48 : 36;
+    const pillY = isPortrait ? 36 : 28;
 
     ctx.fillStyle = "rgba(4, 12, 34, 0.55)";
     ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
     ctx.lineWidth = 1.5;
-    roundRect(ctx, pillX, pillY, pillW, pillH, 23);
+    roundRect(ctx, pillX, pillY, pillW, pillH, 22);
     ctx.fill();
     ctx.stroke();
 
     if (imgLogo) {
-      ctx.drawImage(imgLogo, pillX + 8, pillY + 6, 34, 34);
+      ctx.drawImage(imgLogo, pillX + 8, pillY + 5, 34, 34);
     }
 
     ctx.fillStyle = "#ffffff";
     ctx.font = `bold ${isPortrait ? "17px" : "16px"} 'Noto Sans Gujarati', 'Mukta', sans-serif`;
-    ctx.textAlign = "left";
+    ctx.textAlign = "center";
     ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
     ctx.shadowBlur = 6;
-    const headerTitle = activeScene?.sceneTitle || `${title} • સીન ${activeIdx + 1}/${loadedScenes.length}`;
-    ctx.fillText(headerTitle, pillX + (imgLogo ? 48 : 20), pillY + 30);
+    const headerTitle = title || "શ્રીમદ્ ભગવદ્ ગીતા બોધ";
+    ctx.fillText(headerTitle, pillX + pillW / 2 + (imgLogo ? 12 : 0), pillY + 28);
 
     ctx.restore();
 
-    // 4. Render Active Scene Subtitles (Translucent Glass Box + Pure Typewriter Reveal)
+    // 4. Render Active Scene Subtitles
+    // Notice: cardY is moved right beneath header pill (cardY = 96) to reduce gap and keep deities fully visible!
     if (activeScene && t >= activeScene.startTime && t <= activeScene.endTime + 0.2) {
       const elapsed = t - activeScene.startTime;
       const progress = Math.min(1, elapsed / activeScene.duration);
@@ -490,21 +544,21 @@ export async function createStoryVideoRenderer({
       if (isPortrait) {
         // 9:16 Portrait Card
         cardW = width - 80;
-        cardH = 240;
+        cardH = 210;
         cardX = 40;
 
-        if (subtitlePos === "top") cardY = 180;
-        else if (subtitlePos === "bottom") cardY = height - cardH - 120;
-        else cardY = 200; // default comfortable reading zone
+        if (subtitlePos === "bottom") cardY = height - cardH - 120;
+        else if (subtitlePos === "center") cardY = (height - cardH) / 2;
+        else cardY = 96; // Compact gap right beneath top header pill!
 
-        fontSize = 23;
-        lineSpacing = 42;
+        fontSize = 22;
+        lineSpacing = 40;
       } else {
         // 16:9 Landscape Card (Cinematic Lower-Third Bar)
         cardW = width - 120;
-        cardH = 140;
+        cardH = 135;
         cardX = 60;
-        cardY = height - cardH - 45;
+        cardY = height - cardH - 35;
         fontSize = 24;
         lineSpacing = 38;
       }
@@ -525,11 +579,11 @@ export async function createStoryVideoRenderer({
 
       // Clipping region inside card
       ctx.save();
-      roundRect(ctx, cardX + 15, cardY + 12, cardW - 30, cardH - 42, 12);
+      roundRect(ctx, cardX + 15, cardY + 12, cardW - 30, cardH - 40, 12);
       ctx.clip();
 
       const totalTextH = lines.length * lineSpacing;
-      const visibleH = cardH - 55;
+      const visibleH = cardH - 50;
 
       let scrollY = 0;
       if (totalTextH > visibleH) {
@@ -544,7 +598,7 @@ export async function createStoryVideoRenderer({
       }
 
       const verticalCentering = totalTextH < visibleH ? Math.max(0, (visibleH - totalTextH) / 2) : 0;
-      const startY = cardY + 45 + verticalCentering - scrollY;
+      const startY = cardY + 42 + verticalCentering - scrollY;
 
       lines.forEach((lineObj, idx) => {
         const lineY = startY + idx * lineSpacing;
@@ -579,7 +633,7 @@ export async function createStoryVideoRenderer({
       ctx.restore();
     }
 
-    // 5. Outro Screen (Fade to peaceful branded conclusion)
+    // 5. Outro Screen (With beautiful glowing logo above text)
     const tOutroStart = totalDuration - OUTRO_DUR;
     if (t >= tOutroStart) {
       const outElapsed = t - tOutroStart;
@@ -591,26 +645,26 @@ export async function createStoryVideoRenderer({
       ctx.fillStyle = "rgba(3, 10, 30, 0.85)";
       ctx.fillRect(0, 0, width, height);
 
-      const logoSize = isPortrait ? 120 : 100;
+      const logoSize = isPortrait ? 130 : 100;
       const logoX = width / 2 - logoSize / 2;
-      const logoY = height / 2 - (isPortrait ? 110 : 90);
+      const logoY = height / 2 - (isPortrait ? 120 : 90);
 
       ctx.shadowColor = "#fbbf24";
-      ctx.shadowBlur = 24;
+      ctx.shadowBlur = 25;
       if (imgLogo) {
         ctx.drawImage(imgLogo, logoX, logoY, logoSize, logoSize);
       }
 
       ctx.fillStyle = "#fbbf24";
-      ctx.font = `bold ${isPortrait ? "26px" : "24px"} 'Noto Sans Devanagari', 'Mukta', sans-serif`;
+      ctx.font = `bold ${isPortrait ? "28px" : "24px"} 'Noto Sans Devanagari', 'Mukta', sans-serif`;
       ctx.textAlign = "center";
       ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
       ctx.shadowBlur = 8;
-      ctx.fillText("॥ ૐ શ્રીકૃષ્ણાર્પણમસ્તુ ॥", width / 2, logoY + logoSize + 48);
+      ctx.fillText("॥ ૐ શ્રીકૃષ્ણાર્પણમસ્તુ ॥", width / 2, logoY + logoSize + 55);
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = `600 ${isPortrait ? "19px" : "18px"} 'Noto Sans Gujarati', 'Mukta', sans-serif`;
-      ctx.fillText("ગીતા જ્ઞાન - જીવન બોધ", width / 2, logoY + logoSize + 85);
+      ctx.font = `600 ${isPortrait ? "20px" : "18px"} 'Noto Sans Gujarati', 'Mukta', sans-serif`;
+      ctx.fillText(title || "ગીતા જ્ઞાન - જીવન બોધ", width / 2, logoY + logoSize + 100);
 
       ctx.restore();
     }
@@ -644,7 +698,9 @@ export async function exportStoryVideo({
   aspectRatio = "9:16",
   subtitlePos = "auto",
   title = "શ્રીમદ્ ભગવદ્ ગીતા બોધ",
-  logoSrc = "/logo.png",
+  logoSrc = "/icons/logo-circle.png",
+  lang = "gu",
+  voice = "male",
   onProgress = () => {},
 }) {
   const renderer = await createStoryVideoRenderer({
@@ -653,6 +709,8 @@ export async function exportStoryVideo({
     subtitlePos,
     title,
     logoSrc,
+    lang,
+    voice,
     onProgress,
   });
 
@@ -756,6 +814,13 @@ export async function exportStoryAudioWav({
 }) {
   const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioCtxClass();
+  if (audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const buffers = [];
   for (let i = 0; i < scenes.length; i++) {
