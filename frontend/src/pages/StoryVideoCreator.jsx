@@ -94,48 +94,19 @@ export default function StoryVideoCreator() {
     );
   }, [scenes]);
 
-  // Restore draft from IndexedDB on page load, or restore user's saved project if draft is blank!
+  // Restore active draft from IndexedDB on page load (so refresh keeps current unsaved work, but NEVER auto-opens old projects)
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      // 1. Try loading active draft
       const draft = await loadStoryDraft();
-      const hasDraftContent =
-        draft &&
-        Array.isArray(draft.scenes) &&
-        draft.scenes.some(
-          (s) =>
-            (typeof s.text === "string" && s.text.trim().length > 0) ||
-            Boolean(s.imageSrc) ||
-            Boolean(s.imageBlob)
-        );
-
-      if (isMounted && hasDraftContent) {
-        if (draft.title) setTitle(draft.title);
+      if (isMounted && draft) {
+        if (draft.title !== undefined) setTitle(draft.title);
         if (draft.lang) setLang(draft.lang);
         if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
         if (draft.subtitlePos) setSubtitlePos(draft.subtitlePos);
         if (draft.voice) setVoice(draft.voice);
         if (Array.isArray(draft.scenes) && draft.scenes.length > 0) {
           setScenes(draft.scenes);
-        }
-      } else {
-        // 2. If draft was cleared or blank, auto-restore user's project from Projects Library!
-        const projects = await listStoryProjects();
-        if (isMounted && Array.isArray(projects) && projects.length > 0) {
-          const latestProjMeta = projects[0];
-          if (latestProjMeta?.id) {
-            const fullProj = await getStoryProject(latestProjMeta.id);
-            if (isMounted && fullProj && Array.isArray(fullProj.scenes) && fullProj.scenes.length > 0) {
-              setActiveProjectId(fullProj.id);
-              setTitle(fullProj.title || "");
-              setLang(fullProj.lang || "gu");
-              setAspectRatio(fullProj.aspectRatio || "9:16");
-              setSubtitlePos(fullProj.subtitlePos || "auto");
-              setVoice(fullProj.voice || "male");
-              setScenes(fullProj.scenes);
-            }
-          }
         }
       }
       if (isMounted) setDraftLoaded(true);
