@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext.jsx";
 import {
@@ -22,6 +23,7 @@ import {
   Eye,
   X,
   Volume2,
+  RotateCcw,
 } from "lucide-react";
 import {
   ASPECT_RATIOS,
@@ -31,6 +33,11 @@ import {
   exportStoryAudioWav,
   createStoryVideoRenderer,
 } from "../utils/storyVideoEngine.js";
+import {
+  saveStoryDraft,
+  loadStoryDraft,
+  clearStoryDraft,
+} from "../utils/storyDraftStorage.js";
 import "./StoryVideoCreator.css";
 
 const INITIAL_SCENES = [
@@ -64,6 +71,57 @@ export default function StoryVideoCreator() {
 
   // Scenes
   const [scenes, setScenes] = useState(INITIAL_SCENES);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // Restore draft from IndexedDB on page load (so refresh never loses user data!)
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const draft = await loadStoryDraft();
+      if (isMounted && draft) {
+        if (draft.title) setTitle(draft.title);
+        if (draft.lang) setLang(draft.lang);
+        if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
+        if (draft.subtitlePos) setSubtitlePos(draft.subtitlePos);
+        if (draft.voice) setVoice(draft.voice);
+        if (Array.isArray(draft.scenes) && draft.scenes.length > 0) {
+          setScenes(draft.scenes);
+        }
+      }
+      if (isMounted) setDraftLoaded(true);
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Debounced auto-save to IndexedDB whenever user edits anything
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const timer = setTimeout(() => {
+      saveStoryDraft({
+        title,
+        lang,
+        aspectRatio,
+        subtitlePos,
+        voice,
+        scenes,
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [title, lang, aspectRatio, subtitlePos, voice, scenes, draftLoaded]);
+
+  // Lock body scroll whenever modal is open so preview stays locked in screen center
+  const isAnyModalOpen = showPreviewModal || showAutoSplitModal || isExporting;
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [isAnyModalOpen]);
 
   // Audio preview per scene
   const [playingSceneId, setPlayingSceneId] = useState(null);
@@ -180,7 +238,7 @@ export default function StoryVideoCreator() {
   function handleImageUpload(sceneId, file) {
     if (!file) return;
 
-    // Zero server storage: Create in-memory Blob URL
+    // Create in-memory Blob URL for instant canvas display & keep file Blob for IndexedDB persistence
     const objectUrl = URL.createObjectURL(file);
 
     setScenes((prev) =>
@@ -189,11 +247,29 @@ export default function StoryVideoCreator() {
           if (sc.imageSrc && sc.imageSrc.startsWith("blob:")) {
             URL.revokeObjectURL(sc.imageSrc);
           }
-          return { ...sc, imageSrc: objectUrl };
+          return { ...sc, imageSrc: objectUrl, imageBlob: file };
         }
         return sc;
       })
     );
+  }
+
+  // Reset / Clear Draft to start fresh
+  async function handleResetProject() {
+    if (
+      window.confirm(
+        "શું તમે ખરેખર નવો વિડીયો પ્રોજેક્ટ શરૂ કરવા માંગો છો? આનાથી વર્તમાન વિગતો રીસેટ થશે."
+      )
+    ) {
+      stopAudioPreview();
+      await clearStoryDraft();
+      setTitle("શ્રીકૃષ્ણ બોધ વાર્તા");
+      setLang("gu");
+      setAspectRatio("9:16");
+      setSubtitlePos("auto");
+      setVoice("male");
+      setScenes(INITIAL_SCENES);
+    }
   }
 
   // Scene CRUD
@@ -396,10 +472,18 @@ export default function StoryVideoCreator() {
         await audioCtx.resume();
       }
 
-      // Mount canvas into DOM container
+      // Mount canvas into DOM container and strictly constrain size so preview fits on screen with zero scrolling
       const container = previewCanvasRef.current;
       if (container) {
         container.innerHTML = "";
+        canvas.style.maxWidth = "100%";
+        canvas.style.maxHeight =
+          aspectRatio === "9:16" ? "min(58vh, 460px)" : "min(50vh, 380px)";
+        canvas.style.width = "auto";
+        canvas.style.height = "auto";
+        canvas.style.objectFit = "contain";
+        canvas.style.display = "block";
+        canvas.style.borderRadius = "12px";
         container.appendChild(canvas);
       }
 
@@ -556,14 +640,26 @@ export default function StoryVideoCreator() {
 
         {/* Quick Tools Bar */}
         <div className="studio-quick-tools">
-          <button
-            type="button"
-            className="quick-tool-btn"
-            onClick={() => setShowAutoSplitModal(true)}
-          >
-            <Sparkles size={16} />
-            <span>આખી વાર્તા ઓટો-વિભાજિત કરો (Auto-Split Story)</span>
-          </button>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="quick-tool-btn"
+              onClick={() => setShowAutoSplitModal(true)}
+            >
+              <Sparkles size={16} />
+              <span>આખી વાર્તા ઓટો-વિભાજિત કરો (Auto-Split Story)</span>
+            </button>
+
+            <button
+              type="button"
+              className="reset-tool-btn"
+              onClick={handleResetProject}
+              title="વર્તમાન ડ્રાફ્ટ સાફ કરો અને નવો વિડીયો શરૂ કરો"
+            >
+              <RotateCcw size={15} />
+              <span>નવો પ્રોજેક્ટ (New Story)</span>
+            </button>
+          </div>
 
           <span style={{ fontSize: "13px", color: "#94a3b8" }}>
             કુલ સીન: <strong>{scenes.length}</strong> | ફોર્મેટ: <strong>{aspectRatio}</strong>
@@ -733,156 +829,164 @@ export default function StoryVideoCreator() {
       </div>
 
       {/* Auto Split Story Modal */}
-      {showAutoSplitModal && (
-        <div className="studio-modal-overlay">
-          <div className="studio-modal-card">
-            <div className="studio-modal-header">
-              <h3>✨ આખી વાર્તા ઓટો-વિભાજિત કરો</h3>
-              <button
-                type="button"
-                className="studio-modal-close-btn"
-                onClick={() => setShowAutoSplitModal(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p style={{ color: "#94a3b8", fontSize: "14px", marginTop: 0 }}>
-              તમારી આખી વાર્તા અહીં પેસ્ટ કરો. સિસ્ટમ આપોઆપ તેને અલગ-અલગ સીનમાં વિભાજિત કરી દેશે,
-              જેથી તમારે માત્ર દરેક સીનના ચિત્રો જ મૂકવાના રહેશે!
-            </p>
-
-            <textarea
-              className="scene-textarea"
-              style={{ minHeight: "180px", marginBottom: "16px" }}
-              value={rawStoryText}
-              onChange={(e) => setRawStoryText(e.target.value)}
-              placeholder="અહીં આખી વાર્તા પેસ્ટ કરો..."
-            />
-
-            <div style={{ display: "flex", gap: "16px", marginBottom: "20px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="split"
-                  checked={splitMode === "paragraph"}
-                  onChange={() => setSplitMode("paragraph")}
-                />
-                <span>પેરેગ્રાફ મુજબ (દર નવી લાઇન પર નવો સીન)</span>
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="split"
-                  checked={splitMode === "sentence"}
-                  onChange={() => setSplitMode("sentence")}
-                />
-                <span>વાક્ય મુજબ (પૂર્ણવિરામ પર નવો સીન)</span>
-              </label>
-            </div>
-
-            <button
-              type="button"
-              className="dock-btn video-btn"
-              style={{ width: "100%", justifyContent: "center" }}
-              onClick={applyAutoSplit}
-            >
-              <span>સીનમાં વિભાજિત કરો</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Export Progress Modal */}
-      {isExporting && (
-        <div className="studio-modal-overlay">
-          <div className="studio-modal-card" style={{ textAlign: "center" }}>
-            <h3 style={{ marginBottom: "8px" }}>
-              {exportResult
-                ? "તૈયાર છે!"
-                : exportType === "video"
-                ? "🎬 વિડીયો રેન્ડરિંગ ચાલુ છે..."
-                : "🎵 ઓડિયો તૈયાર થઈ રહ્યો છે..."}
-            </h3>
-
-            {!exportResult ? (
-              <>
-                <div className="studio-progress-bar-track">
-                  <div
-                    className="studio-progress-bar-fill"
-                    style={{ width: `${progress.percent}%` }}
-                  />
-                </div>
-                <p className="studio-progress-msg">{progress.message}</p>
-                <small style={{ color: "#64748b", display: "block", marginTop: "12px" }}>
-                  કૃપા કરીને આ ટેબ બંધ કરશો નહીં.
-                </small>
-              </>
-            ) : (
-              <div style={{ marginTop: "20px" }}>
-                <CheckCircle2 size={48} color="#10b981" style={{ margin: "0 auto 14px" }} />
-                <p style={{ color: "#e2e8f0", fontSize: "15px", marginBottom: "20px" }}>
-                  {exportResult.message}
-                </p>
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-                  <a
-                    href={exportResult.url}
-                    download={exportResult.filename}
-                    className="dock-btn video-btn"
-                  >
-                    <Download size={16} />
-                    <span>ફરી ડાઉનલોડ કરો</span>
-                  </a>
-                  <button
-                    type="button"
-                    className="dock-btn"
-                    style={{ background: "rgba(255, 255, 255, 0.1)", color: "#ffffff" }}
-                    onClick={() => {
-                      setIsExporting(false);
-                      setExportResult(null);
-                    }}
-                  >
-                    બંધ કરો
-                  </button>
-                </div>
+      {showAutoSplitModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="studio-modal-overlay">
+            <div className="studio-modal-card">
+              <div className="studio-modal-header">
+                <h3>✨ આખી વાર્તા ઓટો-વિભાજિત કરો</h3>
+                <button
+                  type="button"
+                  className="studio-modal-close-btn"
+                  onClick={() => setShowAutoSplitModal(false)}
+                >
+                  <X size={18} />
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Live Preview Modal */}
-      {showPreviewModal && (
-        <div className="studio-modal-overlay">
-          <div
-            className="studio-modal-card"
-            style={{ maxWidth: aspectRatio === "9:16" ? "460px" : "800px" }}
-          >
-            <div className="studio-modal-header">
-              <h3>લાઇવ વિડીયો પ્રીવ્યૂ ({aspectRatio})</h3>
-              <button
-                type="button"
-                className="studio-modal-close-btn"
-                onClick={handleClosePreview}
-              >
-                <X size={18} />
-              </button>
-            </div>
+              <p style={{ color: "#94a3b8", fontSize: "14px", marginTop: 0 }}>
+                તમારી આખી વાર્તા અહીં પેસ્ટ કરો. સિસ્ટમ આપોઆપ તેને અલગ-અલગ સીનમાં વિભાજિત કરી દેશે,
+                જેથી તમારે માત્ર દરેક સીનના ચિત્રો જ મૂકવાના રહેશે!
+              </p>
 
-            <div className="preview-canvas-wrap" ref={previewCanvasRef} />
+              <textarea
+                className="scene-textarea"
+                style={{ minHeight: "180px", marginBottom: "16px" }}
+                value={rawStoryText}
+                onChange={(e) => setRawStoryText(e.target.value)}
+                placeholder="અહીં આખી વાર્તા પેસ્ટ કરો..."
+              />
 
-            <div style={{ textAlign: "center" }}>
+              <div style={{ display: "flex", gap: "16px", marginBottom: "20px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="split"
+                    checked={splitMode === "paragraph"}
+                    onChange={() => setSplitMode("paragraph")}
+                  />
+                  <span>પેરેગ્રાફ મુજબ (દર નવી લાઇન પર નવો સીન)</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    name="split"
+                    checked={splitMode === "sentence"}
+                    onChange={() => setSplitMode("sentence")}
+                  />
+                  <span>વાક્ય મુજબ (પૂર્ણવિરામ પર નવો સીન)</span>
+                </label>
+              </div>
+
               <button
                 type="button"
                 className="dock-btn video-btn"
-                onClick={handleClosePreview}
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={applyAutoSplit}
               >
-                પ્રીવ્યૂ બંધ કરો
+                <span>સીનમાં વિભાજિત કરો</span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
+
+      {/* Export Progress Modal */}
+      {isExporting &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="studio-modal-overlay">
+            <div className="studio-modal-card" style={{ textAlign: "center" }}>
+              <h3 style={{ marginBottom: "8px" }}>
+                {exportResult
+                  ? "તૈયાર છે!"
+                  : exportType === "video"
+                  ? "🎬 વિડીયો રેન્ડરિંગ ચાલુ છે..."
+                  : "🎵 ઓડિયો તૈયાર થઈ રહ્યો છે..."}
+              </h3>
+
+              {!exportResult ? (
+                <>
+                  <div className="studio-progress-bar-track">
+                    <div
+                      className="studio-progress-bar-fill"
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                  <p className="studio-progress-msg">{progress.message}</p>
+                  <small style={{ color: "#64748b", display: "block", marginTop: "12px" }}>
+                    કૃપા કરીને આ ટેબ બંધ કરશો નહીં.
+                  </small>
+                </>
+              ) : (
+                <div style={{ marginTop: "20px" }}>
+                  <CheckCircle2 size={48} color="#10b981" style={{ margin: "0 auto 14px" }} />
+                  <p style={{ color: "#e2e8f0", fontSize: "15px", marginBottom: "20px" }}>
+                    {exportResult.message}
+                  </p>
+                  <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                    <a
+                      href={exportResult.url}
+                      download={exportResult.filename}
+                      className="dock-btn video-btn"
+                    >
+                      <Download size={16} />
+                      <span>ફરી ડાઉનલોડ કરો</span>
+                    </a>
+                    <button
+                      type="button"
+                      className="dock-btn"
+                      style={{ background: "rgba(255, 255, 255, 0.1)", color: "#ffffff" }}
+                      onClick={() => {
+                        setIsExporting(false);
+                        setExportResult(null);
+                      }}
+                    >
+                      બંધ કરો
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Live Preview Modal - Center Pinned with Zero Scroll */}
+      {showPreviewModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="studio-modal-overlay">
+            <div
+              className={`studio-modal-card ${aspectRatio === "16:9" ? "wide-modal" : ""}`}
+            >
+              <div className="studio-modal-header">
+                <h3>લાઇવ વિડીયો પ્રીવ્યૂ ({aspectRatio})</h3>
+                <button
+                  type="button"
+                  className="studio-modal-close-btn"
+                  onClick={handleClosePreview}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="preview-canvas-wrap" ref={previewCanvasRef} />
+
+              <div style={{ textAlign: "center", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="dock-btn video-btn"
+                  onClick={handleClosePreview}
+                >
+                  પ્રીવ્યૂ બંધ કરો
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

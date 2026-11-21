@@ -547,32 +547,48 @@
 /* Modal Overlay (Auto-Splitter, Live Preview, Export Progress) */
 .studio-modal-overlay {
   position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(2, 6, 23, 0.85);
-  backdrop-filter: blur(10px);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .studio-modal-card {
   width: 100%;
-  max-width: 640px;
+  max-width: 520px;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
   background: #0b152d;
   border: 1px solid rgba(251, 191, 36, 0.35);
   border-radius: 24px;
-  padding: 28px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  padding: 20px 24px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
   position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.studio-modal-card.wide-modal {
+  max-width: 780px;
 }
 
 .studio-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .studio-modal-header h3 {
@@ -627,18 +643,47 @@
 /* Preview Canvas Container */
 .preview-canvas-wrap {
   width: 100%;
-  max-height: 70vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   background: #000000;
   border-radius: 16px;
   overflow: hidden;
+  padding: 6px;
+  box-sizing: border-box;
 }
 
 .preview-canvas-wrap canvas {
   max-width: 100%;
-  max-height: 65vh;
+  max-height: min(60vh, 480px);
+  width: auto !important;
+  height: auto !important;
   object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  display: block;
+}
+
+.reset-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-tool-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
