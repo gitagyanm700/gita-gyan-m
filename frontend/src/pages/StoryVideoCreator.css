@@ -708,6 +708,18 @@
   transform: translateY(-2px);
 }
 
+.studio-header-btn.save-project:disabled,
+.studio-header-btn.save-project.disabled {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #64748b !important;
+}
+
 .studio-header-btn.new-project {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #0b152d;

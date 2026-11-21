@@ -84,12 +84,33 @@ export default function StoryVideoCreator() {
   const [scenes, setScenes] = useState(INITIAL_SCENES);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  // Restore draft from IndexedDB on page load (so refresh never loses user data!)
+  // Check if current project has actual content (text or image)
+  const hasProjectContent = useMemo(() => {
+    return scenes.some(
+      (s) =>
+        (typeof s.text === "string" && s.text.trim().length > 0) ||
+        Boolean(s.imageSrc) ||
+        Boolean(s.imageBlob)
+    );
+  }, [scenes]);
+
+  // Restore draft from IndexedDB on page load, or restore user's saved project if draft is blank!
   useEffect(() => {
     let isMounted = true;
     (async () => {
+      // 1. Try loading active draft
       const draft = await loadStoryDraft();
-      if (isMounted && draft) {
+      const hasDraftContent =
+        draft &&
+        Array.isArray(draft.scenes) &&
+        draft.scenes.some(
+          (s) =>
+            (typeof s.text === "string" && s.text.trim().length > 0) ||
+            Boolean(s.imageSrc) ||
+            Boolean(s.imageBlob)
+        );
+
+      if (isMounted && hasDraftContent) {
         if (draft.title) setTitle(draft.title);
         if (draft.lang) setLang(draft.lang);
         if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
@@ -97,6 +118,24 @@ export default function StoryVideoCreator() {
         if (draft.voice) setVoice(draft.voice);
         if (Array.isArray(draft.scenes) && draft.scenes.length > 0) {
           setScenes(draft.scenes);
+        }
+      } else {
+        // 2. If draft was cleared or blank, auto-restore user's project from Projects Library!
+        const projects = await listStoryProjects();
+        if (isMounted && Array.isArray(projects) && projects.length > 0) {
+          const latestProjMeta = projects[0];
+          if (latestProjMeta?.id) {
+            const fullProj = await getStoryProject(latestProjMeta.id);
+            if (isMounted && fullProj && Array.isArray(fullProj.scenes) && fullProj.scenes.length > 0) {
+              setActiveProjectId(fullProj.id);
+              setTitle(fullProj.title || "");
+              setLang(fullProj.lang || "gu");
+              setAspectRatio(fullProj.aspectRatio || "9:16");
+              setSubtitlePos(fullProj.subtitlePos || "auto");
+              setVoice(fullProj.voice || "male");
+              setScenes(fullProj.scenes);
+            }
+          }
         }
       }
       if (isMounted) setDraftLoaded(true);
@@ -184,6 +223,11 @@ export default function StoryVideoCreator() {
 
   // Explicitly Save Current Project to Shared Library (Synchronized across all Admins)
   async function handleSaveProject() {
+    if (!hasProjectContent) {
+      alert("ખાલી પ્રોજેક્ટ સાચવી શકાતો નથી. કૃપા કરીને ઓછામાં ઓછો એક સીનમાં લખાણ અથવા ફોટો ઉમેરો.");
+      return;
+    }
+
     try {
       const savedId = await saveStoryProject({
         id: activeProjectId,
@@ -205,10 +249,9 @@ export default function StoryVideoCreator() {
     }
   }
 
-  // Create New Project (auto-saves existing project if it has content!)
+  // Create New Project (auto-saves existing project ONLY if it has content!)
   async function handleNewProject() {
-    const hasContent = scenes.some((s) => s.text.trim() || s.imageSrc);
-    if (hasContent) {
+    if (hasProjectContent) {
       const savedId = await saveStoryProject({
         id: activeProjectId,
         title,
@@ -239,9 +282,8 @@ export default function StoryVideoCreator() {
 
   // Load a Saved Project
   async function handleLoadProject(projectId) {
-    // Autosave current project before switching if it has unsaved work
-    const hasContent = scenes.some((s) => s.text.trim() || s.imageSrc);
-    if (hasContent && activeProjectId !== projectId) {
+    // Autosave current project before switching ONLY IF it has content
+    if (hasProjectContent && activeProjectId !== projectId) {
       await saveStoryProject({
         id: activeProjectId,
         title,
@@ -689,9 +731,14 @@ export default function StoryVideoCreator() {
           <div className="story-studio-header-actions">
             <button
               type="button"
-              className="studio-header-btn save-project"
+              className={`studio-header-btn save-project ${!hasProjectContent ? "disabled" : ""}`}
               onClick={handleSaveProject}
-              title="ચાલુ પ્રોજેક્ટ તમામ એડમિન માટે સાચવો"
+              disabled={!hasProjectContent}
+              title={
+                !hasProjectContent
+                  ? "પ્રોજેક્ટ સાચવવા માટે ઓછામાં ઓછો એક સીનમાં લખાણ અથવા ફોટો ઉમેરો"
+                  : "ચાલુ પ્રોજેક્ટ તમામ એડમિન માટે સાચવો"
+              }
             >
               <Save size={18} />
               <span>{activeProjectId ? "પ્રોજેક્ટ અપડેટ" : "પ્રોજેક્ટ સાચવો"}</span>

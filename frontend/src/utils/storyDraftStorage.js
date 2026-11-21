@@ -248,6 +248,7 @@ export async function clearStoryDraft() {
 
 /**
  * Save a Story Project (Synchronized across all Admin accounts & devices)
+ * BLANK PROJECTS ARE STRICTLY DISALLOWED: Requires at least 1 scene with text or image
  */
 export async function saveStoryProject({
   id,
@@ -259,6 +260,18 @@ export async function saveStoryProject({
   scenes,
 }) {
   try {
+    // Strictly verify project is not blank
+    const hasContent = (scenes || []).some(
+      (s) =>
+        (typeof s.text === "string" && s.text.trim().length > 0) ||
+        Boolean(s.imageSrc) ||
+        Boolean(s.imageBlob)
+    );
+    if (!hasContent) {
+      console.warn("Blank project save prevented: no text or image provided.");
+      return null;
+    }
+
     // 1. Prepare scenes with Cloudinary or base64 dataUrls
     const processedScenes = await Promise.all(
       (scenes || []).map(async (s) => {
@@ -336,50 +349,113 @@ export async function saveStoryProject({
 }
 
 /**
- * List all saved Story Projects (From database across all Admins with local cache fallback)
+ * List all saved Story Projects (Merges Backend Database + Local IndexedDB so NO project is ever lost!)
  */
 export async function listStoryProjects() {
   try {
-    // 1. Try fetching from Backend API (All admin accounts shared)
-    const apiRes = await apiRequest("/api/story-projects", { method: "GET" });
-    if (apiRes && apiRes.success && Array.isArray(apiRes.projects)) {
-      return apiRes.projects;
+    // 1. Fetch remote projects from Backend API
+    let remoteProjects = [];
+    try {
+      const apiRes = await apiRequest("/api/story-projects", { method: "GET" });
+      if (apiRes && apiRes.success && Array.isArray(apiRes.projects)) {
+        remoteProjects = apiRes.projects;
+      }
+    } catch (apiErr) {
+      console.warn("Failed fetching remote story projects:", apiErr);
     }
 
-    // 2. Fallback to local IndexedDB if offline or API unreachable
+    // 2. Fetch local projects from IndexedDB
+    let localProjects = [];
     const db = await openDB();
-    if (!db) return [];
+    if (db) {
+      localProjects = await new Promise((resolve) => {
+        try {
+          const tx = db.transaction(STORE_PROJECTS, "readonly");
+          const store = tx.objectStore(STORE_PROJECTS);
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const rawList = req.result || [];
+            const mapped = rawList
+              .filter((p) => {
+                // Exclude any accidental completely blank projects
+                const hasAny = (p.scenes || []).some(
+                  (s) =>
+                    (typeof s.text === "string" && s.text.trim().length > 0) ||
+                    Boolean(s.imageSrc) ||
+                    Boolean(s.imageBlob)
+                );
+                return hasAny || (p.title && p.title.trim() && p.title !== "અનામી વાર્તા પ્રોજેક્ટ");
+              })
+              .map((p) => {
+                let thumbUrl = null;
+                if (p.thumbnailBlob instanceof Blob) {
+                  thumbUrl = URL.createObjectURL(p.thumbnailBlob);
+                } else if (p.scenes && p.scenes.length > 0) {
+                  const firstWithImg = p.scenes.find((s) => s.imageSrc);
+                  if (firstWithImg) thumbUrl = firstWithImg.imageSrc;
+                }
+                return {
+                  id: p.id,
+                  title: p.title || "અનામી વાર્તા પ્રોજેક્ટ",
+                  lang: p.lang || "gu",
+                  aspectRatio: p.aspectRatio || "9:16",
+                  voice: p.voice || "male",
+                  sceneCount: p.sceneCount || (p.scenes?.length || 0),
+                  updatedAt: p.updatedAt,
+                  thumbUrl,
+                  isLocalOnly: true,
+                  scenes: p.scenes,
+                };
+              });
+            resolve(mapped);
+          };
+          req.onerror = () => resolve([]);
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    }
 
-    const tx = db.transaction(STORE_PROJECTS, "readonly");
-    const store = tx.objectStore(STORE_PROJECTS);
-    const req = store.getAll();
+    // 3. Auto-sync any local-only project to backend database
+    if (localProjects.length > 0) {
+      for (const loc of localProjects) {
+        const inRemote = remoteProjects.some(
+          (r) => r.id === loc.id || (r.title && loc.title && r.title === loc.title && loc.title !== "અનામી વાર્તા પ્રોજેક્ટ")
+        );
+        if (!inRemote && loc.scenes && loc.scenes.length > 0) {
+          // Sync to backend asynchronously
+          saveStoryProject({
+            id: undefined,
+            title: loc.title,
+            lang: loc.lang,
+            aspectRatio: loc.aspectRatio,
+            subtitlePos: loc.subtitlePos,
+            voice: loc.voice,
+            scenes: loc.scenes,
+          }).catch((e) => console.warn("Background project sync failed:", e));
+        }
+      }
+    }
 
-    return new Promise((resolve) => {
-      req.onsuccess = () => {
-        const rawList = req.result || [];
-        const projects = rawList
-          .map((p) => {
-            let thumbUrl = null;
-            if (p.thumbnailBlob instanceof Blob) {
-              thumbUrl = URL.createObjectURL(p.thumbnailBlob);
-            }
-            return {
-              id: p.id,
-              title: p.title,
-              lang: p.lang,
-              aspectRatio: p.aspectRatio,
-              voice: p.voice,
-              sceneCount: p.sceneCount || (p.scenes?.length || 0),
-              updatedAt: p.updatedAt,
-              thumbUrl,
-            };
-          })
-          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-
-        resolve(projects);
-      };
-      req.onerror = () => resolve([]);
+    // 4. Merge remote and local lists without duplicates
+    const map = new Map();
+    remoteProjects.forEach((p) => {
+      if (p.id) map.set(p.id, p);
     });
+    localProjects.forEach((p) => {
+      const match = remoteProjects.find(
+        (r) => r.id === p.id || (r.title && p.title && r.title === p.title && p.title !== "અનામી વાર્તા પ્રોજેક્ટ")
+      );
+      if (!match) {
+        map.set(p.id, p);
+      }
+    });
+
+    const combined = Array.from(map.values()).sort(
+      (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+    );
+
+    return combined;
   } catch (err) {
     console.warn("Failed to list projects:", err);
     return [];
@@ -425,9 +501,29 @@ export async function getStoryProject(projectId) {
 
     return new Promise((resolve) => {
       req.onsuccess = () => {
-        const p = req.result;
+        let p = req.result;
         if (!p) {
-          resolve(null);
+          // Fallback: search all in case ID keying differs
+          const allReq = store.getAll();
+          allReq.onsuccess = () => {
+            const list = allReq.result || [];
+            p = list.find((item) => item.id === projectId || String(item.id).includes(String(projectId)));
+            if (!p) {
+              resolve(null);
+              return;
+            }
+            resolve({
+              id: p.id,
+              title: p.title,
+              lang: p.lang,
+              aspectRatio: p.aspectRatio,
+              subtitlePos: p.subtitlePos,
+              voice: p.voice,
+              scenes: deserializeScenes(p.scenes),
+              updatedAt: p.updatedAt,
+            });
+          };
+          allReq.onerror = () => resolve(null);
           return;
         }
 

@@ -11,9 +11,17 @@ exports.listProjects = async (req, res) => {
       .sort({ updatedAt: -1 })
       .lean();
 
+    // Exclude any accidental completely blank projects
+    const validProjects = projects.filter(
+      (p) =>
+        Boolean(p.thumbnailUrl) ||
+        (p.title && p.title.trim() && p.title !== "અનામી વાર્તા પ્રોજેક્ટ") ||
+        (p.sceneCount && p.sceneCount > 0)
+    );
+
     res.json({
       success: true,
-      projects: projects.map((p) => ({
+      projects: validProjects.map((p) => ({
         id: p._id.toString(),
         _id: p._id.toString(),
         title: p.title || "અનામી વાર્તા પ્રોજેક્ટ",
@@ -120,6 +128,17 @@ exports.saveProject = async (req, res) => {
         text: sc.text || "",
         imageSrc: imgUrl,
         audioDuration: Number(sc.audioDuration) || 0,
+      });
+    }
+
+    // Verify that the project is not completely blank
+    const hasContent = processedScenes.some(
+      (s) => (s.text && s.text.trim().length > 0) || Boolean(s.imageSrc)
+    );
+    if (!hasContent) {
+      return res.status(400).json({
+        success: false,
+        message: "ખાલી પ્રોજેક્ટ સાચવી શકાતો નથી. કૃપા કરીને ઓછામાં ઓછો એક સીનમાં લખાણ અથવા ફોટો ઉમેરો.",
       });
     }
 
