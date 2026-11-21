@@ -585,7 +585,9 @@ export async function createStoryVideoRenderer({
       ctx.font = `600 ${fontSize}px 'Noto Sans Gujarati', 'Noto Sans Devanagari', 'Mukta', sans-serif`;
       const { lines, totalWords } = wrapStoryLines(ctx, activeScene.text, cardW - 50);
 
-      const wordsSpoken = Math.floor(progress * totalWords);
+      // Narrator speech progression: accounts for subtle trailing audio silence so words match speech
+      const speechProg = Math.min(1, progress / 0.94);
+      const wordsSpoken = Math.floor(speechProg * totalWords);
 
       // Clipping region inside card
       ctx.save();
@@ -619,12 +621,13 @@ export async function createStoryVideoRenderer({
         const fullLineWidth = ctx.measureText(lineObj.text).width;
         let currentX = Math.max(cardX + 25, (width - fullLineWidth) / 2);
 
-        lineObj.words.forEach((word) => {
+        lineObj.words.forEach((word, wIdx) => {
+          const globalWordIdx = lineObj.startWordIdx + wIdx;
           const wordWithSpace = word + " ";
           const wordWidth = ctx.measureText(wordWithSpace).width;
 
-          // Pure typewriter reveal: crisp white with deep drop shadow (NO yellow/green highlight)
-          if (lineObj.startWordIdx <= wordsSpoken) {
+          // Pure typewriter reveal: Only display word when narrator reaches it (word-by-word)
+          if (globalWordIdx <= wordsSpoken) {
             ctx.fillStyle = "#ffffff";
             ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
             ctx.shadowBlur = 8;
