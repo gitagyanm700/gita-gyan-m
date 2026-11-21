@@ -416,48 +416,60 @@ export async function createStoryVideoRenderer({
   // 1. Preload logo from reliable path
   const imgLogo = await loadImg(logoSrc || "/icons/logo-circle.png");
 
-  // 2. Preload scene images and calculate timings
-  const loadedScenes = [];
-  const SCENE_PAUSE = 0.45; // 0.45s breathing pause between scenes
-  const INTRO_DUR = 0.8;
-  const OUTRO_DUR = 1.8;
+  // 2. High-speed parallel preloading of all scenes (images + audio buffers in parallel!)
+  onProgress({ stage: "scenes", percent: 20, message: "બધા સીનનો ઓડિયો સમાંતર રીતે ઝડપથી તૈયાર થઈ રહ્યો છે..." });
+
+  const rawLoadedScenes = await Promise.all(
+    scenes.map(async (sc, i) => {
+      const img = sc.imageSrc ? await loadImg(sc.imageSrc) : null;
+      let audioBuf = sc.audioBuffer;
+      if (!audioBuf && sc.text) {
+        audioBuf = await fetchSceneAudio(
+          audioCtx,
+          sc.text,
+          sc.lang || lang || "gu",
+          sc.voice || voice || "male"
+        );
+      } else if (!audioBuf) {
+        audioBuf = createSilentBuffer(audioCtx, 3);
+      }
+      return {
+        ...sc,
+        index: i,
+        img,
+        audioBuffer: audioBuf,
+        duration: audioBuf?.duration || 3,
+      };
+    })
+  );
+
+  // Fast, crisp timings (no long idle pauses)
+  const SCENE_PAUSE = 0.25; // Snappy breathing pause between scenes
+  const INTRO_DUR = 0.3;   // Quick start
+  const OUTRO_DUR = 1.0;   // Clean outro
 
   let currentClock = INTRO_DUR;
+  const loadedScenes = [];
 
-  for (let i = 0; i < scenes.length; i++) {
-    const sc = scenes[i];
-    onProgress({
-      stage: "scenes",
-      percent: Math.round(15 + (i / scenes.length) * 45),
-      message: `સીન ${i + 1}/${scenes.length} ઓડિયો અને ચિત્ર તૈયાર થઈ રહ્યા છે...`,
-    });
+  const cardW_measure = isPortrait ? width - 80 : width - 120;
+  const fontSize_measure = isPortrait ? 22 : 24;
+  ctx.font = `600 ${fontSize_measure}px 'Noto Sans Gujarati', 'Noto Sans Devanagari', 'Mukta', sans-serif`;
 
-    const img = sc.imageSrc ? await loadImg(sc.imageSrc) : null;
-    let audioBuf = sc.audioBuffer;
-    if (!audioBuf && sc.text) {
-      audioBuf = await fetchSceneAudio(
-        audioCtx,
-        sc.text,
-        sc.lang || lang || "gu",
-        sc.voice || voice || "male"
-      );
-    } else if (!audioBuf) {
-      audioBuf = createSilentBuffer(audioCtx, 3);
-    }
-
-    const duration = audioBuf.duration || 3;
+  for (let i = 0; i < rawLoadedScenes.length; i++) {
+    const sc = rawLoadedScenes[i];
+    const duration = sc.duration;
     const startTime = currentClock;
     const endTime = startTime + duration;
     currentClock = endTime + SCENE_PAUSE;
 
+    // Pre-calculate line wrapping once to eliminate 60fps text-measurement overhead!
+    const wrappedData = wrapStoryLines(ctx, sc.text, cardW_measure - 50);
+
     loadedScenes.push({
       ...sc,
-      index: i,
-      img,
-      audioBuffer: audioBuf,
-      duration,
       startTime,
       endTime,
+      wrappedData,
     });
   }
 
@@ -584,9 +596,11 @@ export async function createStoryVideoRenderer({
       ctx.fill();
       ctx.stroke();
 
-      // Setup typography & line wrapping
+      // Setup typography (pre-computed wrapping to avoid real-time layout thrashing)
       ctx.font = `600 ${fontSize}px 'Noto Sans Gujarati', 'Noto Sans Devanagari', 'Mukta', sans-serif`;
-      const { lines, totalWords } = wrapStoryLines(ctx, activeScene.text, cardW - 50);
+      const wrapped = activeScene.wrappedData || wrapStoryLines(ctx, activeScene.text, cardW - 50);
+      const lines = wrapped.lines;
+      const totalWords = wrapped.totalWords;
 
       // Narrator speech progression: accounts for subtle trailing audio silence so words match speech
       const speechProg = Math.min(1, progress / 0.94);

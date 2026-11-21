@@ -24,6 +24,13 @@ import {
   X,
   Volume2,
   RotateCcw,
+  FolderArchive,
+  PlusCircle,
+  Clock,
+  Calendar,
+  Check,
+  AlertCircle,
+  FileText,
 } from "lucide-react";
 import {
   ASPECT_RATIOS,
@@ -37,6 +44,10 @@ import {
   saveStoryDraft,
   loadStoryDraft,
   clearStoryDraft,
+  saveStoryProject,
+  listStoryProjects,
+  getStoryProject,
+  deleteStoryProject,
 } from "../utils/storyDraftStorage.js";
 import "./StoryVideoCreator.css";
 
@@ -134,8 +145,33 @@ export default function StoryVideoCreator() {
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const previewAnimFrameRef = useRef(null);
 
+  // Project Library States (Client-side IndexedDB - ZERO Server Space)
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [savedProjects, setSavedProjects] = useState([]);
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+
+  async function refreshProjectsList() {
+    const list = await listStoryProjects();
+    setSavedProjects(list);
+  }
+
+  // Load projects list on mount
+  useEffect(() => {
+    refreshProjectsList();
+  }, []);
+
+  // Auto clear toast notification after 4s
+  useEffect(() => {
+    if (toastMsg) {
+      const t = setTimeout(() => setToastMsg(""), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [toastMsg]);
+
   // Lock body scroll whenever modal is open so preview stays locked in screen center
-  const isAnyModalOpen = showPreviewModal || showAutoSplitModal || isExporting;
+  const isAnyModalOpen =
+    showPreviewModal || showAutoSplitModal || isExporting || showProjectsModal;
   useEffect(() => {
     if (isAnyModalOpen) {
       const original = document.body.style.overflow;
@@ -145,6 +181,83 @@ export default function StoryVideoCreator() {
       };
     }
   }, [isAnyModalOpen]);
+
+  // Create New Project (auto-saves existing project to IndexedDB if it has content!)
+  async function handleNewProject() {
+    const hasContent = scenes.some((s) => s.text.trim() || s.imageSrc);
+    if (hasContent) {
+      const savedId = await saveStoryProject({
+        id: activeProjectId,
+        title,
+        lang,
+        aspectRatio,
+        subtitlePos,
+        voice,
+        scenes,
+      });
+      if (savedId) {
+        setToastMsg(`જૂનો પ્રોજેક્ટ "${title || "વાર્તા"}" સ્થાનિક લાઇબ્રેરીમાં સુરક્ષિત સાચવાયો છે!`);
+      }
+    }
+
+    // Reset to brand new project template
+    setActiveProjectId(null);
+    setTitle("નવી ગીતા વાર્તા");
+    setScenes(INITIAL_SCENES);
+    await clearStoryDraft();
+    await refreshProjectsList();
+  }
+
+  // Open Projects Library
+  async function handleOpenProjectsLibrary() {
+    await refreshProjectsList();
+    setShowProjectsModal(true);
+  }
+
+  // Load a Saved Project
+  async function handleLoadProject(projectId) {
+    // Autosave current project before switching if it has unsaved work
+    const hasContent = scenes.some((s) => s.text.trim() || s.imageSrc);
+    if (hasContent && activeProjectId !== projectId) {
+      await saveStoryProject({
+        id: activeProjectId,
+        title,
+        lang,
+        aspectRatio,
+        subtitlePos,
+        voice,
+        scenes,
+      });
+    }
+
+    const proj = await getStoryProject(projectId);
+    if (proj) {
+      setActiveProjectId(proj.id);
+      setTitle(proj.title);
+      setLang(proj.lang);
+      setAspectRatio(proj.aspectRatio);
+      setSubtitlePos(proj.subtitlePos);
+      setVoice(proj.voice);
+      setScenes(proj.scenes);
+      setShowProjectsModal(false);
+      setToastMsg(`"${proj.title}" પ્રોજેક્ટ સફળતાપૂર્વક લોડ થઈ ગયો છે!`);
+    }
+  }
+
+  // Delete a Saved Project
+  async function handleDeleteProject(projectId, projectTitle, e) {
+    e.stopPropagation();
+    if (!window.confirm(`શું તમે ખરેખર "${projectTitle}" પ્રોજેક્ટ ડિલીટ કરવા માંગો છો?`)) {
+      return;
+    }
+
+    await deleteStoryProject(projectId);
+    if (activeProjectId === projectId) {
+      setActiveProjectId(null);
+    }
+    await refreshProjectsList();
+    setToastMsg(`"${projectTitle}" પ્રોજેક્ટ ડિલીટ કરવામાં આવ્યો છે.`);
+  }
 
   // Invalidate cached scene audio buffers if language or voice changes so chosen voice is always used
   useEffect(() => {
@@ -477,6 +590,17 @@ export default function StoryVideoCreator() {
       previewRendererRef.current = renderer;
       const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame } = renderer;
 
+      // Cache loaded audio buffers in state so subsequent preview and export are INSTANT!
+      if (loadedScenes && Array.isArray(loadedScenes)) {
+        setScenes((prev) =>
+          prev.map((sc, idx) => ({
+            ...sc,
+            audioBuffer: loadedScenes[idx]?.audioBuffer || sc.audioBuffer,
+            audioDuration: loadedScenes[idx]?.duration || sc.audioDuration,
+          }))
+        );
+      }
+
       // Ensure AudioContext is active and not suspended by browser autoplay policy
       if (audioCtx.state === "suspended") {
         await audioCtx.resume();
@@ -556,7 +680,40 @@ export default function StoryVideoCreator() {
               <p>સ્ક્રિપ્ટ અને ચિત્રો મુજબ આપોઆપ સીન-બાય-સીન વિડીયો બનાવો (9:16 & 16:9)</p>
             </div>
           </div>
+
+          {/* New Project & Project Library Actions */}
+          <div className="story-studio-header-actions">
+            <button
+              type="button"
+              className="studio-header-btn new-project"
+              onClick={handleNewProject}
+              title="હાલનો પ્રોજેક્ટ સાચવીને નવો પ્રોજેક્ટ શરૂ કરો"
+            >
+              <PlusCircle size={18} />
+              <span>નવો પ્રોજેક્ટ</span>
+            </button>
+            <button
+              type="button"
+              className="studio-header-btn projects-lib"
+              onClick={handleOpenProjectsLibrary}
+              title="સાચવેલા બધા પ્રોજેક્ટ્સ જુઓ, એડિટ કરો કે ડિલીટ કરો"
+            >
+              <FolderArchive size={18} />
+              <span>મારા પ્રોજેક્ટ્સ</span>
+              {savedProjects.length > 0 && (
+                <span className="projects-badge-count">{savedProjects.length}</span>
+              )}
+            </button>
+          </div>
         </header>
+
+        {/* Toast Notification Banner */}
+        {toastMsg && (
+          <div className="studio-toast-banner">
+            <CheckCircle2 size={18} />
+            <span>{toastMsg}</span>
+          </div>
+        )}
 
         {/* Global Video Settings Card */}
         <section className="studio-settings-card">
@@ -991,6 +1148,125 @@ export default function StoryVideoCreator() {
                   onClick={handleClosePreview}
                 >
                   પ્રીવ્યૂ બંધ કરો
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Projects Library Modal - Zero Server Storage (Local IndexedDB) */}
+      {showProjectsModal &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="studio-modal-overlay">
+            <div className="studio-modal-card projects-modal-card">
+              <div className="studio-modal-header">
+                <div>
+                  <h3>મારા સાચવેલા પ્રોજેક્ટ્સ (Client Library)</h3>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                    બધા પ્રોજેક્ટ્સ તમારા બ્રાઉઝરમાં સુરક્ષિત સંગ્રહિત છે (વેબસાઇટ સર્વર પર 0 KB સ્પેસ)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="studio-modal-close-btn"
+                  onClick={() => setShowProjectsModal(false)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="projects-modal-body">
+                {savedProjects.length === 0 ? (
+                  <div className="projects-empty-state">
+                    <FolderArchive size={48} className="projects-empty-icon" />
+                    <h4 style={{ margin: "8px 0 4px", color: "#f8fafc" }}>
+                      હજુ સુધી કોઈ પ્રોજેક્ટ સાચવેલ નથી
+                    </h4>
+                    <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0 }}>
+                      નવી વાર્તા કે સ્ક્રિપ્ટ બનાવીને "નવો પ્રોજેક્ટ" પર ક્લિક કરશો એટલે તમારો જૂનો પ્રોજેક્ટ આપોઆપ અહીં સાચવાઈ જશે!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="projects-grid">
+                    {savedProjects.map((p) => {
+                      const isActive = activeProjectId === p.id;
+                      const dateStr = p.updatedAt
+                        ? new Date(p.updatedAt).toLocaleDateString("gu-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "";
+
+                      return (
+                        <div
+                          key={p.id}
+                          className={`project-card ${isActive ? "active-project" : ""}`}
+                        >
+                          <div className="project-thumb-wrap">
+                            {p.thumbUrl ? (
+                              <img
+                                src={p.thumbUrl}
+                                alt={p.title}
+                                className="project-thumb-img"
+                              />
+                            ) : (
+                              <div className="project-thumb-placeholder">
+                                <ImageIcon size={28} />
+                                <span>ચિત્ર નથી</span>
+                              </div>
+                            )}
+                            <div className="project-aspect-tag">{p.aspectRatio}</div>
+                          </div>
+
+                          <div className="project-card-info">
+                            <h4 className="project-card-title">{p.title}</h4>
+                            <div className="project-card-meta">
+                              <span>{p.sceneCount} સીન</span>
+                              <span>{dateStr}</span>
+                            </div>
+
+                            <div className="project-card-actions">
+                              <button
+                                type="button"
+                                className="project-btn-load"
+                                onClick={() => handleLoadProject(p.id)}
+                              >
+                                <Play size={13} />
+                                <span>{isActive ? "હાલમાં સક્રિય" : "એડિટ / લોડ કરો"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="project-btn-delete"
+                                onClick={(e) => handleDeleteProject(p.id, p.title, e)}
+                                title="પ્રોજેક્ટ ડિલીટ કરો"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ textAlign: "right", marginTop: "14px", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="dock-btn"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.1)",
+                    color: "#ffffff",
+                    padding: "8px 20px",
+                  }}
+                  onClick={() => setShowProjectsModal(false)}
+                >
+                  બંધ કરો
                 </button>
               </div>
             </div>

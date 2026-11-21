@@ -973,6 +973,7 @@ export async function createShlokVideoRenderer({
   msgSections.forEach((sec) => {
     sec.wrappedLines = wrapContentLines(ctx, sec.text, maxMsgLineWidth).lines;
   });
+  const precomputedTrLines = wrapContentLines(ctx, cleanTranslationText, width - 80 - 60).lines;
 
   const particles = new ParticleSystem(45, width, height);
 
@@ -1389,7 +1390,7 @@ export async function createShlokVideoRenderer({
 
       ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "left";
-      const { lines: trLines } = wrapContentLines(ctx, cleanTranslationText, cardW - 60);
+      const trLines = precomputedTrLines;
 
       ctx.save();
       ctx.beginPath();
