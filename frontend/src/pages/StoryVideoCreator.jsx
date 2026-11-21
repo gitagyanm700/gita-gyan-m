@@ -25,6 +25,7 @@ import {
   Volume2,
   FolderArchive,
   PlusCircle,
+  Save,
   Clock,
   Calendar,
   Check,
@@ -181,7 +182,30 @@ export default function StoryVideoCreator() {
     }
   }, [isAnyModalOpen]);
 
-  // Create New Project (auto-saves existing project to IndexedDB if it has content!)
+  // Explicitly Save Current Project to Shared Library (Synchronized across all Admins)
+  async function handleSaveProject() {
+    try {
+      const savedId = await saveStoryProject({
+        id: activeProjectId,
+        title,
+        lang,
+        aspectRatio,
+        subtitlePos,
+        voice,
+        scenes,
+      });
+      if (savedId) {
+        setActiveProjectId(savedId);
+        await refreshProjectsList();
+        setToastMsg(`પ્રોજેક્ટ "${title || "વાર્તા"}" તમામ એડમિન માટે સફળતાપૂર્વક સાચવવામાં આવ્યો છે!`);
+      }
+    } catch (err) {
+      console.error("Save project failed:", err);
+      alert("પ્રોજેક્ટ સાચવવામાં ક્ષતિ આવી.");
+    }
+  }
+
+  // Create New Project (auto-saves existing project if it has content!)
   async function handleNewProject() {
     const hasContent = scenes.some((s) => s.text.trim() || s.imageSrc);
     if (hasContent) {
@@ -195,7 +219,7 @@ export default function StoryVideoCreator() {
         scenes,
       });
       if (savedId) {
-        setToastMsg(`જૂનો પ્રોજેક્ટ "${title || "વાર્તા"}" સ્થાનિક લાઇબ્રેરીમાં સુરક્ષિત સાચવાયો છે!`);
+        setToastMsg(`જૂનો પ્રોજેક્ટ "${title || "વાર્તા"}" તમામ એડમિન માટે સુરક્ષિત સાચવવામાં આવ્યો છે!`);
       }
     }
 
@@ -665,6 +689,15 @@ export default function StoryVideoCreator() {
           <div className="story-studio-header-actions">
             <button
               type="button"
+              className="studio-header-btn save-project"
+              onClick={handleSaveProject}
+              title="ચાલુ પ્રોજેક્ટ તમામ એડમિન માટે સાચવો"
+            >
+              <Save size={18} />
+              <span>{activeProjectId ? "પ્રોજેક્ટ અપડેટ" : "પ્રોજેક્ટ સાચવો"}</span>
+            </button>
+            <button
+              type="button"
               className="studio-header-btn new-project"
               onClick={handleNewProject}
               title="હાલનો પ્રોજેક્ટ સાચવીને નવો પ્રોજેક્ટ શરૂ કરો"
@@ -679,10 +712,7 @@ export default function StoryVideoCreator() {
               title="સાચવેલા બધા પ્રોજેક્ટ્સ જુઓ, એડિટ કરો કે ડિલીટ કરો"
             >
               <FolderArchive size={18} />
-              <span>મારા પ્રોજેક્ટ્સ</span>
-              {savedProjects.length > 0 && (
-                <span className="projects-badge-count">{savedProjects.length}</span>
-              )}
+              <span>પ્રોજેક્ટ્સ ({savedProjects.length})</span>
             </button>
           </div>
         </header>

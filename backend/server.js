@@ -20,6 +20,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const appAnalyticsRoutes = require("./routes/appAnalyticsRoutes");
 const ttsRoutes = require("./routes/ttsRoutes");
 const sceneRoutes = require("./routes/sceneRoutes");
+const storyProjectRoutes = require("./routes/storyProjectRoutes");
 const { scheduleStartupAudioPrecache } = require("./controllers/ttsController");
 const notificationController = require("./controllers/notificationController");
 
@@ -87,6 +88,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/app-analytics", appAnalyticsRoutes);
 app.use("/api/tts", ttsRoutes);
 app.use("/api/scenes", sceneRoutes);
+app.use("/api/story-projects", storyProjectRoutes);
 
 // Root health check endpoint
 app.get("/", (req, res) => {

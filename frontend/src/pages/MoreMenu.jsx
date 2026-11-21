@@ -18,9 +18,11 @@ import {
   CircleUser,
   Check,
   BookOpen,
+  Video,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useLanguage } from "../context/LanguageContext.jsx";
+import { hasPermission } from "../utils/permissionHelper.js";
 import {
   promptInstallApp,
   isRunningInStandaloneApp,
@@ -405,6 +407,16 @@ export default function MoreMenu() {
                 </div>
                 <div className="more-item-text">
                   <strong>{txt("ક્વિઝ વ્યવસ્થાપન", "क्विज़ प्रबंधन", "Quiz Management")}</strong>
+                </div>
+                <ChevronRight size={18} className="more-row-arrow" />
+              </div>
+
+              <div className="more-item-row" onClick={() => navigate("/admin/video-creator")}>
+                <div className="more-item-icon">
+                  <Video size={20} />
+                </div>
+                <div className="more-item-text">
+                  <strong>{txt("સ્ટોરી વિડીયો સ્ટુડિયો", "स्टोरी वीडियो स्टूडियो", "Story Video Studio")}</strong>
                 </div>
                 <ChevronRight size={18} className="more-row-arrow" />
               </div>

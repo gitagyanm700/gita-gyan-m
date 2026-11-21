@@ -1,18 +1,81 @@
 /**
- * Story Draft & Project Library Storage - Client-Side IndexedDB Persistence
+ * Story Draft & Shared Admin Projects Library
  * Bhagavad Gita - Gita Gyan M
  *
- * Features:
- * 1. Automatic active draft recovery on page reload (zero data loss).
- * 2. Multi-project library: Save old project on "New Project", load/edit, or delete.
- * 3. 100% Client-side in local browser IndexedDB: ZERO BYTES on server or database!
+ * Capabilities:
+ * 1. Global Admin Sync: All saved story projects are shared across ALL admin dashboards & devices (Mobile & Desktop).
+ * 2. Zero Server Disk Storage: Local images are uploaded to Cloudinary CDN so they take 0 bytes of server disk.
+ * 3. Client-Side Offline Cache (IndexedDB): Ensures instant recovery, offline capability, and zero latency.
  */
+
+import { getValidToken } from "./authHelper.js";
 
 const DB_NAME = "GitaStoryStudioDB";
 const DB_VERSION = 2;
 const STORE_DRAFTS = "drafts";
 const STORE_PROJECTS = "projects";
 const DRAFT_KEY = "active_story_draft";
+
+const isLocalHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+const BACKEND_ENDPOINTS = isLocalHost
+  ? ["http://localhost:5000", "https://bhagavad-gita-backend-jy1a.onrender.com"]
+  : ["https://bhagavad-gita-backend-jy1a.onrender.com", "http://localhost:5000"];
+
+/**
+ * Universal backend API fetch with automatic dual-endpoint fallback & auth
+ */
+async function apiRequest(path, options = {}) {
+  const token = getValidToken();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
+  for (const base of BACKEND_ENDPOINTS) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 12000);
+
+      const res = await fetch(`${base}${path}`, {
+        ...options,
+        headers,
+        signal: ctrl.signal,
+      });
+
+      clearTimeout(tid);
+
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch (err) {
+      console.warn(`API request failed on ${base}${path}:`, err.message);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Helper: Convert Blob / File to base64 DataURL
+ */
+function blobToDataUrl(blob) {
+  return new Promise((resolve) => {
+    if (!blob || !(blob instanceof Blob)) {
+      resolve(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}
 
 function openDB() {
   return new Promise((resolve) => {
@@ -58,17 +121,18 @@ async function serializeScenes(scenes) {
         sceneTitle: s.sceneTitle,
         text: s.text || "",
         imageBlob: blob,
+        imageSrc: s.imageSrc && !s.imageSrc.startsWith("blob:") ? s.imageSrc : null,
       };
     })
   );
 }
 
 /**
- * Helper: Reconstruct scenes from persisted Blobs
+ * Helper: Reconstruct scenes from persisted Blobs or Cloudinary URLs
  */
 function deserializeScenes(scenes) {
   return (scenes || []).map((s, idx) => {
-    let imageSrc = null;
+    let imageSrc = s.imageSrc || null;
     if (s.imageBlob instanceof Blob) {
       imageSrc = URL.createObjectURL(s.imageBlob);
     }
@@ -79,7 +143,7 @@ function deserializeScenes(scenes) {
       imageBlob: s.imageBlob || null,
       imageSrc,
       audioBuffer: null,
-      audioDuration: 0,
+      audioDuration: s.audioDuration || 0,
     };
   });
 }
@@ -179,11 +243,11 @@ export async function clearStoryDraft() {
 }
 
 // =========================================================================
-// PROJECT LIBRARY: Client-Side Multi-Project Management (0 Server Storage)
+// SHARED ADMIN PROJECT LIBRARY (Database + Cloudinary + Local Fallback)
 // =========================================================================
 
 /**
- * Save a complete Story Project to local IndexedDB
+ * Save a Story Project (Synchronized across all Admin accounts & devices)
  */
 export async function saveStoryProject({
   id,
@@ -195,48 +259,94 @@ export async function saveStoryProject({
   scenes,
 }) {
   try {
-    const db = await openDB();
-    if (!db) return null;
+    // 1. Prepare scenes with Cloudinary or base64 dataUrls
+    const processedScenes = await Promise.all(
+      (scenes || []).map(async (s) => {
+        let imgSrc = s.imageSrc || null;
 
-    const projectId = id || `proj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const serializableScenes = await serializeScenes(scenes);
+        if (s.imageBlob instanceof Blob) {
+          const dataUrl = await blobToDataUrl(s.imageBlob);
+          if (dataUrl) imgSrc = dataUrl;
+        } else if (imgSrc && imgSrc.startsWith("blob:")) {
+          try {
+            const res = await fetch(imgSrc);
+            const b = await res.blob();
+            const dataUrl = await blobToDataUrl(b);
+            if (dataUrl) imgSrc = dataUrl;
+          } catch (e) {
+            // ignore
+          }
+        }
 
-    // Find first scene with a blob for thumbnail
-    const firstImgScene = serializableScenes.find((s) => s.imageBlob instanceof Blob);
-    const thumbnailBlob = firstImgScene ? firstImgScene.imageBlob : null;
+        return {
+          id: s.id,
+          sceneTitle: s.sceneTitle || "",
+          text: s.text || "",
+          imageSrc: imgSrc,
+          audioDuration: s.audioDuration || 0,
+        };
+      })
+    );
 
-    const projectData = {
-      id: projectId,
-      title: (title || "").trim() || "અનામી વાર્તા પ્રોજેક્ટ",
-      lang: lang || "gu",
-      aspectRatio: aspectRatio || "9:16",
-      subtitlePos: subtitlePos || "auto",
-      voice: voice || "male",
-      scenes: serializableScenes,
-      sceneCount: serializableScenes.length,
-      thumbnailBlob,
-      updatedAt: Date.now(),
-    };
-
-    const tx = db.transaction(STORE_PROJECTS, "readwrite");
-    const store = tx.objectStore(STORE_PROJECTS);
-    store.put(projectData);
-
-    return new Promise((resolve) => {
-      tx.oncomplete = () => resolve(projectId);
-      tx.onerror = () => resolve(null);
+    // 2. Post to backend API so all admin accounts get this project
+    const apiRes = await apiRequest("/api/story-projects", {
+      method: "POST",
+      body: JSON.stringify({
+        id: id && id.length === 24 ? id : undefined,
+        title: (title || "").trim() || "અનામી વાર્તા પ્રોજેક્ટ",
+        lang: lang || "gu",
+        aspectRatio: aspectRatio || "9:16",
+        subtitlePos: subtitlePos || "auto",
+        voice: voice || "male",
+        scenes: processedScenes,
+      }),
     });
+
+    const savedId = apiRes?.project?.id || id || `proj_${Date.now()}`;
+
+    // 3. Also update local IndexedDB cache
+    const db = await openDB();
+    if (db) {
+      const serializable = await serializeScenes(scenes);
+      const firstImgScene = serializable.find((s) => s.imageBlob instanceof Blob);
+      const thumbnailBlob = firstImgScene ? firstImgScene.imageBlob : null;
+
+      const projectData = {
+        id: savedId,
+        title: (title || "").trim() || "અનામી વાર્તા પ્રોજેક્ટ",
+        lang: lang || "gu",
+        aspectRatio: aspectRatio || "9:16",
+        subtitlePos: subtitlePos || "auto",
+        voice: voice || "male",
+        scenes: serializable,
+        sceneCount: serializable.length,
+        thumbnailBlob,
+        updatedAt: Date.now(),
+      };
+
+      const tx = db.transaction(STORE_PROJECTS, "readwrite");
+      tx.objectStore(STORE_PROJECTS).put(projectData);
+    }
+
+    return savedId;
   } catch (err) {
-    console.warn("Failed to save project to IndexedDB:", err);
-    return null;
+    console.warn("Failed to save project:", err);
+    return id || null;
   }
 }
 
 /**
- * List all saved Story Projects (Metadata + Thumbnails)
+ * List all saved Story Projects (From database across all Admins with local cache fallback)
  */
 export async function listStoryProjects() {
   try {
+    // 1. Try fetching from Backend API (All admin accounts shared)
+    const apiRes = await apiRequest("/api/story-projects", { method: "GET" });
+    if (apiRes && apiRes.success && Array.isArray(apiRes.projects)) {
+      return apiRes.projects;
+    }
+
+    // 2. Fallback to local IndexedDB if offline or API unreachable
     const db = await openDB();
     if (!db) return [];
 
@@ -247,7 +357,6 @@ export async function listStoryProjects() {
     return new Promise((resolve) => {
       req.onsuccess = () => {
         const rawList = req.result || [];
-        // Map to lightweight cards with object URLs for thumbnails
         const projects = rawList
           .map((p) => {
             let thumbUrl = null;
@@ -272,16 +381,41 @@ export async function listStoryProjects() {
       req.onerror = () => resolve([]);
     });
   } catch (err) {
-    console.warn("Failed to list projects from IndexedDB:", err);
+    console.warn("Failed to list projects:", err);
     return [];
   }
 }
 
 /**
- * Get a specific Story Project by ID and reconstruct scene URLs
+ * Get a specific Story Project by ID
  */
 export async function getStoryProject(projectId) {
   try {
+    // 1. Try fetching from Backend API
+    const apiRes = await apiRequest(`/api/story-projects/${projectId}`, { method: "GET" });
+    if (apiRes && apiRes.success && apiRes.project) {
+      const p = apiRes.project;
+      return {
+        id: p.id || p._id,
+        title: p.title,
+        lang: p.lang,
+        aspectRatio: p.aspectRatio,
+        subtitlePos: p.subtitlePos,
+        voice: p.voice,
+        scenes: (p.scenes || []).map((s, idx) => ({
+          id: s.id || `sc_${Date.now()}_${idx}`,
+          sceneTitle: s.sceneTitle || `સીન ${idx + 1}`,
+          text: s.text || "",
+          imageSrc: s.imageSrc || null,
+          imageBlob: null,
+          audioBuffer: null,
+          audioDuration: s.audioDuration || 0,
+        })),
+        updatedAt: p.updatedAt,
+      };
+    }
+
+    // 2. Fallback to local IndexedDB
     const db = await openDB();
     if (!db || !projectId) return null;
 
@@ -311,29 +445,29 @@ export async function getStoryProject(projectId) {
       req.onerror = () => resolve(null);
     });
   } catch (err) {
-    console.warn("Failed to get project from IndexedDB:", err);
+    console.warn("Failed to get project:", err);
     return null;
   }
 }
 
 /**
- * Delete a Story Project from local IndexedDB
+ * Delete a Story Project (From database & local cache)
  */
 export async function deleteStoryProject(projectId) {
   try {
+    // 1. Delete on backend API
+    await apiRequest(`/api/story-projects/${projectId}`, { method: "DELETE" });
+
+    // 2. Delete in local IndexedDB
     const db = await openDB();
-    if (!db || !projectId) return false;
+    if (db && projectId) {
+      const tx = db.transaction(STORE_PROJECTS, "readwrite");
+      tx.objectStore(STORE_PROJECTS).delete(projectId);
+    }
 
-    const tx = db.transaction(STORE_PROJECTS, "readwrite");
-    const store = tx.objectStore(STORE_PROJECTS);
-    store.delete(projectId);
-
-    return new Promise((resolve) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    });
+    return true;
   } catch (err) {
-    console.warn("Failed to delete project from IndexedDB:", err);
+    console.warn("Failed to delete project:", err);
     return false;
   }
 }

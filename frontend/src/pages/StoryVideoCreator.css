@@ -695,6 +695,19 @@
   border: 1px solid transparent;
 }
 
+.studio-header-btn.save-project {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+}
+
+.studio-header-btn.save-project:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  border-color: #34d399;
+  transform: translateY(-2px);
+}
+
 .studio-header-btn.new-project {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #0b152d;
@@ -912,4 +925,237 @@
 .projects-empty-icon {
   margin-bottom: 12px;
   opacity: 0.5;
+}
+
+/* =========================================================================
+   COMPREHENSIVE MOBILE VIEW OPTIMIZATIONS (< 768px and < 480px)
+   ========================================================================= */
+
+@media (max-width: 768px) {
+  .story-studio-page {
+    padding: 12px 8px 230px 8px !important; /* Extra bottom padding so floating dock never covers content */
+  }
+
+  .story-studio-container {
+    padding: 0 4px;
+  }
+
+  /* Header on Mobile */
+  .story-studio-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .story-studio-header-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .studio-back-btn {
+    align-self: flex-start;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+
+  .story-studio-title-block h1 {
+    font-size: 22px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Header action buttons on mobile (Full width grid) */
+  .story-studio-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .story-studio-header-actions .studio-btn-secondary,
+  .story-studio-header-actions .studio-btn-accent,
+  .studio-header-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Settings Card on Mobile */
+  .studio-settings-card {
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .studio-settings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Quick Tools */
+  .studio-quick-tools {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .quick-tool-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Scene Cards on Mobile */
+  .scene-card {
+    border-radius: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .scene-header {
+    padding: 12px 14px !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .scene-title-left {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .scene-title-badge {
+    font-size: 14px !important;
+  }
+
+  .scene-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .scene-action-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .scene-body {
+    grid-template-columns: 1fr !important;
+    padding: 14px !important;
+    gap: 14px !important;
+  }
+
+  .image-dropzone {
+    height: 220px !important;
+  }
+
+  .scene-textarea {
+    min-height: 130px !important;
+    font-size: 14px !important;
+    padding: 12px 14px !important;
+  }
+
+  .scene-audio-preview-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .play-scene-audio-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 16px !important;
+  }
+
+  .add-scene-btn {
+    width: 100% !important;
+    padding: 14px !important;
+    font-size: 15px !important;
+  }
+
+  /* Sticky Action Dock on Mobile */
+  .studio-action-dock {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    border-radius: 18px !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .dock-info {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .dock-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .dock-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+  }
+
+  /* Modals on Mobile */
+  .studio-modal-card {
+    width: 95% !important;
+    max-width: 95% !important;
+    max-height: 90vh !important;
+    padding: 16px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .preview-canvas-wrap {
+    max-height: 52vh !important;
+  }
+
+  .preview-canvas-wrap canvas {
+    max-height: 48vh !important;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .project-thumb-wrap {
+    height: 120px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .story-studio-header-actions {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .story-studio-header-actions .studio-btn-secondary,
+  .story-studio-header-actions .studio-btn-accent {
+    font-size: 11px !important;
+    padding: 8px 4px !important;
+  }
+  .dock-info {
+    font-size: 12px !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+  }
+  .dock-badge {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .dock-btn {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
 }
