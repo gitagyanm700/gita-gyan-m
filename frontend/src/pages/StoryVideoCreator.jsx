@@ -111,18 +111,6 @@ export default function StoryVideoCreator() {
     return () => clearTimeout(timer);
   }, [title, lang, aspectRatio, subtitlePos, voice, scenes, draftLoaded]);
 
-  // Lock body scroll whenever modal is open so preview stays locked in screen center
-  const isAnyModalOpen = showPreviewModal || showAutoSplitModal || isExporting;
-  useEffect(() => {
-    if (isAnyModalOpen) {
-      const original = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = original;
-      };
-    }
-  }, [isAnyModalOpen]);
-
   // Audio preview per scene
   const [playingSceneId, setPlayingSceneId] = useState(null);
   const audioCtxRef = useRef(null);
@@ -145,6 +133,18 @@ export default function StoryVideoCreator() {
   const previewRendererRef = useRef(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const previewAnimFrameRef = useRef(null);
+
+  // Lock body scroll whenever modal is open so preview stays locked in screen center
+  const isAnyModalOpen = showPreviewModal || showAutoSplitModal || isExporting;
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [isAnyModalOpen]);
 
   // Invalidate cached scene audio buffers if language or voice changes so chosen voice is always used
   useEffect(() => {
