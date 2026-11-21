@@ -18,6 +18,7 @@ import Login from "./pages/Login.jsx";
 import Profile from "./pages/Profile.jsx";
 import Admin from "./pages/Admin.jsx";
 import ShlokManagement from "./pages/ShlokManagement.jsx";
+import StoryVideoCreator from "./pages/StoryVideoCreator.jsx";
 
 import ForgotPassword from "./pages/ForgotPassword";
 
@@ -530,6 +531,20 @@ function AnimatedRoutes() {
               element={
                 <AdminRoute permission={["add_quiz", "edit_quiz", "delete_quiz", "share_quiz", "manage_quiz"]}>
                   <QuizManagement />
+                </AdminRoute>
+              }
+            />
+
+
+            {/* =================================================
+                ADMIN → STORY VIDEO STUDIO (ADMIN PROTECTED)
+            ================================================= */}
+
+            <Route
+              path="/admin/video-creator"
+              element={
+                <AdminRoute permission={["manage_video_studio", "add_shloks", "edit_shloks", "manage_shloks"]}>
+                  <StoryVideoCreator />
                 </AdminRoute>
               }
             />

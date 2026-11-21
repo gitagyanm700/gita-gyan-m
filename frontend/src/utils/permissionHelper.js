@@ -26,9 +26,17 @@ export const PERMISSION_KEYS = {
   MANAGE_USERS: "manage_users",
   DELETE_USERS: "delete_users",
   MANAGE_ADMINS: "manage_admins",
+  MANAGE_VIDEO_STUDIO: "manage_video_studio",
 };
 
 export const ALL_PERMISSIONS = [
+  {
+    id: "manage_video_studio",
+    nameGu: "વિડીયો સ્ટુડિયો (Story Video Studio)",
+    nameHi: "वीडियो स्टूडियो (Story Video Studio)",
+    nameEn: "Story Video Studio",
+    category: "shloks",
+  },
   {
     id: "add_shloks",
     nameGu: "શ્લોક ઉમેરો (Add Shlok)",

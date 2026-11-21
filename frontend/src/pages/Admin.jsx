@@ -41,6 +41,7 @@ import {
   CheckSquare,
   Square,
   Key,
+  Video,
 } from "lucide-react";
 import {
   isSuperAdminUser,
@@ -131,6 +132,10 @@ function Admin() {
     hasPermission(loggedInUser, "delete_quiz") ||
     hasPermission(loggedInUser, "share_quiz") ||
     hasPermission(loggedInUser, "manage_quiz");
+  const canAccessVideoStudio =
+    isSuperAdmin ||
+    hasPermission(loggedInUser, "manage_video_studio") ||
+    canAccessShlokAdmin;
   const canViewAnalytics = hasPermission(loggedInUser, "view_analytics");
   const canManageFeedbacks = hasPermission(loggedInUser, "manage_feedbacks");
   const canDeleteFeedbacks = hasPermission(loggedInUser, "delete_feedbacks");
@@ -904,7 +909,7 @@ function Admin() {
             ADMIN MANAGEMENT CARDS
         ================================================= */}
 
-        {!loading && !message && (canAccessShlokAdmin || canAccessQuizAdmin) && (
+        {!loading && !message && (canAccessShlokAdmin || canAccessQuizAdmin || canAccessVideoStudio) && (
           <div className="admin-management">
 
             {/* =================================================
@@ -940,6 +945,26 @@ function Admin() {
                 </div>
                 <div className="management-content">
                   <h2>Manage Quiz</h2>
+                </div>
+                <div className="management-arrow"><ArrowRight size={22} className="management-arrow-icon" /></div>
+              </Link>
+            )}
+
+            {/* =================================================
+                STORY VIDEO STUDIO
+            ================================================= */}
+
+            {canAccessVideoStudio && (
+              <Link
+                to="/admin/video-creator"
+                className="management-card video-management-card"
+              >
+                <div className="management-icon">
+                  <Video size={48} color="#175bb5" strokeWidth={1.5} />
+                </div>
+                <div className="management-content">
+                  <h2>{txt("Story Video Studio", "स्टोरी वीडियो स्टूडियो", "Story Video Studio")}</h2>
+                  <p>{txt("વાર્તા & કસ્ટમ વિડીયો બનાવો (9:16 & 16:9)", "कहानी और कस्टम वीडियो बनाएं (9:16 और 16:9)", "Create Story & Custom Videos (9:16 & 16:9)")}</p>
                 </div>
                 <div className="management-arrow"><ArrowRight size={22} className="management-arrow-icon" /></div>
               </Link>
