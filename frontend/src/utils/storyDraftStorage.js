@@ -146,7 +146,7 @@ export async function loadStoryDraft() {
         }
 
         resolve({
-          title: data.title || "શ્રીકૃષ્ણ બોધ વાર્તા",
+          title: data.title || "",
           lang: data.lang || "gu",
           aspectRatio: data.aspectRatio || "9:16",
           subtitlePos: data.subtitlePos || "auto",

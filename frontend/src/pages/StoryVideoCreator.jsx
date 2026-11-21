@@ -53,16 +53,16 @@ import "./StoryVideoCreator.css";
 const INITIAL_SCENES = [
   {
     id: "sc_1",
-    sceneTitle: "સીન ૧: શરૂઆત",
-    text: "શ્રીકૃષ્ણ કહે છે કે મનુષ્યે ફળની આશા રાખ્યા વિના નિઃસ્વાર્થ ભાવે કર્મ કરવું જોઈએ.",
+    sceneTitle: "સીન ૧",
+    text: "",
     imageSrc: null,
     audioBuffer: null,
     audioDuration: 0,
   },
   {
     id: "sc_2",
-    sceneTitle: "સીન ૨: જીવન સંદેશ",
-    text: "જ્યારે મન સ્થિર અને શાંત હોય છે, ત્યારે સાચું જ્ઞાન આપોઆપ પ્રગટ થાય છે.",
+    sceneTitle: "સીન ૨",
+    text: "",
     imageSrc: null,
     audioBuffer: null,
     audioDuration: 0,
@@ -73,7 +73,7 @@ export default function StoryVideoCreator() {
   const { txt } = useLanguage();
 
   // Settings
-  const [title, setTitle] = useState("શ્રીકૃષ્ણ બોધ વાર્તા");
+  const [title, setTitle] = useState("");
   const [lang, setLang] = useState("gu");
   const [aspectRatio, setAspectRatio] = useState("9:16"); // "9:16" or "16:9"
   const [subtitlePos, setSubtitlePos] = useState("auto");
@@ -201,7 +201,7 @@ export default function StoryVideoCreator() {
 
     // Reset to brand new project template
     setActiveProjectId(null);
-    setTitle("નવી ગીતા વાર્તા");
+    setTitle("");
     setScenes(INITIAL_SCENES);
     await clearStoryDraft();
     await refreshProjectsList();
@@ -658,7 +658,6 @@ export default function StoryVideoCreator() {
             </Link>
             <div className="story-studio-title-block">
               <h1>{txt("વિડીયો સ્ટુડિયો (Story Video Studio)", "वीडियो स्टूडियो (Story Video Studio)", "Story Video Studio")}</h1>
-              <p>સ્ક્રિપ્ટ અને ચિત્રો મુજબ આપોઆપ સીન-બાય-સીન વિડીયો બનાવો (9:16 & 16:9)</p>
             </div>
           </div>
 
@@ -777,13 +776,6 @@ export default function StoryVideoCreator() {
               </select>
             </div>
           </div>
-
-          <div className="zero-storage-badge">
-            <CheckCircle2 size={16} />
-            <span>
-              ઝીરો સર્વર સ્ટોરેજ: તમારા ચિત્રો બ્રાઉઝરની મેમરીમાં સીધા પ્રોસેસ થાય છે, સર્વરની કોઈ જગ્યા રોકાતી નથી!
-            </span>
-          </div>
         </section>
 
         {/* Quick Tools Bar */}
@@ -880,7 +872,7 @@ export default function StoryVideoCreator() {
                     className="scene-textarea"
                     value={scene.text}
                     onChange={(e) => updateSceneText(scene.id, e.target.value)}
-                    placeholder={`આ સીન દરમિયાન જે બોલાવવું હોય તે સ્ક્રિપ્ટ/વાર્તા અહીં લખો...\n(જેમ ઓડિયો બોલશે તેમ આ લખાણ શબ્દે-શબ્દે પ્રગટ થશે)`}
+                    placeholder="આ સીન માટે વાર્તા / સંવાદ / લખાણ અહીં દાખલ કરો..."
                   />
 
                   <div className="scene-audio-preview-row">
@@ -925,9 +917,6 @@ export default function StoryVideoCreator() {
           <div className="dock-info">
             <span className="dock-badge">
               {aspectRatio === "9:16" ? "📱 9:16 રીલ્સ" : "🖥️ 16:9 લેન્ડસ્કેપ"}
-            </span>
-            <span style={{ fontSize: "14px", color: "#cbd5e1" }}>
-              તમામ સીન લાઇન મુજબ બદલાશે
             </span>
           </div>
 

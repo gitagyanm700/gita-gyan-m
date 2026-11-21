@@ -400,6 +400,13 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.scene-textarea::placeholder {
+  color: rgba(148, 163, 184, 0.45);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+}
+
 .scene-textarea:focus {
   border-color: #fbbf24;
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
