@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const StoryProject = require("../models/StoryProject");
 const cloudinary = require("../config/cloudinary");
 
@@ -210,23 +211,31 @@ exports.saveProject = async (req, res) => {
 };
 
 /**
- * Delete a story project
+ * Delete a story project (Supports MongoDB ID, local ID, and title cleanup)
  */
 exports.deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await StoryProject.findByIdAndDelete(id);
+    const title = req.query?.title || req.body?.title;
 
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "પ્રોજેક્ટ મળ્યો નથી.",
-      });
+    const conditions = [];
+    if (id && mongoose.isValidObjectId(id)) {
+      conditions.push({ _id: id });
+    }
+    if (title && typeof title === "string" && title.trim() && title.trim() !== "અનામી વાર્તા પ્રોજેક્ટ") {
+      conditions.push({ title: title.trim() });
+    }
+
+    let deletedCount = 0;
+    if (conditions.length > 0) {
+      const result = await StoryProject.deleteMany({ $or: conditions });
+      deletedCount = result?.deletedCount || 0;
     }
 
     res.json({
       success: true,
       message: "પ્રોજેક્ટ સફળતાપૂર્વક ડિલીટ કરવામાં આવ્યો છે.",
+      deletedCount,
     });
   } catch (error) {
     console.error("Error deleting story project:", error);

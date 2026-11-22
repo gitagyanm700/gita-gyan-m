@@ -271,26 +271,13 @@ export default function StoryVideoCreator() {
   }
 
   // Open Projects Library
-  async function handleOpenProjectsLibrary() {
-    await refreshProjectsList();
+  function handleOpenProjectsLibrary() {
     setShowProjectsModal(true);
+    refreshProjectsList();
   }
 
   // Load a Saved Project
   async function handleLoadProject(projectId) {
-    // Autosave current project before switching ONLY IF it has content
-    if (hasProjectContent && activeProjectId !== projectId) {
-      await saveStoryProject({
-        id: activeProjectId,
-        title,
-        lang,
-        aspectRatio,
-        subtitlePos,
-        voice,
-        scenes,
-      });
-    }
-
     const proj = await getStoryProject(projectId);
     if (proj) {
       setActiveProjectId(proj.id);
@@ -312,12 +299,17 @@ export default function StoryVideoCreator() {
       return;
     }
 
-    await deleteStoryProject(projectId);
+    // Instantly remove from UI list so user gets zero-lag immediate feedback
+    setSavedProjects((prev) =>
+      prev.filter((p) => p.id !== projectId && p.title !== projectTitle)
+    );
+
+    await deleteStoryProject(projectId, projectTitle);
     if (activeProjectId === projectId) {
       setActiveProjectId(null);
     }
     await refreshProjectsList();
-    setToastMsg(`"${projectTitle}" પ્રોજેક્ટ ડિલીટ કરવામાં આવ્યો છે.`);
+    setToastMsg(`"${projectTitle}" પ્રોજેક્ટ સફળતાપૂર્વક ડિલીટ કરવામાં આવ્યો છે.`);
   }
 
   // Invalidate cached scene audio buffers if language or voice changes so chosen voice is always used

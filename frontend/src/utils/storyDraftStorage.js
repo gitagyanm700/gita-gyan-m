@@ -416,38 +416,35 @@ export async function listStoryProjects() {
       });
     }
 
-    // 3. Auto-sync any local-only project to backend database
-    if (localProjects.length > 0) {
-      for (const loc of localProjects) {
-        const inRemote = remoteProjects.some(
-          (r) => r.id === loc.id || (r.title && loc.title && r.title === loc.title && loc.title !== "અનામી વાર્તા પ્રોજેક્ટ")
-        );
-        if (!inRemote && loc.scenes && loc.scenes.length > 0) {
-          // Sync to backend asynchronously
-          saveStoryProject({
-            id: undefined,
-            title: loc.title,
-            lang: loc.lang,
-            aspectRatio: loc.aspectRatio,
-            subtitlePos: loc.subtitlePos,
-            voice: loc.voice,
-            scenes: loc.scenes,
-          }).catch((e) => console.warn("Background project sync failed:", e));
+    // 3. Merge remote and local lists without duplicates (Collapse duplicates with same title)
+    const map = new Map();
+
+    remoteProjects.forEach((p) => {
+      const normTitle = (p.title || "").trim();
+      const key =
+        normTitle && normTitle !== "અનામી વાર્તા પ્રોજેક્ટ"
+          ? `title_${normTitle}`
+          : `id_${p.id}`;
+
+      if (!map.has(key)) {
+        map.set(key, p);
+      } else {
+        const existing = map.get(key);
+        if (new Date(p.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+          map.set(key, p);
         }
       }
-    }
-
-    // 4. Merge remote and local lists without duplicates
-    const map = new Map();
-    remoteProjects.forEach((p) => {
-      if (p.id) map.set(p.id, p);
     });
+
     localProjects.forEach((p) => {
-      const match = remoteProjects.find(
-        (r) => r.id === p.id || (r.title && p.title && r.title === p.title && p.title !== "અનામી વાર્તા પ્રોજેક્ટ")
-      );
-      if (!match) {
-        map.set(p.id, p);
+      const normTitle = (p.title || "").trim();
+      const key =
+        normTitle && normTitle !== "અનામી વાર્તા પ્રોજેક્ટ"
+          ? `title_${normTitle}`
+          : `id_${p.id}`;
+
+      if (!map.has(key)) {
+        map.set(key, p);
       }
     });
 
@@ -549,16 +546,48 @@ export async function getStoryProject(projectId) {
 /**
  * Delete a Story Project (From database & local cache)
  */
-export async function deleteStoryProject(projectId) {
+export async function deleteStoryProject(projectId, projectTitle = "") {
   try {
-    // 1. Delete on backend API
-    await apiRequest(`/api/story-projects/${projectId}`, { method: "DELETE" });
+    // 1. Delete on backend API (passing title query param so duplicates with matching title are also removed)
+    const query = projectTitle ? `?title=${encodeURIComponent(projectTitle)}` : "";
+    await apiRequest(`/api/story-projects/${projectId || "by-title"}${query}`, {
+      method: "DELETE",
+    });
 
-    // 2. Delete in local IndexedDB
+    // 2. Completely clean from local IndexedDB
     const db = await openDB();
-    if (db && projectId) {
-      const tx = db.transaction(STORE_PROJECTS, "readwrite");
-      tx.objectStore(STORE_PROJECTS).delete(projectId);
+    if (db) {
+      await new Promise((resolve) => {
+        try {
+          const tx = db.transaction(STORE_PROJECTS, "readwrite");
+          const store = tx.objectStore(STORE_PROJECTS);
+
+          if (projectId) {
+            store.delete(projectId);
+          }
+
+          const allReq = store.getAll();
+          allReq.onsuccess = () => {
+            const list = allReq.result || [];
+            list.forEach((item) => {
+              const idMatches = item.id === projectId || item._id === projectId;
+              const titleMatches =
+                projectTitle &&
+                item.title &&
+                item.title.trim() === projectTitle.trim() &&
+                projectTitle.trim() !== "અનામી વાર્તા પ્રોજેક્ટ";
+
+              if (idMatches || titleMatches) {
+                store.delete(item.id);
+              }
+            });
+            resolve(true);
+          };
+          allReq.onerror = () => resolve(true);
+        } catch (e) {
+          resolve(true);
+        }
+      });
     }
 
     return true;
