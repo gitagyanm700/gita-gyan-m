@@ -519,11 +519,8 @@ export default function StoryVideoCreator() {
       });
     } catch (err) {
       console.error("Audio export failed:", err);
-      const errMsg =
-        err?.message ||
-        err?.name ||
-        (typeof err === "string" ? err : JSON.stringify(err)) ||
-        "અજ્ઞાત ક્ષતિ આવી";
+      const rawMsg = err?.message || err?.name || (typeof err === "string" ? err : "");
+      const errMsg = rawMsg && rawMsg.trim() ? rawMsg.trim() : "ઓડિયો જનરેટ કરવામાં ક્ષતિ આવી. કૃપા કરીને ફરી પ્રયાસ કરો.";
       alert(`ઓડિયો એક્સપોર્ટ નિષ્ફળ: ${errMsg}`);
       setIsExporting(false);
     }
@@ -572,11 +569,8 @@ export default function StoryVideoCreator() {
       });
     } catch (err) {
       console.error("Video export failed:", err);
-      const errMsg =
-        err?.message ||
-        err?.name ||
-        (typeof err === "string" ? err : JSON.stringify(err)) ||
-        "અજ્ઞાત ક્ષતિ આવી";
+      const rawMsg = err?.message || err?.name || (typeof err === "string" ? err : "");
+      const errMsg = rawMsg && rawMsg.trim() ? rawMsg.trim() : "બ્રાઉઝર મીડિયા એન્કોડરમાં ક્ષતિ આવી. કૃપા કરીને ફરી પ્રયાસ કરો.";
       alert(`વિડીયો એક્સપોર્ટ નિષ્ફળ: ${errMsg}`);
       setIsExporting(false);
     }

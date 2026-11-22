@@ -377,6 +377,11 @@ function Navbar() {
       return txt("શ્લોક વ્યવસ્થાપન", "श्लोक प्रबंधन", "Shlok Management");
     }
 
+    // ADMIN VIDEO CREATOR
+    if (path === "/admin/video-creator") {
+      return txt("સ્ટોરી વિડીયો સ્ટુડિયો", "स्टोरी वीडियो स्टूडियो", "Story Video Studio");
+    }
+
     // DEFAULT
     return "";
   };

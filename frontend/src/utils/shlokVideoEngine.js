@@ -961,6 +961,37 @@ export async function createShlokVideoRenderer({
   const totalMsgWords = Math.max(1, cumulativeMsgWords);
   const msgWords = tokenizeCleanWords(cleanMessageText);
 
+  // Pre-calculate exact acoustic duration and start/end times for each section in Scene 3
+  // Acoustic weight factors in:
+  // 1. Character count (reading speed in Gujarati/Hindi/English ~14.5 chars/sec at +6% rate)
+  // 2. Word count
+  // 3. Punctuation pauses (commas/colons ~0.28s, periods/dandas ~0.52s)
+  // 4. Inter-section boundary pause (~0.45s)
+  const secWeights = msgSections.map((sec) => {
+    const words = sec.words.length;
+    const chars = (sec.text.replace(/\s+/g, "")).length;
+    const commaCount = (sec.text.match(/[,;:]/g) || []).length;
+    const periodCount = (sec.text.match(/[.।!?]/g) || []).length;
+    const estimatedSecs = (chars / 14.5) + (words * 0.1) + (commaCount * 0.28) + (periodCount * 0.52) + 0.45;
+    return Math.max(1.5, estimatedSecs);
+  });
+
+  const totalSecWeight = secWeights.reduce((a, b) => a + b, 0);
+
+  let cumulativeSecTime = 0;
+  msgSections.forEach((sec, idx) => {
+    const ratio = secWeights[idx] / totalSecWeight;
+    const dur = ratio * d3;
+    sec.startTime = cumulativeSecTime;
+    sec.duration = dur;
+    sec.endTime = cumulativeSecTime + dur;
+    cumulativeSecTime += dur;
+  });
+  if (msgSections.length > 0) {
+    msgSections[msgSections.length - 1].endTime = d3;
+    msgSections[msgSections.length - 1].duration = Math.max(1, d3 - msgSections[msgSections.length - 1].startTime);
+  }
+
   // Setup offscreen / live canvas
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -1235,7 +1266,8 @@ export async function createShlokVideoRenderer({
     // ----- SCENE 1: SHLOKA RECITATION -----
     if (t >= tIntroEnd && t < tScene2Start) {
       const elapsed1 = t - tIntroEnd;
-      const progress1 = Math.min(1, elapsed1 / d1);
+      // Speech timing: 0.12s audio lead-in, finish typing ~0.25s before scene ends
+      const progress1 = Math.min(1, Math.max(0, elapsed1 - 0.12) / Math.max(0.5, d1 - 0.25));
 
       let alpha1 = 1;
       let slideY1 = 0;
@@ -1343,7 +1375,8 @@ export async function createShlokVideoRenderer({
     // ----- SCENE 2: TRANSLATION (Pure Typewriter as audio speaks) -----
     if (t >= tScene2Start && t < tScene3Start) {
       const elapsed2 = t - tScene2Start;
-      const progress2 = Math.min(1, elapsed2 / d2);
+      // Speech timing: 0.15s audio lead-in, finish typing ~0.35s before scene ends
+      const progress2 = Math.min(1, Math.max(0, elapsed2 - 0.15) / Math.max(0.5, d2 - 0.35));
 
       let alpha2 = 1;
       let slideY2 = 0;
@@ -1452,25 +1485,22 @@ export async function createShlokVideoRenderer({
     // ----- SCENE 3: GITA LIFE MESSAGE (Sequential Point-by-Point Cards + Large 23px Font) -----
     if (t >= tScene3Start && t < tScene3End) {
       const elapsed3 = t - tScene3Start;
-      const progress3 = Math.min(1, elapsed3 / d3);
-      const wordsCount3 = Math.floor(progress3 * totalMsgWords);
 
-      // 1. Determine currently active section (Point 1 -> Point 2 -> Example)
+      // 1. Determine currently active section (Point 1 -> Point 2 -> Example) based on calibrated acoustic duration
       let activeSecIdx = 0;
       for (let i = 0; i < msgSections.length; i++) {
-        if (wordsCount3 >= msgSections[i].startWordIdx) {
+        if (elapsed3 >= msgSections[i].startTime) {
           activeSecIdx = i;
         }
       }
       const activeSec = msgSections[activeSecIdx] || msgSections[0];
 
       // 2. Section timing calculations
-      const secStartRatio = activeSec.startWordIdx / totalMsgWords;
-      const secEndRatio = activeSec.endWordIdx / totalMsgWords;
-      const secStartTime = secStartRatio * d3;
-      const secEndTime = secEndRatio * d3;
-      const secElapsed = elapsed3 - secStartTime;
-      const timeUntilEnd = secEndTime - elapsed3;
+      const secStartTime = activeSec.startTime;
+      const secEndTime = activeSec.endTime;
+      const secDuration = Math.max(0.1, activeSec.duration);
+      const secElapsed = Math.max(0, elapsed3 - secStartTime);
+      const timeUntilEnd = Math.max(0, secEndTime - elapsed3);
 
       // 3. Smooth section transitions:
       // Fade in & slide up when entering
@@ -1520,8 +1550,12 @@ export async function createShlokVideoRenderer({
       ctx.fill();
       ctx.stroke();
 
-      // 6. Large 23px Font Typography & Centered Lines
-      const secWordCount = Math.max(0, wordsCount3 - activeSec.startWordIdx);
+      // 6. Section words typewriter paced to match speaking speed exactly!
+      // - 0.15s initial speech lead-in silence before first word
+      // - Finishes revealing words ~0.35s before section ends (natural pause before next point)
+      const secSpeechDuration = Math.max(0.5, secDuration - 0.45);
+      const secProgress = Math.min(1, Math.max(0, secElapsed - 0.15) / secSpeechDuration);
+      const secWordCount = Math.floor(secProgress * (activeSec.words?.length || 1));
 
       ctx.font = "600 23px 'Noto Sans Gujarati', 'Mukta', sans-serif";
       ctx.textAlign = "left";

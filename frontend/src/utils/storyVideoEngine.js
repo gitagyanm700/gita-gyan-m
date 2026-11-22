@@ -615,8 +615,10 @@ export async function createStoryVideoRenderer({
       const lines = wrapped.lines;
       const totalWords = wrapped.totalWords;
 
-      // Narrator speech progression: accounts for subtle trailing audio silence so words match speech
-      const speechProg = Math.min(1, progress / 0.94);
+      // Narrator speech progression: matches spoken words accurately with 0.15s start latency
+      const effectiveElapsed = Math.max(0, elapsed - 0.15);
+      const effectiveDuration = Math.max(0.1, activeScene.duration - 0.25);
+      const speechProg = Math.min(1, effectiveElapsed / effectiveDuration);
       const wordsSpoken = Math.floor(speechProg * totalWords);
 
       // Clipping region inside card

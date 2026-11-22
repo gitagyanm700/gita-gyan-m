@@ -208,11 +208,22 @@ export function hasPermission(user, permissionKey) {
       return true;
     }
 
+    // Any admin gets access to story video studio by default unless explicitly restricted
+    if (
+      permissionKey === "manage_video_studio" &&
+      (user.permissions.includes("manage_shloks") ||
+        user.permissions.includes("add_shloks") ||
+        user.permissions.includes("generate_shlok_video") ||
+        user.permissions.length === 0)
+    ) {
+      return true;
+    }
+
     return false;
   }
 
-  // Fallback for legacy admin
-  return false;
+  // Fallback for legacy admin without permissions array: grant access
+  return true;
 }
 
 /**
