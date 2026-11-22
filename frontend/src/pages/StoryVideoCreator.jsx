@@ -31,6 +31,7 @@ import {
   Check,
   AlertCircle,
   FileText,
+  XCircle,
 } from "lucide-react";
 import {
   ASPECT_RATIOS,
@@ -220,29 +221,38 @@ export default function StoryVideoCreator() {
     }
   }
 
-  // Create New Project (auto-saves existing project ONLY if it has content!)
+  // Create New Project (resets to blank project WITHOUT duplicating existing project)
   async function handleNewProject() {
-    if (hasProjectContent) {
-      const savedId = await saveStoryProject({
-        id: activeProjectId,
-        title,
-        lang,
-        aspectRatio,
-        subtitlePos,
-        voice,
-        scenes,
-      });
-      if (savedId) {
-        setToastMsg(`જૂનો પ્રોજેક્ટ "${title || "વાર્તા"}" તમામ એડમિન માટે સુરક્ષિત સાચવવામાં આવ્યો છે!`);
+    stopAudioPreview();
+
+    // If user has unsaved draft content in a fresh project (not already saved in library)
+    if (hasProjectContent && !activeProjectId) {
+      const wantSave = window.confirm(
+        "તમે નવા પ્રોજેક્ટમાં લખાણ લખેલું છે. શું તમે તેને સાચવવા માંગો છો?"
+      );
+      if (wantSave) {
+        await handleSaveProject();
       }
     }
 
-    // Reset to brand new project template
+    // Reset to clean, blank project (NEVER re-saves or duplicates an already saved project!)
     setActiveProjectId(null);
     setTitle("");
     setScenes(INITIAL_SCENES);
     await clearStoryDraft();
     await refreshProjectsList();
+    setToastMsg("નવો ખાલી પ્રોજેક્ટ શરૂ થયો છે.");
+  }
+
+  // Cancel Editing loaded project: resets cleanly and empties all boxes WITHOUT saving!
+  async function handleCancelEdit() {
+    stopAudioPreview();
+    setActiveProjectId(null);
+    setTitle("");
+    setScenes(INITIAL_SCENES);
+    await clearStoryDraft();
+    await refreshProjectsList();
+    setToastMsg("એડિટિંગ રદ કર્યું. તમામ બોક્સ ખાલી થઈ ગયા છે.");
   }
 
   // Open Projects Library
@@ -708,6 +718,17 @@ export default function StoryVideoCreator() {
               <Save size={18} />
               <span>{activeProjectId ? "પ્રોજેક્ટ અપડેટ" : "પ્રોજેક્ટ સાચવો"}</span>
             </button>
+            {activeProjectId && (
+              <button
+                type="button"
+                className="studio-header-btn cancel-edit"
+                onClick={handleCancelEdit}
+                title="આ પ્રોજેક્ટનું એડિટિંગ રદ કરો અને તમામ બોક્સ ખાલી કરો"
+              >
+                <XCircle size={18} />
+                <span>એડિટ રદ કરો</span>
+              </button>
+            )}
             <button
               type="button"
               className="studio-header-btn new-project"
@@ -728,6 +749,27 @@ export default function StoryVideoCreator() {
             </button>
           </div>
         </header>
+
+        {/* Active Project Edit Alert Banner */}
+        {activeProjectId && (
+          <div className="studio-active-project-alert">
+            <div className="active-project-alert-left">
+              <span className="active-project-dot"></span>
+              <span>
+                <strong>એડિટિંગ મોડ:</strong> તમે સાચવેલા પ્રોજેક્ટ <em>"{title || "વાર્તા"}"</em> માં છો.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="active-project-cancel-btn"
+              onClick={handleCancelEdit}
+              title="એડિટિંગ રદ કરો અને તમામ બોક્સ ખાલી કરો"
+            >
+              <XCircle size={14} />
+              <span>એડિટ રદ કરો (Cancel Edit)</span>
+            </button>
+          </div>
+        )}
 
         {/* Toast Notification Banner */}
         {toastMsg && (

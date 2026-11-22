@@ -745,6 +745,84 @@
   transform: translateY(-2px);
 }
 
+.studio-header-btn.cancel-edit {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: #fca5a5;
+}
+
+.studio-header-btn.cancel-edit:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ffffff;
+  border-color: #ef4444;
+  transform: translateY(-2px);
+}
+
+/* Active Project Edit Alert Banner */
+.studio-active-project-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+  padding: 10px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  animation: fadeIn 0.3s ease;
+}
+
+.active-project-alert-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-project-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  box-shadow: 0 0 10px #3b82f6;
+  animation: pulse 2s infinite;
+}
+
+.active-project-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.active-project-cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  .studio-active-project-alert {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .active-project-cancel-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .projects-badge-count {
   background: #3b82f6;
   color: #ffffff;

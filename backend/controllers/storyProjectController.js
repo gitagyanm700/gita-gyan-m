@@ -148,6 +148,10 @@ exports.saveProject = async (req, res) => {
     if (projectId && projectId.match(/^[0-9a-fA-F]{24}$/)) {
       projectDoc = await StoryProject.findById(projectId);
     }
+    // Fallback: if title matches an existing project, update it instead of creating duplicates
+    if (!projectDoc && title && title.trim() && title.trim() !== "અનામી વાર્તા પ્રોજેક્ટ") {
+      projectDoc = await StoryProject.findOne({ title: title.trim() });
+    }
 
     if (projectDoc) {
       // Update existing project
