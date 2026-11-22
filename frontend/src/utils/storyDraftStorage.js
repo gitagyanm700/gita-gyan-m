@@ -42,6 +42,8 @@ async function apiRequest(path, options = {}, timeoutMs = 25000) {
     (base) => !(isLocalBackendDead && base.includes("localhost:5000"))
   );
 
+  let lastError = null;
+
   for (const base of endpoints) {
     try {
       const isLocal = base.includes("localhost:5000");
@@ -63,16 +65,18 @@ async function apiRequest(path, options = {}, timeoutMs = 25000) {
       } else {
         const errData = await res.json().catch(() => null);
         console.warn(`API returned ${res.status} on ${base}${path}:`, errData);
+        lastError = errData?.message || `સર્વર ક્ષતિ (${res.status})`;
       }
     } catch (err) {
       if (base.includes("localhost:5000")) {
         isLocalBackendDead = true;
       }
       console.warn(`API request failed on ${base}${path}:`, err.message);
+      lastError = err.message || "નેટવર્ક જોડાણ ક્ષતિ";
     }
   }
 
-  return null;
+  return { success: false, error: lastError };
 }
 
 /**
@@ -88,6 +92,90 @@ function blobToDataUrl(blob) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Helper: Automatically scale and compress scene images before cloud upload
+ * Reduces 5MB-10MB raw photos to ~100KB-180KB JPEG (1280px max dimension),
+ * preventing network payload timeouts and 413 errors!
+ */
+async function compressImageForUpload(blobOrUrl) {
+  if (!blobOrUrl) return null;
+
+  // Remote Cloudinary or CDN URLs can be sent as is
+  if (
+    typeof blobOrUrl === "string" &&
+    (blobOrUrl.startsWith("http://") || blobOrUrl.startsWith("https://")) &&
+    !blobOrUrl.startsWith("data:")
+  ) {
+    return blobOrUrl;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      let src = "";
+      let needRevoke = false;
+
+      if (blobOrUrl instanceof Blob) {
+        src = URL.createObjectURL(blobOrUrl);
+        needRevoke = true;
+      } else if (typeof blobOrUrl === "string") {
+        src = blobOrUrl;
+      } else {
+        return resolve(null);
+      }
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          const maxDim = 1280;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to compact JPEG dataURL (~100KB-180KB)
+          const compressed = canvas.toDataURL("image/jpeg", 0.82);
+          if (needRevoke) URL.revokeObjectURL(src);
+          resolve(compressed);
+        } catch {
+          if (needRevoke) URL.revokeObjectURL(src);
+          if (blobOrUrl instanceof Blob) {
+            blobToDataUrl(blobOrUrl).then(resolve);
+          } else {
+            resolve(blobOrUrl);
+          }
+        }
+      };
+
+      img.onerror = () => {
+        if (needRevoke) URL.revokeObjectURL(src);
+        if (blobOrUrl instanceof Blob) {
+          blobToDataUrl(blobOrUrl).then(resolve);
+        } else {
+          resolve(null);
+        }
+      };
+
+      img.src = src;
+    } catch {
+      resolve(null);
+    }
   });
 }
 
@@ -287,23 +375,17 @@ export async function saveStoryProject({
       return null;
     }
 
-    // 1. Prepare scenes with Cloudinary or base64 dataUrls
+    // 1. Prepare scenes with optimized images for fast cloud sync (scales 5MB+ to ~120KB)
     const processedScenes = await Promise.all(
       (scenes || []).map(async (s) => {
         let imgSrc = s.imageSrc || null;
 
         if (s.imageBlob instanceof Blob) {
-          const dataUrl = await blobToDataUrl(s.imageBlob);
-          if (dataUrl) imgSrc = dataUrl;
-        } else if (imgSrc && imgSrc.startsWith("blob:")) {
-          try {
-            const res = await fetch(imgSrc);
-            const b = await res.blob();
-            const dataUrl = await blobToDataUrl(b);
-            if (dataUrl) imgSrc = dataUrl;
-          } catch (e) {
-            // ignore
-          }
+          const compressed = await compressImageForUpload(s.imageBlob);
+          if (compressed) imgSrc = compressed;
+        } else if (imgSrc) {
+          const compressed = await compressImageForUpload(imgSrc);
+          if (compressed) imgSrc = compressed;
         }
 
         return {
@@ -316,7 +398,7 @@ export async function saveStoryProject({
       })
     );
 
-    // 2. Post to backend API so all admin accounts get this project (60s timeout for cloud upload)
+    // 2. Post to backend API so all admin accounts get this project (90s timeout for cloud upload)
     const apiRes = await apiRequest(
       "/api/story-projects",
       {
@@ -331,7 +413,7 @@ export async function saveStoryProject({
           scenes: processedScenes,
         }),
       },
-      60000
+      90000
     );
 
     const isCloudSuccess = Boolean(apiRes && apiRes.success && apiRes.project);
@@ -376,7 +458,7 @@ export async function saveStoryProject({
       syncedToCloud: isCloudSuccess,
       message: isCloudSuccess
         ? "તમામ એડમિન અને તમામ ડિવાઇસ (મોબાઇલ & કોમ્પ્યુટર) માટે સફળતાપૂર્વક સાચવવામાં આવ્યો છે!"
-        : "પ્રોજેક્ટ લોકલ બ્રાઉઝરમાં સાચવાયો છે (ક્લાઉડ સર્વર સાથે કનેક્ટ થઈ શક્યું નથી).",
+        : (apiRes?.error ? `ક્લાઉડ સર્વર: ${apiRes.error}` : "પ્રોજેક્ટ લોકલ બ્રાઉઝરમાં સાચવાયો છે (ક્લાઉડ સર્વર સાથે કનેક્ટ થઈ શક્યું નથી)."),
     };
   } catch (err) {
     console.warn("Failed to save project:", err);
