@@ -322,6 +322,12 @@ export function drawWaveform(ctx, x, y, w, h, t, isPlaying = true) {
   const barW = Math.max(2, Math.floor((w - (bars - 1) * 3) / bars));
   const startX = x + (w - (bars * barW + (bars - 1) * 3)) / 2;
 
+  // Single shared gradient for all 18 bars (avoids 1,000+ allocations/sec)
+  const grad = ctx.createLinearGradient(0, y, 0, y + h);
+  grad.addColorStop(0, "#fbbf24");
+  grad.addColorStop(1, "#f59e0b");
+  ctx.fillStyle = grad;
+
   for (let i = 0; i < bars; i++) {
     const freq = 3.5 + (i % 5) * 1.8;
     const wave = isPlaying ? Math.abs(Math.sin(t * freq + i * 0.45)) : 0.15;
@@ -329,10 +335,6 @@ export function drawWaveform(ctx, x, y, w, h, t, isPlaying = true) {
     const bx = startX + i * (barW + 3);
     const by = y + (h - barH) / 2;
 
-    const grad = ctx.createLinearGradient(0, by, 0, by + barH);
-    grad.addColorStop(0, "#fbbf24");
-    grad.addColorStop(1, "#f59e0b");
-    ctx.fillStyle = grad;
     roundRect(ctx, bx, by, barW, barH, 2);
     ctx.fill();
   }
@@ -584,13 +586,16 @@ export async function createStoryVideoRenderer({
       ctx.drawImage(imgLogo, pillX + 8, pillY + 5, 34, 34);
     }
 
-    ctx.fillStyle = "#ffffff";
     ctx.font = `bold ${isPortrait ? "17px" : "16px"} 'Noto Sans Gujarati', 'Mukta', sans-serif`;
     ctx.textAlign = "center";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-    ctx.shadowBlur = 6;
     const headerTitle = title || "શ્રીમદ્ ભગવદ્ ગીતા બોધ";
-    ctx.fillText(headerTitle, pillX + pillW / 2 + (imgLogo ? 12 : 0), pillY + 28);
+    const titleX = pillX + pillW / 2 + (imgLogo ? 12 : 0);
+    const titleY = pillY + 28;
+    // Crisp instant drop shadow (0ms GPU overhead, no CPU Gaussian blur)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+    ctx.fillText(headerTitle, titleX + 1.2, titleY + 1.2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(headerTitle, titleX, titleY);
 
     ctx.restore();
 
@@ -686,9 +691,10 @@ export async function createStoryVideoRenderer({
 
           // Pure typewriter reveal: Only display word when narrator reaches it (word-by-word)
           if (globalWordIdx <= wordsSpoken) {
+            // High-speed crisp drop shadow (0ms CPU Gaussian blur overhead)
+            ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+            ctx.fillText(word, currentX + 1.2, lineY + 1.2);
             ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
 
@@ -720,22 +726,25 @@ export async function createStoryVideoRenderer({
       const logoX = width / 2 - logoSize / 2;
       const logoY = height / 2 - (isPortrait ? 120 : 90);
 
-      ctx.shadowColor = "#fbbf24";
-      ctx.shadowBlur = 25;
       if (imgLogo) {
         ctx.drawImage(imgLogo, logoX, logoY, logoSize, logoSize);
       }
 
-      ctx.fillStyle = "#fbbf24";
       ctx.font = `bold ${isPortrait ? "28px" : "24px"} 'Noto Sans Devanagari', 'Mukta', sans-serif`;
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-      ctx.shadowBlur = 8;
-      ctx.fillText("॥ ૐ શ્રીકૃષ્ણાર્પણમસ્તુ ॥", width / 2, logoY + logoSize + 55);
+      const outroTextY = logoY + logoSize + 55;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.fillText("॥ ૐ શ્રીકૃષ્ણાર્પણમસ્તુ ॥", width / 2 + 1.5, outroTextY + 1.5);
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText("॥ ૐ શ્રીકૃષ્ણાર્પણમસ્તુ ॥", width / 2, outroTextY);
 
-      ctx.fillStyle = "#ffffff";
       ctx.font = `600 ${isPortrait ? "20px" : "18px"} 'Noto Sans Gujarati', 'Mukta', sans-serif`;
-      ctx.fillText(title || "ગીતા જ્ઞાન - જીવન બોધ", width / 2, logoY + logoSize + 100);
+      const subtitleTextY = logoY + logoSize + 100;
+      const displayTitle = title || "ગીતા જ્ઞાન - જીવન બોધ";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.fillText(displayTitle, width / 2 + 1.2, subtitleTextY + 1.2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(displayTitle, width / 2, subtitleTextY);
 
       ctx.restore();
     }
@@ -827,7 +836,8 @@ export async function exportStoryVideo({
   // Pre-render frame 0 so the canvas stream has an active bitmap
   renderFrame(0);
 
-  const canvasStream = canvas.captureStream(30);
+  // 25 FPS standard cinema/reels framerate (silky smooth, lightweight, hardware optimized)
+  const canvasStream = canvas.captureStream(25);
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...destNode.stream.getAudioTracks(),
@@ -852,7 +862,7 @@ export async function exportStoryVideo({
     try {
       recorder = new MediaRecorder(combinedStream, {
         mimeType: type,
-        videoBitsPerSecond: 3000000,
+        videoBitsPerSecond: 2500000, // 2.5 Mbps crisp 720p HD bit rate
       });
       mimeType = type;
       break;
@@ -923,33 +933,44 @@ export async function exportStoryVideo({
     }
 
     const startPerfTime = performance.now();
+    const TARGET_FPS = 25;
+    const FRAME_MS = 1000 / TARGET_FPS;
+    let lastRenderPerf = 0;
 
     function recordLoop() {
       if (stopped || recorder.state !== "recording") return;
 
-      const now = (performance.now() - startPerfTime) / 1000;
-      renderFrame(now);
+      const perfNow = performance.now();
+      const elapsedSinceRender = perfNow - lastRenderPerf;
 
-      const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
-      onProgress({
-        stage: "recording",
-        percent,
-        message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}%...`,
-      });
+      // Stable 25 FPS frame interval eliminates GPU overload and frame drops
+      if (elapsedSinceRender >= FRAME_MS) {
+        lastRenderPerf = perfNow - (elapsedSinceRender % FRAME_MS);
+        const now = (perfNow - startPerfTime) / 1000;
+        renderFrame(now);
 
-      if (now < totalDuration) {
-        requestAnimationFrame(recordLoop);
-      } else {
-        setTimeout(() => {
-          try {
-            if (recorder.state === "recording") {
-              recorder.stop();
+        const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
+        onProgress({
+          stage: "recording",
+          percent,
+          message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}%...`,
+        });
+
+        if (now >= totalDuration) {
+          setTimeout(() => {
+            try {
+              if (recorder.state === "recording") {
+                recorder.stop();
+              }
+            } catch (stopErr) {
+              console.warn("Error stopping recorder:", stopErr);
             }
-          } catch (stopErr) {
-            console.warn("Error stopping recorder:", stopErr);
-          }
-        }, 80);
+          }, 80);
+          return;
+        }
       }
+
+      requestAnimationFrame(recordLoop);
     }
 
     requestAnimationFrame(recordLoop);
