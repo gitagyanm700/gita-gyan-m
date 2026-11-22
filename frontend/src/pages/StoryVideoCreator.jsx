@@ -304,6 +304,37 @@ export default function StoryVideoCreator() {
     }
   }
 
+  // Sync a local-only project to cloud MongoDB
+  async function handleSyncLocalProjectToCloud(project) {
+    try {
+      setToastMsg(`"${project.title}" ક્લાઉડમાં સિન્ક થઈ રહ્યો છે... કૃપા કરીને થોડીવાર રાહ જુઓ.`);
+      const fullProj = await getStoryProject(project.id);
+      if (!fullProj) {
+        alert("પ્રોજેક્ટ ડેટા લોડ થઈ શક્યો નથી.");
+        return;
+      }
+      const res = await saveStoryProject({
+        id: fullProj.id && fullProj.id.length === 24 ? fullProj.id : undefined,
+        title: fullProj.title,
+        lang: fullProj.lang,
+        aspectRatio: fullProj.aspectRatio,
+        subtitlePos: fullProj.subtitlePos,
+        voice: fullProj.voice,
+        scenes: fullProj.scenes,
+      });
+
+      if (res && res.success && res.syncedToCloud) {
+        await refreshProjectsList();
+        setToastMsg(`પ્રોજેક્ટ "${project.title}" સફળતાપૂર્વક ક્લાઉડમાં સિન્ક થઈ ગયો છે! હવે મોબાઇલમાં પણ દેખાશે.`);
+      } else {
+        alert("ક્લાઉડ સિન્ક કરવામાં સમસ્યા આવી: " + (res?.message || "અજ્ઞાત ક્ષતિ"));
+      }
+    } catch (e) {
+      console.error("Sync to cloud error:", e);
+      alert("ક્લાઉડ સિન્ક કરવામાં ક્ષતિ આવી: " + e.message);
+    }
+  }
+
   // Delete a Saved Project
   async function handleDeleteProject(projectId, projectTitle, e) {
     e.stopPropagation();
@@ -1486,6 +1517,15 @@ export default function StoryVideoCreator() {
                             <h4 className="project-card-title">{p.title}</h4>
                             <div className="project-card-meta">
                               <span>{p.sceneCount} સીન</span>
+                              {p.isLocalOnly ? (
+                                <span className="project-badge-local" title="આ પ્રોજેક્ટ હજુ ફક્ત તમારા આ કોમ્પ્યુટર પર છે">
+                                  💾 લોકલ (Sync બાકી)
+                                </span>
+                              ) : (
+                                <span className="project-badge-cloud" title="ક્લાઉડમાં સેવ થયેલ છે - મોબાઇલ પર ઉપલબ્ધ">
+                                  ☁️ ક્લાઉડ સિન્ક
+                                </span>
+                              )}
                               <span>{dateStr}</span>
                             </div>
 
@@ -1498,6 +1538,22 @@ export default function StoryVideoCreator() {
                                 <Play size={13} />
                                 <span>{isActive ? "હાલમાં સક્રિય" : "એડિટ / લોડ કરો"}</span>
                               </button>
+
+                              {p.isLocalOnly && (
+                                <button
+                                  type="button"
+                                  className="project-btn-sync"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSyncLocalProjectToCloud(p);
+                                  }}
+                                  title="આ પ્રોજેક્ટ ક્લાઉડમાં સેવ કરો જેથી મોબાઇલ પર પણ દેખાય"
+                                >
+                                  <Upload size={13} />
+                                  <span>ક્લાઉડ સિન્ક</span>
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 className="project-btn-delete"
