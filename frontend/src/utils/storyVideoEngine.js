@@ -122,9 +122,13 @@ export function concatenateAudioBuffers(audioCtx, buffers, pauseDuration = 0.2) 
   return mergedBuffer;
 }
 
+// Memory cache for decoded scene audio buffers so repeated preview/export is instantaneous (0ms)
+const ttsAudioMemoryCache = new Map();
+let isTtsLocalDead = false;
+
 /**
  * Fetch Audio from Backend TTS API (/api/tts/speak)
- * Tries cloud Render backend and localhost with full male/female voice support
+ * Uses high-speed memory cache + Dual backend fallback (Render Cloud & Localhost)
  */
 export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male", customRate = "+6%") {
   if (!text || !text.trim()) {
@@ -142,13 +146,18 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
     .replace(/\s+/g, " ")
     .trim();
 
+  const cacheKey = `${lang}_${voice}_${customRate}_${cleanSpeechText}`;
+  if (ttsAudioMemoryCache.has(cacheKey)) {
+    return ttsAudioMemoryCache.get(cacheKey);
+  }
+
   const isLocalHost =
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1");
 
-  // Determine priority order: if localhost, try 5000 first, else cloud first
-  const endpoints = isLocalHost
+  // Determine priority order: if localhost and not marked dead, try 5000 first, else cloud directly
+  const allEndpoints = isLocalHost
     ? [
         "http://localhost:5000",
         "https://bhagavad-gita-backend-jy1a.onrender.com",
@@ -158,10 +167,16 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
         "http://localhost:5000",
       ];
 
+  const endpoints = allEndpoints.filter(
+    (base) => !(isTtsLocalDead && base.includes("localhost:5000"))
+  );
+
   for (const base of endpoints) {
     try {
+      const isLocal = base.includes("localhost:5000");
+      const effectiveTimeout = isLocal ? 1500 : 15000;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 12000); // 12s timeout per endpoint
+      const tid = setTimeout(() => ctrl.abort(), effectiveTimeout);
 
       const res = await fetch(`${base}/api/tts/speak`, {
         method: "POST",
@@ -181,11 +196,14 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
         const arrayBuffer = await res.arrayBuffer();
         if (arrayBuffer && arrayBuffer.byteLength > 200) {
           const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          ttsAudioMemoryCache.set(cacheKey, audioBuffer);
           return audioBuffer;
         }
       }
     } catch (err) {
-      // Continue to next endpoint
+      if (base.includes("localhost:5000")) {
+        isTtsLocalDead = true;
+      }
       console.warn(`TTS fetch failed on ${base}:`, err.message);
     }
   }
@@ -193,7 +211,9 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
   console.warn("Could not fetch TTS audio from any backend, using silent fallback");
   const wordCount = text.trim().split(/\s+/).length;
   const estDuration = Math.max(3, Math.round(wordCount / 2.5));
-  return createSilentBuffer(audioCtx, estDuration);
+  const fallbackBuf = createSilentBuffer(audioCtx, estDuration);
+  ttsAudioMemoryCache.set(cacheKey, fallbackBuf);
+  return fallbackBuf;
 }
 
 /**
@@ -430,8 +450,7 @@ export async function createStoryVideoRenderer({
   const imgLogo = await loadImg(logoSrc || "/icons/logo-circle.png");
 
   // 2. High-speed parallel preloading of all scenes (images + audio buffers in parallel!)
-  onProgress({ stage: "scenes", percent: 20, message: "બધા સીનનો ઓડિયો સમાંતર રીતે ઝડપથી તૈયાર થઈ રહ્યો છે..." });
-
+  let loadedCount = 0;
   const rawLoadedScenes = await Promise.all(
     scenes.map(async (sc, i) => {
       const img = sc.imageSrc ? await loadImg(sc.imageSrc) : null;
@@ -446,6 +465,13 @@ export async function createStoryVideoRenderer({
       } else if (!audioBuf) {
         audioBuf = createSilentBuffer(audioCtx, 3);
       }
+      loadedCount++;
+      const pct = Math.min(65, Math.round(15 + (loadedCount / scenes.length) * 50));
+      onProgress({
+        stage: "scenes",
+        percent: pct,
+        message: `ઓડિયો અને ચિત્રો તૈયાર થઈ રહ્યા છે (${loadedCount}/${scenes.length})...`,
+      });
       return {
         ...sc,
         index: i,
@@ -457,9 +483,9 @@ export async function createStoryVideoRenderer({
   );
 
   // Fast, crisp timings (no long idle pauses)
-  const SCENE_PAUSE = 0.2; // Snappy breathing pause between scenes
-  const INTRO_DUR = 0.3;   // Quick start
-  const OUTRO_DUR = 1.0;   // Clean outro
+  const SCENE_PAUSE = 0.15; // Snappy breathing pause between scenes
+  const INTRO_DUR = 0.2;   // Quick start
+  const OUTRO_DUR = 0.6;   // Clean outro
 
   let currentClock = INTRO_DUR;
   const loadedScenes = [];
@@ -807,13 +833,13 @@ export async function exportStoryVideo({
     ...destNode.stream.getAudioTracks(),
   ]);
 
-  // Robust codec candidate fallback (prioritizes stable WebM on Chrome/Edge, MP4 on Safari/iOS)
+  // Hardware accelerated codec priority: MP4 (H.264 / AVC1) & VP8 encode 3x-4x faster than software VP9!
   const candidateTypes = [
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm",
     "video/mp4;codecs=avc1,mp4a.40.2",
     "video/mp4",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/webm;codecs=vp9,opus",
   ];
 
   let recorder = null;
@@ -922,7 +948,7 @@ export async function exportStoryVideo({
           } catch (stopErr) {
             console.warn("Error stopping recorder:", stopErr);
           }
-        }, 350);
+        }, 80);
       }
     }
 
