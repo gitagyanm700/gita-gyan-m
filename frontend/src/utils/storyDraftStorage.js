@@ -28,7 +28,7 @@ const BACKEND_ENDPOINTS = isLocalHost
 /**
  * Universal backend API fetch with automatic dual-endpoint fallback & auth
  */
-async function apiRequest(path, options = {}) {
+async function apiRequest(path, options = {}, timeoutMs = 25000) {
   const token = getValidToken();
   const headers = {
     "Content-Type": "application/json",
@@ -39,7 +39,7 @@ async function apiRequest(path, options = {}) {
   for (const base of BACKEND_ENDPOINTS) {
     try {
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 12000);
+      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
 
       const res = await fetch(`${base}${path}`, {
         ...options,
@@ -52,6 +52,9 @@ async function apiRequest(path, options = {}) {
       if (res.ok) {
         const data = await res.json();
         return data;
+      } else {
+        const errData = await res.json().catch(() => null);
+        console.warn(`API returned ${res.status} on ${base}${path}:`, errData);
       }
     } catch (err) {
       console.warn(`API request failed on ${base}${path}:`, err.message);
@@ -301,21 +304,26 @@ export async function saveStoryProject({
       })
     );
 
-    // 2. Post to backend API so all admin accounts get this project
-    const apiRes = await apiRequest("/api/story-projects", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id && id.length === 24 ? id : undefined,
-        title: (title || "").trim() || "અનામી વાર્તા પ્રોજેક્ટ",
-        lang: lang || "gu",
-        aspectRatio: aspectRatio || "9:16",
-        subtitlePos: subtitlePos || "auto",
-        voice: voice || "male",
-        scenes: processedScenes,
-      }),
-    });
+    // 2. Post to backend API so all admin accounts get this project (60s timeout for cloud upload)
+    const apiRes = await apiRequest(
+      "/api/story-projects",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          id: id && id.length === 24 ? id : undefined,
+          title: (title || "").trim() || "અનામી વાર્તા પ્રોજેક્ટ",
+          lang: lang || "gu",
+          aspectRatio: aspectRatio || "9:16",
+          subtitlePos: subtitlePos || "auto",
+          voice: voice || "male",
+          scenes: processedScenes,
+        }),
+      },
+      60000
+    );
 
-    const savedId = apiRes?.project?.id || id || `proj_${Date.now()}`;
+    const isCloudSuccess = Boolean(apiRes && apiRes.success && apiRes.project);
+    const savedId = apiRes?.project?.id || apiRes?.project?._id || id || `proj_${Date.now()}`;
 
     // 3. Also update local IndexedDB cache
     const db = await openDB();
@@ -341,10 +349,17 @@ export async function saveStoryProject({
       tx.objectStore(STORE_PROJECTS).put(projectData);
     }
 
-    return savedId;
+    return {
+      success: true,
+      id: savedId,
+      syncedToCloud: isCloudSuccess,
+      message: isCloudSuccess
+        ? "તમામ એડમિન અને તમામ ડિવાઇસ (મોબાઇલ & કોમ્પ્યુટર) માટે સફળતાપૂર્વક સાચવવામાં આવ્યો છે!"
+        : "પ્રોજેક્ટ લોકલ બ્રાઉઝરમાં સાચવાયો છે (ક્લાઉડ સર્વર સાથે કનેક્ટ થઈ શક્યું નથી).",
+    };
   } catch (err) {
     console.warn("Failed to save project:", err);
-    return id || null;
+    return { success: false, message: err.message };
   }
 }
 
@@ -353,10 +368,10 @@ export async function saveStoryProject({
  */
 export async function listStoryProjects() {
   try {
-    // 1. Fetch remote projects from Backend API
+    // 1. Fetch remote projects from Backend API (25s timeout for cold start)
     let remoteProjects = [];
     try {
-      const apiRes = await apiRequest("/api/story-projects", { method: "GET" });
+      const apiRes = await apiRequest("/api/story-projects", { method: "GET" }, 25000);
       if (apiRes && apiRes.success && Array.isArray(apiRes.projects)) {
         remoteProjects = apiRes.projects;
       }

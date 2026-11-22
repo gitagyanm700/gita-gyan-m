@@ -99,38 +99,37 @@ exports.saveProject = async (req, res) => {
 
     const adminName = req.user?.name || req.user?.email || "Admin";
 
-    // Process scenes and upload any base64 images to Cloudinary CDN
-    const processedScenes = [];
+    // Process scenes and upload any base64 images to Cloudinary CDN in PARALLEL for maximum speed!
     const scenesArray = Array.isArray(scenes) ? scenes : [];
+    const processedScenes = await Promise.all(
+      scenesArray.map(async (sc, i) => {
+        let imgUrl = sc.imageSrc || null;
 
-    for (let i = 0; i < scenesArray.length; i++) {
-      const sc = scenesArray[i];
-      let imgUrl = sc.imageSrc || null;
-
-      // If user uploaded a new image as base64 data URL, upload to Cloudinary
-      if (imgUrl && typeof imgUrl === "string" && imgUrl.startsWith("data:image")) {
-        try {
-          const uploadRes = await cloudinary.uploader.upload(imgUrl, {
-            folder: "bhagavad_gita/story_projects",
-            public_id: `story_img_${Date.now()}_${i}`,
-            overwrite: true,
-            transformation: [{ quality: "auto:good" }, { fetch_format: "auto" }],
-          });
-          imgUrl = uploadRes.secure_url;
-        } catch (uploadErr) {
-          console.warn("Cloudinary upload failed for scene image:", uploadErr.message);
-          // keep existing URL if upload fails
+        // If user uploaded a new image as base64 data URL, upload to Cloudinary
+        if (imgUrl && typeof imgUrl === "string" && imgUrl.startsWith("data:image")) {
+          try {
+            const uploadRes = await cloudinary.uploader.upload(imgUrl, {
+              folder: "bhagavad_gita/story_projects",
+              public_id: `story_img_${Date.now()}_${i}`,
+              overwrite: true,
+              transformation: [{ quality: "auto:good" }, { fetch_format: "auto" }],
+            });
+            imgUrl = uploadRes.secure_url;
+          } catch (uploadErr) {
+            console.warn("Cloudinary upload failed for scene image:", uploadErr.message);
+            // keep existing URL if upload fails
+          }
         }
-      }
 
-      processedScenes.push({
-        id: sc.id || `sc_${Date.now()}_${i}`,
-        sceneTitle: sc.sceneTitle || `સીન ${i + 1}`,
-        text: sc.text || "",
-        imageSrc: imgUrl,
-        audioDuration: Number(sc.audioDuration) || 0,
-      });
-    }
+        return {
+          id: sc.id || `sc_${Date.now()}_${i}`,
+          sceneTitle: sc.sceneTitle || `સીન ${i + 1}`,
+          text: sc.text || "",
+          imageSrc: imgUrl,
+          audioDuration: Number(sc.audioDuration) || 0,
+        };
+      })
+    );
 
     // Verify that the project is not completely blank
     const hasContent = processedScenes.some(

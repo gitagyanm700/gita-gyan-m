@@ -208,7 +208,7 @@ export default function StoryVideoCreator() {
     }
   }, [isAnyModalOpen]);
 
-  // Explicitly Save Current Project to Shared Library (Synchronized across all Admins)
+  // Explicitly Save Current Project to Shared Library (Synchronized across all Admins & Devices)
   async function handleSaveProject() {
     if (!hasProjectContent) {
       alert("ખાલી પ્રોજેક્ટ સાચવી શકાતો નથી. કૃપા કરીને ઓછામાં ઓછો એક સીનમાં લખાણ અથવા ફોટો ઉમેરો.");
@@ -216,7 +216,8 @@ export default function StoryVideoCreator() {
     }
 
     try {
-      const savedId = await saveStoryProject({
+      setToastMsg("પ્રોજેક્ટ સાચવાઈ રહ્યો છે... કૃપા કરીને થોડીવાર રાહ જુઓ.");
+      const res = await saveStoryProject({
         id: activeProjectId,
         title,
         lang,
@@ -225,14 +226,25 @@ export default function StoryVideoCreator() {
         voice,
         scenes,
       });
-      if (savedId) {
-        setActiveProjectId(savedId);
+
+      if (res && res.success) {
+        if (res.id) setActiveProjectId(res.id);
         await refreshProjectsList();
-        setToastMsg(`પ્રોજેક્ટ "${title || "વાર્તા"}" તમામ એડમિન માટે સફળતાપૂર્વક સાચવવામાં આવ્યો છે!`);
+        if (res.syncedToCloud) {
+          setToastMsg(
+            `પ્રોજેક્ટ "${title || "વાર્તા"}" ક્લાઉડમાં સફળતાપૂર્વક સાચવવામાં આવ્યો છે! મોબાઇલ અને તમામ ડિવાઇસ પર દેખાશે.`
+          );
+        } else {
+          setToastMsg(
+            `પ્રોજેક્ટ લોકલ બ્રાઉઝરમાં સાચવવામાં આવ્યો છે (ક્લાઉડ સિન્ક પેન્ડિંગ).`
+          );
+        }
+      } else {
+        alert("પ્રોજેક્ટ સાચવવામાં ક્ષતિ આવી: " + (res?.message || "અજ્ઞાત ક્ષતિ"));
       }
     } catch (err) {
       console.error("Save project failed:", err);
-      alert("પ્રોજેક્ટ સાચવવામાં ક્ષતિ આવી.");
+      alert("પ્રોજેક્ટ સાચવવામાં ક્ષતિ આવી: " + err.message);
     }
   }
 
