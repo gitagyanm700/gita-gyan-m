@@ -11,6 +11,7 @@ import {
   Play,
   Pause,
   RotateCcw,
+  Loader2,
   Square,
   Download,
   Sparkles,
@@ -153,6 +154,7 @@ export default function StoryVideoCreator() {
 
   // Live Canvas Preview
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const previewCanvasRef = useRef(null);
   const previewRendererRef = useRef(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -163,7 +165,7 @@ export default function StoryVideoCreator() {
   const previewStartTimeRef = useRef(0);
 
   function formatTime(sec) {
-    if (isNaN(sec) || sec < 0) return "00:00";
+    if (typeof sec !== "number" || isNaN(sec) || sec < 0) return "00:00";
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
@@ -713,6 +715,8 @@ export default function StoryVideoCreator() {
     }
 
     setShowPreviewModal(true);
+    setIsPreviewLoading(true);
+    setIsPreviewPlaying(false);
     setPreviewCurrentTime(0);
 
     try {
@@ -729,7 +733,7 @@ export default function StoryVideoCreator() {
 
       previewRendererRef.current = renderer;
       const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame } = renderer;
-      setPreviewTotalDuration(totalDuration);
+      setPreviewTotalDuration(totalDuration || 0);
 
       // Cache loaded audio buffers in state so subsequent preview and export are INSTANT!
       if (loadedScenes && Array.isArray(loadedScenes)) {
@@ -747,7 +751,7 @@ export default function StoryVideoCreator() {
         await audioCtx.resume();
       }
 
-      // Mount canvas into DOM container and strictly constrain size so preview fits on screen with zero scrolling
+      // Mount canvas into pure DOM container (which has zero React children)
       const container = previewCanvasRef.current;
       if (container) {
         container.innerHTML = "";
@@ -762,12 +766,14 @@ export default function StoryVideoCreator() {
         container.appendChild(canvas);
       }
 
+      setIsPreviewLoading(false);
       // Start playback from 0
       startPreviewPlayback(0);
     } catch (err) {
       console.error("Preview failed:", err);
       alert("પ્રીવ્યૂ શરૂ કરવામાં સમસ્યા આવી: " + err.message);
       setShowPreviewModal(false);
+      setIsPreviewLoading(false);
       setIsPreviewPlaying(false);
     }
   }
@@ -775,14 +781,20 @@ export default function StoryVideoCreator() {
   function handleClosePreview() {
     stopPreviewAudio();
     if (previewRendererRef.current) {
-      previewRendererRef.current.close();
+      try {
+        previewRendererRef.current.close();
+      } catch (e) {}
       previewRendererRef.current = null;
     }
     if (previewAnimFrameRef.current) {
       cancelAnimationFrame(previewAnimFrameRef.current);
     }
+    if (previewCanvasRef.current) {
+      previewCanvasRef.current.innerHTML = "";
+    }
     setShowPreviewModal(false);
     setIsPreviewPlaying(false);
+    setIsPreviewLoading(false);
     setPreviewCurrentTime(0);
   }
 
@@ -1277,7 +1289,7 @@ export default function StoryVideoCreator() {
                   <div className="preview-duration-header-badge">
                     <Clock size={13} />
                     <span>
-                      કુલ લંબાઈ: <strong>{previewTotalDuration.toFixed(1)} સેકન્ડ</strong> ({formatTime(previewTotalDuration)})
+                      કુલ લંબાઈ: <strong>{(previewTotalDuration || 0).toFixed(1)} સેકન્ડ</strong> ({formatTime(previewTotalDuration)})
                     </span>
                   </div>
                 </div>
@@ -1291,16 +1303,33 @@ export default function StoryVideoCreator() {
                 </button>
               </div>
 
-              <div className="preview-canvas-wrap" ref={previewCanvasRef} style={{ position: "relative" }}>
-                {/* Floating Center Play Button if paused */}
-                {!isPreviewPlaying && (
+              <div className="preview-canvas-wrap" style={{ position: "relative" }}>
+                {/* Pure Canvas Mount Slot - ZERO React children */}
+                <div ref={previewCanvasRef} className="preview-canvas-mount" />
+
+                {/* Loading overlay when preparing preview */}
+                {isPreviewLoading && (
+                  <div className="preview-loading-overlay">
+                    <Loader2 size={36} className="spin-icon" color="#fbbf24" />
+                    <p style={{ margin: "10px 0 0", color: "#fef08a", fontSize: "14px", fontWeight: 600 }}>
+                      વિડીયો પ્રીવ્યૂ તૈયાર થઈ રહ્યો છે...
+                    </p>
+                  </div>
+                )}
+
+                {/* Floating Center Play Button if paused and not loading */}
+                {!isPreviewLoading && !isPreviewPlaying && (
                   <button
                     type="button"
                     className="preview-floating-play-btn"
                     onClick={togglePreviewPlayPause}
-                    title={previewCurrentTime >= previewTotalDuration - 0.2 ? "ફરીથી ચલાવો" : "ચાલુ કરો"}
+                    title={
+                      (previewCurrentTime || 0) >= (previewTotalDuration || 0) - 0.2
+                        ? "ફરીથી ચલાવો"
+                        : "ચાલુ કરો"
+                    }
                   >
-                    {previewCurrentTime >= previewTotalDuration - 0.2 ? (
+                    {(previewCurrentTime || 0) >= (previewTotalDuration || 0) - 0.2 ? (
                       <RotateCcw size={32} />
                     ) : (
                       <Play size={32} style={{ marginLeft: "4px" }} />
@@ -1316,13 +1345,14 @@ export default function StoryVideoCreator() {
                   min="0"
                   max={previewTotalDuration || 1}
                   step="0.05"
-                  value={previewCurrentTime}
+                  value={previewCurrentTime || 0}
                   onChange={handlePreviewSeek}
+                  disabled={isPreviewLoading}
                   className="preview-progress-slider"
                   style={{
                     backgroundSize: `${
                       previewTotalDuration > 0
-                        ? (previewCurrentTime / previewTotalDuration) * 100
+                        ? ((previewCurrentTime || 0) / previewTotalDuration) * 100
                         : 0
                     }% 100%`,
                   }}
@@ -1337,6 +1367,7 @@ export default function StoryVideoCreator() {
                     type="button"
                     className={`preview-ctrl-btn play-pause-btn ${isPreviewPlaying ? "active-playing" : ""}`}
                     onClick={togglePreviewPlayPause}
+                    disabled={isPreviewLoading}
                     title={isPreviewPlaying ? "વિડીયો થોભો (Pause)" : "વિડીયો ચાલુ કરો (Play)"}
                   >
                     {isPreviewPlaying ? <Pause size={18} /> : <Play size={18} />}
@@ -1347,6 +1378,7 @@ export default function StoryVideoCreator() {
                     type="button"
                     className="preview-ctrl-btn replay-btn"
                     onClick={handlePreviewReplay}
+                    disabled={isPreviewLoading}
                     title="ફરીથી પહેલેથી શરૂ કરો"
                   >
                     <RotateCcw size={16} />
@@ -1356,9 +1388,9 @@ export default function StoryVideoCreator() {
 
                 <div className="preview-time-badge">
                   <Clock size={14} className="time-icon" />
-                  <span className="current-seconds-highlight">{previewCurrentTime.toFixed(1)}s</span>
+                  <span className="current-seconds-highlight">{(previewCurrentTime || 0).toFixed(1)}s</span>
                   <span className="time-divider">/</span>
-                  <span className="total-seconds-highlight">{previewTotalDuration.toFixed(1)} સેકન્ડ</span>
+                  <span className="total-seconds-highlight">{(previewTotalDuration || 0).toFixed(1)} સેકન્ડ</span>
                   <span className="time-timestamp">
                     ({formatTime(previewCurrentTime)} / {formatTime(previewTotalDuration)})
                   </span>
