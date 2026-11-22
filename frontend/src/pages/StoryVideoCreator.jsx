@@ -176,10 +176,50 @@ export default function StoryVideoCreator() {
   const [savedProjects, setSavedProjects] = useState([]);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const isSyncingLocalRef = useRef(false);
 
   async function refreshProjectsList() {
     const list = await listStoryProjects();
     setSavedProjects(list);
+
+    // Auto-sync any local-only projects to MongoDB in the background
+    const localOnly = list.filter(
+      (p) => p.isLocalOnly && p.id && String(p.id).startsWith("proj_")
+    );
+    if (localOnly.length > 0 && !isSyncingLocalRef.current) {
+      isSyncingLocalRef.current = true;
+      (async () => {
+        try {
+          let syncedCount = 0;
+          for (const item of localOnly) {
+            const fullProj = await getStoryProject(item.id);
+            if (fullProj && Array.isArray(fullProj.scenes) && fullProj.scenes.length > 0) {
+              const res = await saveStoryProject({
+                id: undefined, // Create fresh in MongoDB
+                title: fullProj.title,
+                lang: fullProj.lang,
+                aspectRatio: fullProj.aspectRatio,
+                subtitlePos: fullProj.subtitlePos,
+                voice: fullProj.voice,
+                scenes: fullProj.scenes,
+              });
+              if (res && res.success && res.syncedToCloud) {
+                syncedCount++;
+              }
+            }
+          }
+          if (syncedCount > 0) {
+            const updated = await listStoryProjects();
+            setSavedProjects(updated);
+            setToastMsg("તમામ લોકલ પ્રોજેક્ટ ક્લાઉડમાં સિન્ક થઈ ગયા છે! હવે મોબાઇલમાં પણ દેખાશે.");
+          }
+        } catch (syncErr) {
+          console.warn("Auto-sync to cloud failed:", syncErr);
+        } finally {
+          isSyncingLocalRef.current = false;
+        }
+      })();
+    }
   }
 
   // Load projects list on mount

@@ -346,7 +346,15 @@ export async function saveStoryProject({
       };
 
       const tx = db.transaction(STORE_PROJECTS, "readwrite");
-      tx.objectStore(STORE_PROJECTS).put(projectData);
+      const store = tx.objectStore(STORE_PROJECTS);
+      if (id && id !== savedId) {
+        try {
+          store.delete(id);
+        } catch (e) {
+          // ignore
+        }
+      }
+      store.put(projectData);
     }
 
     return {
