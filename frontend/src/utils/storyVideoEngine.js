@@ -130,7 +130,7 @@ let isTtsLocalDead = false;
  * Fetch Audio from Backend TTS API (/api/tts/speak)
  * Uses high-speed memory cache + Dual backend fallback (Render Cloud & Localhost)
  */
-export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male", customRate = "+6%") {
+export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male", customRate = "+14%") {
   if (!text || !text.trim()) {
     return createSilentBuffer(audioCtx, 3);
   }
@@ -185,7 +185,7 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
           text: cleanSpeechText,
           lang: lang || "gu",
           voice: voice === "female" ? "female" : "male",
-          rate: customRate || (lang === "sa" ? "+0%" : "+6%"),
+          rate: customRate || (lang === "sa" ? "+0%" : "+14%"),
         }),
         signal: ctrl.signal,
       });
@@ -485,9 +485,9 @@ export async function createStoryVideoRenderer({
   );
 
   // Fast, crisp timings (no long idle pauses)
-  const SCENE_PAUSE = 0.15; // Snappy breathing pause between scenes
-  const INTRO_DUR = 0.2;   // Quick start
-  const OUTRO_DUR = 0.6;   // Clean outro
+  const SCENE_PAUSE = 0.12; // Snappy breathing pause between scenes
+  const INTRO_DUR = 0.15;   // Fast start
+  const OUTRO_DUR = 0.45;   // Clean outro
 
   let currentClock = INTRO_DUR;
   const loadedScenes = [];
@@ -862,7 +862,7 @@ export async function exportStoryVideo({
     try {
       recorder = new MediaRecorder(combinedStream, {
         mimeType: type,
-        videoBitsPerSecond: 2500000, // 2.5 Mbps crisp 720p HD bit rate
+        videoBitsPerSecond: 2000000, // 2.0 Mbps optimal for mobile & desktop hardware encoder
       });
       mimeType = type;
       break;
@@ -922,7 +922,7 @@ export async function exportStoryVideo({
     };
 
     try {
-      recorder.start(1000); // 1-second chunks
+      recorder.start(2000); // 2-second chunks reduces I/O interrupts by 50%
     } catch (startErr) {
       try {
         silentOsc.stop();
@@ -949,11 +949,12 @@ export async function exportStoryVideo({
         const now = (perfNow - startPerfTime) / 1000;
         renderFrame(now);
 
+        const remainingSec = Math.max(0, Math.ceil(totalDuration - now));
         const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
         onProgress({
           stage: "recording",
           percent,
-          message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}%...`,
+          message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}% (અંદાજે ${remainingSec} સેકન્ડ બાકી)...`,
         });
 
         if (now >= totalDuration) {
