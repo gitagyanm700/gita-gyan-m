@@ -100,7 +100,17 @@ function normalizeTtsInputText(text) {
   cleanText = cleanText.replace(/&nbsp;/gi, " ");
   cleanText = cleanText.replace(/&amp;/gi, " and ");
   cleanText = cleanText.replace(/[&<>]/g, " ");
-  cleanText = cleanText.replace(/\s*[:：]\s*/g, ", ");
+  // Strip quotation marks (which cause Edge TTS to awkwardly pause before and after words)
+  cleanText = cleanText.replace(/["'“”‘’«»`]/g, "");
+  // Replace hyphens, em dashes, en dashes between words with a space so words flow smoothly without mid-sentence pauses
+  cleanText = cleanText.replace(/[\u2014\u2013\-_—–]+/g, " ");
+  // Strip parentheses and brackets
+  cleanText = cleanText.replace(/[\(\)\[\]\{\}]/g, " ");
+  // Replace colons, semicolons with soft commas
+  cleanText = cleanText.replace(/\s*[:;：；]\s*/g, ", ");
+  // Replace multiple dots / ellipses (...) with a single period
+  cleanText = cleanText.replace(/\.{2,}/g, ".");
+  // Normalize repeated punctuation marks like ",," or "..," to single
   cleanText = cleanText.replace(/\s*([,।\.!?])\s*([,।\.!?])+/g, "$1");
   return cleanText.replace(/\s+/g, " ").trim();
 }
@@ -115,8 +125,8 @@ function getTtsSynthesisParams(text, lang = "gu", customRate = null, voice = "ma
     (VOICE_MAP[voiceLang] && VOICE_MAP[voiceLang][voiceGender]) ||
     VOICE_MAP[voiceLang].male;
   const prosodyOptions = {
-    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "-10%" : "-2%",
-    pitch: lang === "sa" ? "-2Hz" : "+0Hz",
+    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "+0%" : "+6%",
+    pitch: lang === "sa" ? "-1Hz" : "+0Hz",
   };
 
   const cacheKey = crypto
@@ -138,14 +148,14 @@ function buildShlokTtsTasks(shloka, languages = ["gu"]) {
 
   const saText = formatSanskritForSpeech(shloka);
   if (saText) {
-    const params = getTtsSynthesisParams(saText, "sa", "-10%");
+    const params = getTtsSynthesisParams(saText, "sa", "+0%");
     if (params) {
       tasks.push({
         label: `Ch ${ch} Sh ${sh} [Sanskrit]`,
         text: saText,
         cleanText: params.cleanText,
         lang: "sa",
-        rate: "-10%",
+        rate: "+0%",
         cacheKey: params.cacheKey,
       });
     }
@@ -160,14 +170,14 @@ function buildShlokTtsTasks(shloka, languages = ["gu"]) {
         : shloka.translation) || shloka.translation;
     const trText = extractCleanTextForSpeech(rawTr);
     if (trText) {
-      const params = getTtsSynthesisParams(trText, lang, "-2%");
+      const params = getTtsSynthesisParams(trText, lang, "+6%");
       if (params) {
         tasks.push({
           label: `Ch ${ch} Sh ${sh} [Translation:${lang}]`,
           text: trText,
           cleanText: params.cleanText,
           lang,
-          rate: "-2%",
+          rate: "+6%",
           cacheKey: params.cacheKey,
         });
       }
@@ -178,14 +188,14 @@ function buildShlokTtsTasks(shloka, languages = ["gu"]) {
       shloka.message;
     const msgText = extractCleanTextForSpeech(rawMsg);
     if (msgText) {
-      const params = getTtsSynthesisParams(msgText, lang, "-2%");
+      const params = getTtsSynthesisParams(msgText, lang, "+6%");
       if (params) {
         tasks.push({
           label: `Ch ${ch} Sh ${sh} [Message:${lang}]`,
           text: msgText,
           cleanText: params.cleanText,
           lang,
-          rate: "-2%",
+          rate: "+6%",
           cacheKey: params.cacheKey,
         });
       }

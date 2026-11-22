@@ -22,7 +22,7 @@ async function synthesizeToFile(cleanText, lang, customRate, filePath) {
   const voiceLang = VOICE_MAP[lang] ? lang : "gu";
   const selectedVoice = VOICE_MAP[voiceLang].male;
   const prosodyOptions = {
-    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "-22%" : "-2%",
+    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "+0%" : "+6%",
     pitch: lang === "sa" ? "-2Hz" : "+0Hz",
   };
 

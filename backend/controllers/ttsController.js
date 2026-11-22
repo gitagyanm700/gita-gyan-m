@@ -411,26 +411,26 @@ const downloadShlokAudio = async (req, res) => {
       if (!plainSa) {
         return res.status(404).json({ success: false, message: "Sanskrit shloka text not found." });
       }
-      audioBuffer = await synthesizeBuffer(plainSa, "sa", "-10%");
+      audioBuffer = await synthesizeBuffer(plainSa, "sa", "+0%");
       filename = `adhyay ${chapterNumber}-${shlokNumber} sanskrit.mp3`;
     } else if (type === "translation") {
       if (!plainTr) {
         return res.status(404).json({ success: false, message: "Translation text not found." });
       }
-      audioBuffer = await synthesizeBuffer(plainTr, lang, "-2%");
+      audioBuffer = await synthesizeBuffer(plainTr, lang, "+6%");
       filename = `adhyay ${chapterNumber}-${shlokNumber} anuvad ${langLabel}.mp3`;
     } else if (type === "message") {
       if (!plainMsg) {
         return res.status(404).json({ success: false, message: "Message text not found." });
       }
-      audioBuffer = await synthesizeBuffer(plainMsg, lang, "-2%");
+      audioBuffer = await synthesizeBuffer(plainMsg, lang, "+6%");
       filename = `adhyay ${chapterNumber}-${shlokNumber} sandesh ${langLabel}.mp3`;
     } else {
       // type === "full" (Combine Sanskrit + Translation + Message in one continuous MP3)
       const [saBuf, trBuf, msgBuf] = await Promise.all([
-        plainSa ? synthesizeBuffer(plainSa, "sa", "-10%") : null,
-        plainTr ? synthesizeBuffer(plainTr, lang, "-2%") : null,
-        plainMsg ? synthesizeBuffer(plainMsg, lang, "-2%") : null,
+        plainSa ? synthesizeBuffer(plainSa, "sa", "+0%") : null,
+        plainTr ? synthesizeBuffer(plainTr, lang, "+6%") : null,
+        plainMsg ? synthesizeBuffer(plainMsg, lang, "+6%") : null,
       ]);
 
       const parts = [saBuf, trBuf, msgBuf].filter((b) => b && b.length > 0);

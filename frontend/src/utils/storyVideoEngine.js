@@ -90,7 +90,7 @@ export function audioBufferToWav(buffer) {
 /**
  * Merge multiple AudioBuffers into one continuous AudioBuffer with pause in between
  */
-export function concatenateAudioBuffers(audioCtx, buffers, pauseDuration = 0.5) {
+export function concatenateAudioBuffers(audioCtx, buffers, pauseDuration = 0.2) {
   if (!buffers || buffers.length === 0) return null;
   const validBuffers = buffers.filter(Boolean);
   if (validBuffers.length === 0) return null;
@@ -126,10 +126,21 @@ export function concatenateAudioBuffers(audioCtx, buffers, pauseDuration = 0.5) 
  * Fetch Audio from Backend TTS API (/api/tts/speak)
  * Tries cloud Render backend and localhost with full male/female voice support
  */
-export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male") {
+export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male", customRate = "+6%") {
   if (!text || !text.trim()) {
     return createSilentBuffer(audioCtx, 3);
   }
+
+  // Pre-clean text: remove quotes, brackets, and awkward dashes that cause unnatural pauses between words
+  const cleanSpeechText = text
+    .replace(/["'“”‘’«»`]/g, "")
+    .replace(/[\(\)\[\]\{\}]/g, " ")
+    .replace(/[\u2014\u2013\-_—–]+/g, " ")
+    .replace(/\s*[:;：；]\s*/g, ", ")
+    .replace(/\.{2,}/g, ".")
+    .replace(/\s*([,।\.!?])\s*([,।\.!?])+/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
 
   const isLocalHost =
     typeof window !== "undefined" &&
@@ -156,9 +167,10 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: text.trim(),
+          text: cleanSpeechText,
           lang: lang || "gu",
           voice: voice === "female" ? "female" : "male",
+          rate: customRate || (lang === "sa" ? "+0%" : "+6%"),
         }),
         signal: ctrl.signal,
       });
@@ -244,7 +256,8 @@ export function roundRect(ctx, x, y, w, h, radius = 12) {
  */
 export function wrapStoryLines(ctx, text, maxWidth) {
   if (!text) return { lines: [], totalWords: 0 };
-  const words = text
+  const clean = text.replace(/["'“”‘’«»`]/g, "");
+  const words = clean
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -444,7 +457,7 @@ export async function createStoryVideoRenderer({
   );
 
   // Fast, crisp timings (no long idle pauses)
-  const SCENE_PAUSE = 0.25; // Snappy breathing pause between scenes
+  const SCENE_PAUSE = 0.2; // Snappy breathing pause between scenes
   const INTRO_DUR = 0.3;   // Quick start
   const OUTRO_DUR = 1.0;   // Clean outro
 
@@ -577,7 +590,7 @@ export async function createStoryVideoRenderer({
         else cardY = 96; // Compact gap right beneath top header pill!
 
         fontSize = 22;
-        lineSpacing = 40;
+        lineSpacing = 34;
       } else {
         // 16:9 Landscape Card (Cinematic Lower-Third Bar)
         cardW = width - 120;
@@ -585,7 +598,7 @@ export async function createStoryVideoRenderer({
         cardX = 60;
         cardY = height - cardH - 35;
         fontSize = 24;
-        lineSpacing = 38;
+        lineSpacing = 34;
       }
 
       // Translucent Glass Box Background
@@ -952,7 +965,7 @@ export async function exportStoryAudioWav({
   }
 
   onProgress({ percent: 90, message: "ઓડિયો મર્જ થઈ રહ્યો છે..." });
-  const merged = concatenateAudioBuffers(audioCtx, buffers, 0.45);
+  const merged = concatenateAudioBuffers(audioCtx, buffers, 0.2);
   if (!merged) {
     audioCtx.close();
     throw new Error("કોઈ ઓડિયો જનરેટ થયો નથી.");
