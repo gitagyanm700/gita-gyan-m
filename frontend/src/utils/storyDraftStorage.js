@@ -25,6 +25,8 @@ const BACKEND_ENDPOINTS = isLocalHost
   ? ["http://localhost:5000", "https://bhagavad-gita-backend-jy1a.onrender.com"]
   : ["https://bhagavad-gita-backend-jy1a.onrender.com", "http://localhost:5000"];
 
+let isLocalBackendDead = false;
+
 /**
  * Universal backend API fetch with automatic dual-endpoint fallback & auth
  */
@@ -36,10 +38,16 @@ async function apiRequest(path, options = {}, timeoutMs = 25000) {
     ...(options.headers || {}),
   };
 
-  for (const base of BACKEND_ENDPOINTS) {
+  const endpoints = BACKEND_ENDPOINTS.filter(
+    (base) => !(isLocalBackendDead && base.includes("localhost:5000"))
+  );
+
+  for (const base of endpoints) {
     try {
+      const isLocal = base.includes("localhost:5000");
+      const effectiveTimeout = isLocal ? Math.min(timeoutMs, 2000) : timeoutMs;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+      const tid = setTimeout(() => ctrl.abort(), effectiveTimeout);
 
       const res = await fetch(`${base}${path}`, {
         ...options,
@@ -57,6 +65,9 @@ async function apiRequest(path, options = {}, timeoutMs = 25000) {
         console.warn(`API returned ${res.status} on ${base}${path}:`, errData);
       }
     } catch (err) {
+      if (base.includes("localhost:5000")) {
+        isLocalBackendDead = true;
+      }
       console.warn(`API request failed on ${base}${path}:`, err.message);
     }
   }
@@ -255,6 +266,7 @@ export async function clearStoryDraft() {
  */
 export async function saveStoryProject({
   id,
+  oldLocalId,
   title,
   lang,
   aspectRatio,
@@ -347,9 +359,10 @@ export async function saveStoryProject({
 
       const tx = db.transaction(STORE_PROJECTS, "readwrite");
       const store = tx.objectStore(STORE_PROJECTS);
-      if (id && id !== savedId) {
+      const toDelete = oldLocalId || (id && id !== savedId ? id : null);
+      if (toDelete && toDelete !== savedId) {
         try {
-          store.delete(id);
+          store.delete(toDelete);
         } catch (e) {
           // ignore
         }
@@ -487,31 +500,35 @@ export async function listStoryProjects() {
  */
 export async function getStoryProject(projectId) {
   try {
-    // 1. Try fetching from Backend API
-    const apiRes = await apiRequest(`/api/story-projects/${projectId}`, { method: "GET" });
-    if (apiRes && apiRes.success && apiRes.project) {
-      const p = apiRes.project;
-      return {
-        id: p.id || p._id,
-        title: p.title,
-        lang: p.lang,
-        aspectRatio: p.aspectRatio,
-        subtitlePos: p.subtitlePos,
-        voice: p.voice,
-        scenes: (p.scenes || []).map((s, idx) => ({
-          id: s.id || `sc_${Date.now()}_${idx}`,
-          sceneTitle: s.sceneTitle || `સીન ${idx + 1}`,
-          text: s.text || "",
-          imageSrc: s.imageSrc || null,
-          imageBlob: null,
-          audioBuffer: null,
-          audioDuration: s.audioDuration || 0,
-        })),
-        updatedAt: p.updatedAt,
-      };
+    const isCloudId = typeof projectId === "string" && /^[0-9a-fA-F]{24}$/.test(projectId);
+
+    // 1. Try fetching from Backend API ONLY if it is a 24-char cloud ObjectId
+    if (isCloudId) {
+      const apiRes = await apiRequest(`/api/story-projects/${projectId}`, { method: "GET" });
+      if (apiRes && apiRes.success && apiRes.project) {
+        const p = apiRes.project;
+        return {
+          id: p.id || p._id,
+          title: p.title,
+          lang: p.lang,
+          aspectRatio: p.aspectRatio,
+          subtitlePos: p.subtitlePos,
+          voice: p.voice,
+          scenes: (p.scenes || []).map((s, idx) => ({
+            id: s.id || `sc_${Date.now()}_${idx}`,
+            sceneTitle: s.sceneTitle || `સીન ${idx + 1}`,
+            text: s.text || "",
+            imageSrc: s.imageSrc || null,
+            imageBlob: null,
+            audioBuffer: null,
+            audioDuration: s.audioDuration || 0,
+          })),
+          updatedAt: p.updatedAt,
+        };
+      }
     }
 
-    // 2. Fallback to local IndexedDB
+    // 2. Fallback to local IndexedDB (instant, 0 network wait)
     const db = await openDB();
     if (!db || !projectId) return null;
 
@@ -617,5 +634,20 @@ export async function deleteStoryProject(projectId, projectTitle = "") {
   } catch (err) {
     console.warn("Failed to delete project:", err);
     return false;
+  }
+}
+
+/**
+ * Delete a project record ONLY from local IndexedDB (used when migrating local temporary ID to cloud)
+ */
+export async function deleteLocalOnlyProject(localId) {
+  try {
+    const db = await openDB();
+    if (!db || !localId) return;
+    const tx = db.transaction(STORE_PROJECTS, "readwrite");
+    const store = tx.objectStore(STORE_PROJECTS);
+    store.delete(localId);
+  } catch (err) {
+    console.warn("Failed to delete local-only project from IndexedDB:", err);
   }
 }

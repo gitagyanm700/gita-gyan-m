@@ -53,7 +53,12 @@ exports.listProjects = async (req, res) => {
 exports.getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await StoryProject.findById(id).lean();
+    let project = null;
+    if (mongoose.isValidObjectId(id)) {
+      project = await StoryProject.findById(id).lean();
+    } else if (id && id.trim()) {
+      project = await StoryProject.findOne({ title: id.trim() }).lean();
+    }
 
     if (!project) {
       return res.status(404).json({

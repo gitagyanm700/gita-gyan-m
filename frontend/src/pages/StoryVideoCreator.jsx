@@ -52,6 +52,7 @@ import {
   listStoryProjects,
   getStoryProject,
   deleteStoryProject,
+  deleteLocalOnlyProject,
 } from "../utils/storyDraftStorage.js";
 import "./StoryVideoCreator.css";
 
@@ -176,6 +177,7 @@ export default function StoryVideoCreator() {
   const [savedProjects, setSavedProjects] = useState([]);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [syncingProjectId, setSyncingProjectId] = useState(null);
   const isSyncingLocalRef = useRef(false);
 
   async function refreshProjectsList() {
@@ -196,6 +198,7 @@ export default function StoryVideoCreator() {
             if (fullProj && Array.isArray(fullProj.scenes) && fullProj.scenes.length > 0) {
               const res = await saveStoryProject({
                 id: undefined, // Create fresh in MongoDB
+                oldLocalId: item.id,
                 title: fullProj.title,
                 lang: fullProj.lang,
                 aspectRatio: fullProj.aspectRatio,
@@ -204,6 +207,7 @@ export default function StoryVideoCreator() {
                 scenes: fullProj.scenes,
               });
               if (res && res.success && res.syncedToCloud) {
+                await deleteLocalOnlyProject(item.id);
                 syncedCount++;
               }
             }
@@ -346,15 +350,19 @@ export default function StoryVideoCreator() {
 
   // Sync a local-only project to cloud MongoDB
   async function handleSyncLocalProjectToCloud(project) {
+    if (syncingProjectId) return;
+    setSyncingProjectId(project.id);
     try {
-      setToastMsg(`"${project.title}" ક્લાઉડમાં સિન્ક થઈ રહ્યો છે... કૃપા કરીને થોડીવાર રાહ જુઓ.`);
+      setToastMsg(`"${project.title}" ક્લાઉડમાં સિન્ક થઈ રહ્યો છે... કૃપા કરીને થોડી સેકન્ડ રાહ જુઓ.`);
       const fullProj = await getStoryProject(project.id);
       if (!fullProj) {
         alert("પ્રોજેક્ટ ડેટા લોડ થઈ શક્યો નથી.");
+        setSyncingProjectId(null);
         return;
       }
       const res = await saveStoryProject({
         id: fullProj.id && fullProj.id.length === 24 ? fullProj.id : undefined,
+        oldLocalId: project.id,
         title: fullProj.title,
         lang: fullProj.lang,
         aspectRatio: fullProj.aspectRatio,
@@ -364,14 +372,28 @@ export default function StoryVideoCreator() {
       });
 
       if (res && res.success && res.syncedToCloud) {
-        await refreshProjectsList();
+        // 1. Explicitly remove obsolete local temporary ID from IndexedDB
+        await deleteLocalOnlyProject(project.id);
+
+        // 2. Instantly update UI state so button DISAPPEARS immediately!
+        setSavedProjects((prev) =>
+          prev.map((item) =>
+            item.id === project.id
+              ? { ...item, id: res.id, isLocalOnly: false }
+              : item
+          )
+        );
+
         setToastMsg(`પ્રોજેક્ટ "${project.title}" સફળતાપૂર્વક ક્લાઉડમાં સિન્ક થઈ ગયો છે! હવે મોબાઇલમાં પણ દેખાશે.`);
+        await refreshProjectsList();
       } else {
         alert("ક્લાઉડ સિન્ક કરવામાં સમસ્યા આવી: " + (res?.message || "અજ્ઞાત ક્ષતિ"));
       }
     } catch (e) {
       console.error("Sync to cloud error:", e);
       alert("ક્લાઉડ સિન્ક કરવામાં ક્ષતિ આવી: " + e.message);
+    } finally {
+      setSyncingProjectId(null);
     }
   }
 
@@ -1587,10 +1609,20 @@ export default function StoryVideoCreator() {
                                     e.stopPropagation();
                                     handleSyncLocalProjectToCloud(p);
                                   }}
+                                  disabled={syncingProjectId === p.id}
                                   title="આ પ્રોજેક્ટ ક્લાઉડમાં સેવ કરો જેથી મોબાઇલ પર પણ દેખાય"
                                 >
-                                  <Upload size={13} />
-                                  <span>ક્લાઉડ સિન્ક</span>
+                                  {syncingProjectId === p.id ? (
+                                    <>
+                                      <Loader2 size={13} className="spin-icon" />
+                                      <span>સિન્ક થાય છે...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload size={13} />
+                                      <span>ક્લાઉડ સિન્ક</span>
+                                    </>
+                                  )}
                                 </button>
                               )}
 

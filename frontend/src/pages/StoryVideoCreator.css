@@ -1270,6 +1270,12 @@
   color: #0f172a;
 }
 
+.project-btn-sync:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .project-badge-local {
   display: inline-flex;
   align-items: center;
