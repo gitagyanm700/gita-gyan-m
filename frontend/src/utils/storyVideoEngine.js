@@ -11,6 +11,8 @@
  * 6. Outro screen includes glowing logo from /icons/logo-circle.png
  */
 
+import { fixVideoDuration } from "./videoDurationFixer.js";
+
 // Format / Aspect Ratio Dimensions
 export const ASPECT_RATIOS = {
   "9:16": { width: 720, height: 1280, label: "9:16 રીલ્સ / શોર્ટ્સ (Vertical)", isPortrait: true },
@@ -891,16 +893,30 @@ export async function exportStoryVideo({
   return new Promise((resolve, reject) => {
     let stopped = false;
 
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       stopped = true;
       try {
         silentOsc.stop();
       } catch (e) {}
       close();
 
+      onProgress({
+        stage: "finalizing",
+        percent: 99,
+        message: "વિડીયો મેટાડેટા (ડ્યુરેશન) તૈયાર થઈ રહ્યું છે...",
+      });
+
       const isMp4 = mimeType.toLowerCase().includes("mp4");
       const ext = isMp4 ? "mp4" : "webm";
-      const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] || "video/webm" });
+      const rawBlob = new Blob(recordedChunks, { type: mimeType.split(";")[0] || (isMp4 ? "video/mp4" : "video/webm") });
+
+      let blob = rawBlob;
+      try {
+        blob = await fixVideoDuration(rawBlob, totalDuration, mimeType);
+      } catch (patchErr) {
+        console.warn("Could not patch video duration metadata:", patchErr);
+      }
+
       resolve({ blob, ext, mimeType, duration: totalDuration });
     };
 
