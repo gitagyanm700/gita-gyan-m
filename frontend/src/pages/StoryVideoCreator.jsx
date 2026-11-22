@@ -9,6 +9,8 @@ import {
   Plus,
   Trash2,
   Play,
+  Pause,
+  RotateCcw,
   Square,
   Download,
   Sparkles,
@@ -155,6 +157,17 @@ export default function StoryVideoCreator() {
   const previewRendererRef = useRef(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const previewAnimFrameRef = useRef(null);
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  const [previewTotalDuration, setPreviewTotalDuration] = useState(0);
+  const previewAudioSourcesRef = useRef([]);
+  const previewStartTimeRef = useRef(0);
+
+  function formatTime(sec) {
+    if (isNaN(sec) || sec < 0) return "00:00";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
 
   // Project Library States (Client-side IndexedDB - ZERO Server Space)
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -316,6 +329,7 @@ export default function StoryVideoCreator() {
   useEffect(() => {
     return () => {
       stopAudioPreview();
+      stopPreviewAudio();
       if (previewRendererRef.current) {
         previewRendererRef.current.close();
       }
@@ -586,6 +600,110 @@ export default function StoryVideoCreator() {
     }
   }
 
+  // Audio & Animation controls for Live Preview
+  function stopPreviewAudio() {
+    previewAudioSourcesRef.current.forEach((src) => {
+      try {
+        src.stop();
+        src.disconnect();
+      } catch (e) {}
+    });
+    previewAudioSourcesRef.current = [];
+  }
+
+  function startPreviewPlayback(fromTime = 0) {
+    if (!previewRendererRef.current) return;
+    const { audioCtx, loadedScenes, totalDuration, renderFrame } = previewRendererRef.current;
+
+    stopPreviewAudio();
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
+    const now = audioCtx.currentTime;
+    const sources = [];
+
+    loadedScenes.forEach((sc) => {
+      if (sc.audioBuffer && fromTime < sc.endTime) {
+        try {
+          const src = audioCtx.createBufferSource();
+          src.buffer = sc.audioBuffer;
+          src.connect(audioCtx.destination);
+
+          if (fromTime <= sc.startTime) {
+            const startDelay = sc.startTime - fromTime;
+            src.start(now + startDelay, 0);
+          } else {
+            const offset = fromTime - sc.startTime;
+            src.start(now, offset);
+          }
+          sources.push(src);
+        } catch (e) {
+          console.warn("Preview audio schedule warning:", e);
+        }
+      }
+    });
+
+    previewAudioSourcesRef.current = sources;
+    previewStartTimeRef.current = performance.now() - fromTime * 1000;
+    setIsPreviewPlaying(true);
+
+    function animLoop() {
+      const elapsed = (performance.now() - previewStartTimeRef.current) / 1000;
+      const clampedTime = Math.min(elapsed, totalDuration);
+      setPreviewCurrentTime(clampedTime);
+      renderFrame(clampedTime);
+
+      if (elapsed < totalDuration) {
+        previewAnimFrameRef.current = requestAnimationFrame(animLoop);
+      } else {
+        setIsPreviewPlaying(false);
+        setPreviewCurrentTime(totalDuration);
+        stopPreviewAudio();
+      }
+    }
+
+    if (previewAnimFrameRef.current) {
+      cancelAnimationFrame(previewAnimFrameRef.current);
+    }
+    previewAnimFrameRef.current = requestAnimationFrame(animLoop);
+  }
+
+  function pausePreviewPlayback() {
+    stopPreviewAudio();
+    if (previewAnimFrameRef.current) {
+      cancelAnimationFrame(previewAnimFrameRef.current);
+    }
+    setIsPreviewPlaying(false);
+  }
+
+  function togglePreviewPlayPause() {
+    if (isPreviewPlaying) {
+      pausePreviewPlayback();
+    } else {
+      const startAt = previewCurrentTime >= previewTotalDuration - 0.2 ? 0 : previewCurrentTime;
+      startPreviewPlayback(startAt);
+    }
+  }
+
+  function handlePreviewReplay() {
+    pausePreviewPlayback();
+    setPreviewCurrentTime(0);
+    startPreviewPlayback(0);
+  }
+
+  function handlePreviewSeek(e) {
+    const newTime = parseFloat(e.target.value);
+    setPreviewCurrentTime(newTime);
+    if (previewRendererRef.current) {
+      previewRendererRef.current.renderFrame(newTime);
+    }
+    if (isPreviewPlaying) {
+      startPreviewPlayback(newTime);
+    }
+  }
+
   // Open Live Preview
   async function handleOpenPreview() {
     const emptyScene = scenes.find((s) => !s.text.trim());
@@ -595,7 +713,7 @@ export default function StoryVideoCreator() {
     }
 
     setShowPreviewModal(true);
-    setIsPreviewPlaying(true);
+    setPreviewCurrentTime(0);
 
     try {
       const renderer = await createStoryVideoRenderer({
@@ -611,6 +729,7 @@ export default function StoryVideoCreator() {
 
       previewRendererRef.current = renderer;
       const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame } = renderer;
+      setPreviewTotalDuration(totalDuration);
 
       // Cache loaded audio buffers in state so subsequent preview and export are INSTANT!
       if (loadedScenes && Array.isArray(loadedScenes)) {
@@ -643,39 +762,18 @@ export default function StoryVideoCreator() {
         container.appendChild(canvas);
       }
 
-      // Schedule Audio Sources
-      const startTime = audioCtx.currentTime + 0.1;
-      loadedScenes.forEach((sc) => {
-        if (sc.audioBuffer) {
-          const src = audioCtx.createBufferSource();
-          src.buffer = sc.audioBuffer;
-          src.connect(audioCtx.destination);
-          src.start(startTime + sc.startTime);
-        }
-      });
-
-      const startPerf = performance.now();
-
-      function animLoop() {
-        const now = (performance.now() - startPerf) / 1000;
-        renderFrame(now);
-
-        if (now < totalDuration) {
-          previewAnimFrameRef.current = requestAnimationFrame(animLoop);
-        } else {
-          setIsPreviewPlaying(false);
-        }
-      }
-
-      animLoop();
+      // Start playback from 0
+      startPreviewPlayback(0);
     } catch (err) {
       console.error("Preview failed:", err);
       alert("પ્રીવ્યૂ શરૂ કરવામાં સમસ્યા આવી: " + err.message);
       setShowPreviewModal(false);
+      setIsPreviewPlaying(false);
     }
   }
 
   function handleClosePreview() {
+    stopPreviewAudio();
     if (previewRendererRef.current) {
       previewRendererRef.current.close();
       previewRendererRef.current = null;
@@ -685,6 +783,7 @@ export default function StoryVideoCreator() {
     }
     setShowPreviewModal(false);
     setIsPreviewPlaying(false);
+    setPreviewCurrentTime(0);
   }
 
   return (
@@ -1173,25 +1272,106 @@ export default function StoryVideoCreator() {
               className={`studio-modal-card ${aspectRatio === "16:9" ? "wide-modal" : ""}`}
             >
               <div className="studio-modal-header">
-                <h3>લાઇવ વિડીયો પ્રીવ્યૂ ({aspectRatio})</h3>
+                <div>
+                  <h3 style={{ margin: 0 }}>લાઇવ વિડીયો પ્રીવ્યૂ ({aspectRatio})</h3>
+                  <div className="preview-duration-header-badge">
+                    <Clock size={13} />
+                    <span>
+                      કુલ લંબાઈ: <strong>{previewTotalDuration.toFixed(1)} સેકન્ડ</strong> ({formatTime(previewTotalDuration)})
+                    </span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="studio-modal-close-btn"
                   onClick={handleClosePreview}
+                  title="બંધ કરો"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="preview-canvas-wrap" ref={previewCanvasRef} />
+              <div className="preview-canvas-wrap" ref={previewCanvasRef} style={{ position: "relative" }}>
+                {/* Floating Center Play Button if paused */}
+                {!isPreviewPlaying && (
+                  <button
+                    type="button"
+                    className="preview-floating-play-btn"
+                    onClick={togglePreviewPlayPause}
+                    title={previewCurrentTime >= previewTotalDuration - 0.2 ? "ફરીથી ચલાવો" : "ચાલુ કરો"}
+                  >
+                    {previewCurrentTime >= previewTotalDuration - 0.2 ? (
+                      <RotateCcw size={32} />
+                    ) : (
+                      <Play size={32} style={{ marginLeft: "4px" }} />
+                    )}
+                  </button>
+                )}
+              </div>
 
-              <div style={{ textAlign: "center", flexShrink: 0 }}>
+              {/* Interactive Timeline Progress Scrubber */}
+              <div className="preview-timeline-container">
+                <input
+                  type="range"
+                  min="0"
+                  max={previewTotalDuration || 1}
+                  step="0.05"
+                  value={previewCurrentTime}
+                  onChange={handlePreviewSeek}
+                  className="preview-progress-slider"
+                  style={{
+                    backgroundSize: `${
+                      previewTotalDuration > 0
+                        ? (previewCurrentTime / previewTotalDuration) * 100
+                        : 0
+                    }% 100%`,
+                  }}
+                  title="સમય આગળ-પાછળ કરો"
+                />
+              </div>
+
+              {/* Playback Controls & Seconds Display Bar */}
+              <div className="studio-preview-controls-bar">
+                <div className="preview-controls-left">
+                  <button
+                    type="button"
+                    className={`preview-ctrl-btn play-pause-btn ${isPreviewPlaying ? "active-playing" : ""}`}
+                    onClick={togglePreviewPlayPause}
+                    title={isPreviewPlaying ? "વિડીયો થોભો (Pause)" : "વિડીયો ચાલુ કરો (Play)"}
+                  >
+                    {isPreviewPlaying ? <Pause size={18} /> : <Play size={18} />}
+                    <span>{isPreviewPlaying ? "થોભો (Pause)" : "ચાલુ કરો (Play)"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="preview-ctrl-btn replay-btn"
+                    onClick={handlePreviewReplay}
+                    title="ફરીથી પહેલેથી શરૂ કરો"
+                  >
+                    <RotateCcw size={16} />
+                    <span>ફરીથી</span>
+                  </button>
+                </div>
+
+                <div className="preview-time-badge">
+                  <Clock size={14} className="time-icon" />
+                  <span className="current-seconds-highlight">{previewCurrentTime.toFixed(1)}s</span>
+                  <span className="time-divider">/</span>
+                  <span className="total-seconds-highlight">{previewTotalDuration.toFixed(1)} સેકન્ડ</span>
+                  <span className="time-timestamp">
+                    ({formatTime(previewCurrentTime)} / {formatTime(previewTotalDuration)})
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center", flexShrink: 0, marginTop: "10px" }}>
                 <button
                   type="button"
                   className="dock-btn video-btn"
                   onClick={handleClosePreview}
                 >
-                  પ્રીવ્યૂ બંધ કરો
+                  પ્રીવ્યૂ પૂર્ણ કરો
                 </button>
               </div>
             </div>

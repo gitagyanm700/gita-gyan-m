@@ -674,6 +674,211 @@
   display: block;
 }
 
+/* Live Preview Duration Header Badge */
+.preview-duration-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  margin-top: 5px;
+}
+
+.preview-duration-header-badge strong {
+  color: #fef08a;
+}
+
+/* Floating Center Play/Replay Button */
+.preview-floating-play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  border: 2.5px solid #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7), 0 0 20px rgba(245, 158, 11, 0.6);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+}
+
+.preview-floating-play-btn:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 10px 35px rgba(245, 158, 11, 0.85);
+}
+
+/* Interactive Timeline Progress Scrubber */
+.preview-timeline-container {
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 0 2px;
+  box-sizing: border-box;
+}
+
+.preview-progress-slider {
+  width: 100%;
+  height: 7px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.15);
+  background-image: linear-gradient(to right, #f59e0b, #fbbf24);
+  background-repeat: no-repeat;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  display: block;
+  transition: height 0.15s ease;
+}
+
+.preview-progress-slider:hover {
+  height: 9px;
+}
+
+.preview-progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #f59e0b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.preview-progress-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #fef3c7;
+}
+
+.preview-progress-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #f59e0b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+/* Controls & Time Bar */
+.studio-preview-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 14px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+.preview-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13.5px;
+  border-radius: 9px;
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.preview-ctrl-btn.play-pause-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  border-color: #fbbf24;
+  font-weight: 700;
+}
+
+.preview-ctrl-btn.play-pause-btn:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+}
+
+.preview-ctrl-btn.play-pause-btn.active-playing {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.preview-ctrl-btn.replay-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.preview-ctrl-btn.replay-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Time & Seconds Display Badge */
+.preview-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: #f1f5f9;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.preview-time-badge .time-icon {
+  color: #fbbf24;
+}
+
+.current-seconds-highlight {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.time-divider {
+  color: #64748b;
+  margin: 0 2px;
+}
+
+.total-seconds-highlight {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.time-timestamp {
+  color: #94a3b8;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 /* Header Action Buttons (New Project & Library) */
 .story-studio-header-actions {
   display: flex;
@@ -1213,6 +1418,23 @@
 
   .preview-canvas-wrap canvas {
     max-height: 48vh !important;
+  }
+
+  .studio-preview-controls-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+
+  .preview-controls-left {
+    justify-content: center !important;
+  }
+
+  .preview-time-badge {
+    justify-content: center !important;
+    font-size: 11.5px !important;
+    padding: 5px 8px !important;
   }
 
   .projects-grid {
