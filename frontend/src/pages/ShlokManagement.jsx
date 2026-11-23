@@ -495,7 +495,7 @@ const getSavedDraft = () => {
 
 function ShlokManagement() {
   const navigate = useNavigate();
-  const { isHindi, isEnglish, isGujarati, txt } = useLanguage();
+  const { isHindi, isEnglish, isGujarati, txt, getLocalizedShlok, getChapterName } = useLanguage();
   const { user } = useAuth();
   const isSuperAdmin = isSuperAdminUser(user);
   const canAddShloks = hasPermission(user, "add_shloks") || hasPermission(user, "manage_shloks");
@@ -4018,24 +4018,31 @@ function ShlokManagement() {
         {/* =================================================
             5. SHARE SHLOKA CARD MODAL
         ================================================= */}
-        {shareModalShlok && (
-          <ShareShlokaModal
-            isOpen={Boolean(shareModalShlok)}
-            onClose={() => setShareModalShlok(null)}
-            shlokaData={{
-              chapterNumber: shareModalShlok.chapterNumber || selectedChapter,
-              chapterName:
-                shareModalShlok.chapterName ||
-                chapterNames[shareModalShlok.chapterNumber || selectedChapter] ||
-                `અધ્યાય ${shareModalShlok.chapterNumber || selectedChapter}`,
-              shlokNumber: shareModalShlok.shlokNumber,
-              sanskrit: shareModalShlok.sanskrit,
-              translation: shareModalShlok.translation,
-              speaker: shareModalShlok.speaker,
-              message: shareModalShlok.message,
-            }}
-          />
-        )}
+        {shareModalShlok && (() => {
+          const localizedShlok = getLocalizedShlok ? getLocalizedShlok(shareModalShlok) : shareModalShlok;
+          const chNum = shareModalShlok.chapterNumber || selectedChapter;
+          const chName = (getChapterName && getChapterName(chNum)) ||
+            localizedShlok?.chapterName ||
+            shareModalShlok.chapterName ||
+            chapterNames[chNum] ||
+            `અધ્યાય ${chNum}`;
+
+          return (
+            <ShareShlokaModal
+              isOpen={Boolean(shareModalShlok)}
+              onClose={() => setShareModalShlok(null)}
+              shlokaData={{
+                chapterNumber: chNum,
+                chapterName: chName,
+                shlokNumber: shareModalShlok.shlokNumber,
+                sanskrit: shareModalShlok.sanskrit,
+                translation: localizedShlok?.translation || shareModalShlok.translation,
+                speaker: localizedShlok?.speaker || shareModalShlok.speaker,
+                message: localizedShlok?.message || shareModalShlok.message,
+              }}
+            />
+          );
+        })()}
 
       </div>
     </main>
