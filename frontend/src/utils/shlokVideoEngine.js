@@ -1715,50 +1715,70 @@ export async function exportShlokVideoMP4({
     close,
   } = renderer;
 
-  onProgress({ stage: "recording", percent: 0, message: "9:16 વિડીયો રેકોર્ડ થઈ રહ્યો છે..." });
+  onProgress({ stage: "recording", percent: 0, message: "9:16 વિડીયો રેકોર્ડિંગ શરૂ થઈ રહ્યું છે..." });
+
+  // Ensure AudioContext is actively running before capturing stream
+  try {
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+  } catch (e) {
+    console.warn("AudioContext resume failed:", e);
+  }
 
   const destNode = audioCtx.createMediaStreamDestination();
 
-  // Keep audio stream continuously active with inaudible zero-gain oscillator to prevent MediaRecorder starvation & timestamp desync
+  // Keep audio stream continuously active with inaudible zero-gain oscillator to prevent MediaRecorder starvation
   const silentOsc = audioCtx.createOscillator();
   const silentGain = audioCtx.createGain();
   silentGain.gain.value = 0;
   silentOsc.connect(silentGain);
   silentGain.connect(destNode);
-  silentOsc.start();
-
-  const saSource = audioCtx.createBufferSource();
-  saSource.buffer = saBuf;
-  saSource.connect(destNode);
-
-  const trSource = audioCtx.createBufferSource();
-  trSource.buffer = trBuf;
-  trSource.connect(destNode);
-
-  const msgSource = audioCtx.createBufferSource();
-  msgSource.buffer = msgBuf;
-  msgSource.connect(destNode);
+  try {
+    silentOsc.start();
+  } catch (e) {
+    // ignore
+  }
 
   const startTime = audioCtx.currentTime + 0.1;
-  saSource.start(startTime + tIntroEnd);
-  trSource.start(startTime + tScene2Start);
-  msgSource.start(startTime + tScene3Start);
 
-  const canvasStream = canvas.captureStream(30);
+  if (saBuf) {
+    const saSource = audioCtx.createBufferSource();
+    saSource.buffer = saBuf;
+    saSource.connect(destNode);
+    saSource.start(startTime + tIntroEnd);
+  }
+
+  if (trBuf) {
+    const trSource = audioCtx.createBufferSource();
+    trSource.buffer = trBuf;
+    trSource.connect(destNode);
+    trSource.start(startTime + tScene2Start);
+  }
+
+  if (msgBuf) {
+    const msgSource = audioCtx.createBufferSource();
+    msgSource.buffer = msgBuf;
+    msgSource.connect(destNode);
+    msgSource.start(startTime + tScene3Start);
+  }
+
+  // Pre-render frame 0 so the canvas stream has an active bitmap
+  renderFrame(0);
+
+  // 25 FPS standard cinema/reels framerate (silky smooth, lightweight, hardware optimized)
+  const canvasStream = canvas.captureStream(25);
 
   const combinedStream = new MediaStream([
     ...canvasStream.getVideoTracks(),
     ...destNode.stream.getAudioTracks(),
   ]);
 
-  // Codec priority: Prefer MP4 (H.264 / AVC1) for 100% YouTube Shorts & mobile compatibility, then WebM
+  // Hardware accelerated codec priority: MP4 (H.264 / AVC1) & VP8 encode 3x-4x faster than software VP9!
   const candidateTypes = [
     "video/mp4;codecs=avc1,mp4a.40.2",
-    "video/mp4;codecs=avc1,opus",
-    "video/mp4;codecs=avc1",
     "video/mp4",
     "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp8",
     "video/webm",
     "video/webm;codecs=vp9,opus",
   ];
@@ -1773,7 +1793,7 @@ export async function exportShlokVideoMP4({
     try {
       recorder = new MediaRecorder(combinedStream, {
         mimeType: type,
-        videoBitsPerSecond: 2500000,
+        videoBitsPerSecond: 2000000, // 2.0 Mbps optimal for mobile & desktop hardware encoder
       });
       mimeType = type;
       break;
@@ -1803,7 +1823,10 @@ export async function exportShlokVideoMP4({
   };
 
   return new Promise((resolve, reject) => {
+    let stopped = false;
+
     recorder.onstop = async () => {
+      stopped = true;
       try {
         silentOsc.stop();
       } catch (e) {}
@@ -1832,39 +1855,75 @@ export async function exportShlokVideoMP4({
     };
 
     recorder.onerror = (e) => {
+      stopped = true;
       try {
         silentOsc.stop();
       } catch (err) {}
       close();
-      reject(e);
+
+      const detailed =
+        e?.error?.message ||
+        e?.error?.name ||
+        e?.message ||
+        e?.name ||
+        "મીડિયા રેકોર્ડરમાં ક્ષતિ આવી";
+      console.error("MediaRecorder error:", e);
+      reject(new Error(detailed));
     };
 
-    recorder.start(1000);
-
-    const startPerfTime = performance.now();
-
-    function renderLoop() {
-      const now = (performance.now() - startPerfTime) / 1000;
-      renderFrame(now);
-
-      const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
-      onProgress({
-        stage: "recording",
-        percent,
-        message: `9:16 વિડીયો રેકોર્ડ થઈ રહ્યો છે: ${percent}%...`,
-      });
-
-      if (now < totalDuration) {
-        requestAnimationFrame(renderLoop);
-      } else {
-        setTimeout(() => {
-          if (recorder.state === "recording") {
-            recorder.stop();
-          }
-        }, 400);
-      }
+    try {
+      recorder.start(2000); // 2-second chunks reduces I/O interrupts by 50%
+    } catch (startErr) {
+      try {
+        silentOsc.stop();
+      } catch (e) {}
+      close();
+      reject(new Error(`રેકોર્ડિંગ શરૂ કરવામાં નિષ્ફળ: ${startErr?.message || startErr?.name || startErr}`));
+      return;
     }
 
-    renderLoop();
+    const startPerfTime = performance.now();
+    const TARGET_FPS = 25;
+    const FRAME_MS = 1000 / TARGET_FPS;
+    let lastRenderPerf = 0;
+
+    function recordLoop() {
+      if (stopped || recorder.state !== "recording") return;
+
+      const perfNow = performance.now();
+      const elapsedSinceRender = perfNow - lastRenderPerf;
+
+      // Stable 25 FPS frame interval eliminates GPU overload and frame drops
+      if (elapsedSinceRender >= FRAME_MS) {
+        lastRenderPerf = perfNow - (elapsedSinceRender % FRAME_MS);
+        const now = (perfNow - startPerfTime) / 1000;
+        renderFrame(now);
+
+        const remainingSec = Math.max(0, Math.ceil(totalDuration - now));
+        const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
+        onProgress({
+          stage: "recording",
+          percent,
+          message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}% (અંદાજે ${remainingSec} સેકન્ડ બાકી)...`,
+        });
+
+        if (now >= totalDuration) {
+          setTimeout(() => {
+            try {
+              if (recorder.state === "recording") {
+                recorder.stop();
+              }
+            } catch (stopErr) {
+              console.warn("Error stopping recorder:", stopErr);
+            }
+          }, 80);
+          return;
+        }
+      }
+
+      requestAnimationFrame(recordLoop);
+    }
+
+    requestAnimationFrame(recordLoop);
   });
 }
