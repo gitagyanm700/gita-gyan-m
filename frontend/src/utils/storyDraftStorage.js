@@ -254,6 +254,7 @@ function deserializeScenes(scenes) {
  * Save active draft to browser IndexedDB
  */
 export async function saveStoryDraft({
+  activeProjectId,
   title,
   lang,
   aspectRatio,
@@ -268,6 +269,7 @@ export async function saveStoryDraft({
     const serializableScenes = await serializeScenes(scenes);
 
     const draftData = {
+      activeProjectId: activeProjectId || null,
       title,
       lang,
       aspectRatio,
@@ -312,6 +314,7 @@ export async function loadStoryDraft() {
         }
 
         resolve({
+          activeProjectId: data.activeProjectId || null,
           title: data.title || "",
           lang: data.lang || "gu",
           aspectRatio: data.aspectRatio || "9:16",
@@ -334,6 +337,9 @@ export async function loadStoryDraft() {
  */
 export async function clearStoryDraft() {
   try {
+    try {
+      localStorage.removeItem("story_creator_active_project_id");
+    } catch (e) {}
     const db = await openDB();
     if (!db) return;
     const tx = db.transaction(STORE_DRAFTS, "readwrite");

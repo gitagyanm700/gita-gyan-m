@@ -85,6 +85,15 @@ export default function StoryVideoCreator() {
   const [subtitlePos, setSubtitlePos] = useState("auto");
   const [voice, setVoice] = useState("male");
 
+  // Project Library active project ID (Synchronously restored from localStorage + IndexedDB)
+  const [activeProjectId, setActiveProjectId] = useState(() => {
+    try {
+      return localStorage.getItem("story_creator_active_project_id") || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   // Scenes
   const [scenes, setScenes] = useState(INITIAL_SCENES);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -105,6 +114,12 @@ export default function StoryVideoCreator() {
     (async () => {
       const draft = await loadStoryDraft();
       if (isMounted && draft) {
+        if (draft.activeProjectId) {
+          setActiveProjectId(draft.activeProjectId);
+          try {
+            localStorage.setItem("story_creator_active_project_id", draft.activeProjectId);
+          } catch (e) {}
+        }
         if (draft.title !== undefined) setTitle(draft.title);
         if (draft.lang) setLang(draft.lang);
         if (draft.aspectRatio) setAspectRatio(draft.aspectRatio);
@@ -126,6 +141,7 @@ export default function StoryVideoCreator() {
     if (!draftLoaded) return;
     const timer = setTimeout(() => {
       saveStoryDraft({
+        activeProjectId,
         title,
         lang,
         aspectRatio,
@@ -133,9 +149,16 @@ export default function StoryVideoCreator() {
         voice,
         scenes,
       });
+      try {
+        if (activeProjectId) {
+          localStorage.setItem("story_creator_active_project_id", activeProjectId);
+        } else {
+          localStorage.removeItem("story_creator_active_project_id");
+        }
+      } catch (e) {}
     }, 400);
     return () => clearTimeout(timer);
-  }, [title, lang, aspectRatio, subtitlePos, voice, scenes, draftLoaded]);
+  }, [title, lang, aspectRatio, subtitlePos, voice, scenes, activeProjectId, draftLoaded]);
 
   // Audio preview per scene
   const [playingSceneId, setPlayingSceneId] = useState(null);
@@ -173,7 +196,6 @@ export default function StoryVideoCreator() {
   }
 
   // Project Library States (Client-side IndexedDB - ZERO Server Space)
-  const [activeProjectId, setActiveProjectId] = useState(null);
   const [savedProjects, setSavedProjects] = useState([]);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
@@ -272,7 +294,12 @@ export default function StoryVideoCreator() {
       });
 
       if (res && res.success) {
-        if (res.id) setActiveProjectId(res.id);
+        if (res.id) {
+          setActiveProjectId(res.id);
+          try {
+            localStorage.setItem("story_creator_active_project_id", res.id);
+          } catch (e) {}
+        }
         await refreshProjectsList();
         if (res.syncedToCloud) {
           setToastMsg(
@@ -308,6 +335,9 @@ export default function StoryVideoCreator() {
 
     // Reset to clean, blank project (NEVER re-saves or duplicates an already saved project!)
     setActiveProjectId(null);
+    try {
+      localStorage.removeItem("story_creator_active_project_id");
+    } catch (e) {}
     setTitle("");
     setScenes(INITIAL_SCENES);
     await clearStoryDraft();
@@ -319,6 +349,9 @@ export default function StoryVideoCreator() {
   async function handleCancelEdit() {
     stopAudioPreview();
     setActiveProjectId(null);
+    try {
+      localStorage.removeItem("story_creator_active_project_id");
+    } catch (e) {}
     setTitle("");
     setScenes(INITIAL_SCENES);
     await clearStoryDraft();
@@ -337,6 +370,9 @@ export default function StoryVideoCreator() {
     const proj = await getStoryProject(projectId);
     if (proj) {
       setActiveProjectId(proj.id);
+      try {
+        localStorage.setItem("story_creator_active_project_id", proj.id);
+      } catch (e) {}
       setTitle(proj.title);
       setLang(proj.lang);
       setAspectRatio(proj.aspectRatio);
@@ -345,6 +381,17 @@ export default function StoryVideoCreator() {
       setScenes(proj.scenes);
       setShowProjectsModal(false);
       setToastMsg(`"${proj.title}" પ્રોજેક્ટ સફળતાપૂર્વક લોડ થઈ ગયો છે!`);
+
+      // Immediately persist to IndexedDB with activeProjectId so refresh preserves it
+      saveStoryDraft({
+        activeProjectId: proj.id,
+        title: proj.title,
+        lang: proj.lang,
+        aspectRatio: proj.aspectRatio,
+        subtitlePos: proj.subtitlePos,
+        voice: proj.voice,
+        scenes: proj.scenes,
+      });
     }
   }
 
