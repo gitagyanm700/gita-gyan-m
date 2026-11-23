@@ -958,27 +958,6 @@ export default function StoryVideoCreator() {
           </div>
         </header>
 
-        {/* Active Project Edit Alert Banner */}
-        {activeProjectId && (
-          <div className="studio-active-project-alert">
-            <div className="active-project-alert-left">
-              <span className="active-project-dot"></span>
-              <span>
-                <strong>એડિટિંગ મોડ:</strong> તમે સાચવેલા પ્રોજેક્ટ <em>"{title || "વાર્તા"}"</em> માં છો.
-              </span>
-            </div>
-            <button
-              type="button"
-              className="active-project-cancel-btn"
-              onClick={handleCancelEdit}
-              title="એડિટિંગ રદ કરો અને તમામ બોક્સ ખાલી કરો"
-            >
-              <XCircle size={14} />
-              <span>એડિટ રદ કરો (Cancel Edit)</span>
-            </button>
-          </div>
-        )}
-
         {/* Toast Notification Banner */}
         {toastMsg && (
           <div className="studio-toast-banner">

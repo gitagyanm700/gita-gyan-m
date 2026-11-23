@@ -963,7 +963,6 @@ function Admin() {
                 </div>
                 <div className="management-content">
                   <h2>{txt("Story Video Studio", "स्टोरी वीडियो स्टूडियो", "Story Video Studio")}</h2>
-                  <p>{txt("વાર્તા & કસ્ટમ વિડીયો બનાવો (9:16 & 16:9)", "कहानी और कस्टम वीडियो बनाएं (9:16 और 16:9)", "Create Story & Custom Videos (9:16 & 16:9)")}</p>
                 </div>
                 <div className="management-arrow"><ArrowRight size={22} className="management-arrow-icon" /></div>
               </Link>
