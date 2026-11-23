@@ -266,6 +266,20 @@
    MAIN SHLOKA CARD
    ========================================================= */
 
+.shloka-card-swipe-container {
+  width: 100%;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.shloka-card-swipe-container::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .shloka-card {
   width: min(850px, 94%);
   margin: 0 auto;
@@ -279,12 +293,54 @@
   border-radius: 24px;
   box-shadow: var(--reader-shadow);
   position: relative;
+  touch-action: pan-y;
+  will-change: transform;
   transition:
     background 0.3s ease,
     border-color 0.3s ease,
     box-shadow 0.3s ease;
   animation: fadeUp 0.8s ease-out 0.4s forwards;
   opacity: 0;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.shloka-card::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+@keyframes shlokaSlideInNext {
+  0% {
+    opacity: 0.55;
+    transform: translateX(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shlokaSlideInPrev {
+  0% {
+    opacity: 0.55;
+    transform: translateX(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.shloka-card.slide-in-next {
+  animation: shlokaSlideInNext 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  opacity: 1 !important;
+}
+
+.shloka-card.slide-in-prev {
+  animation: shlokaSlideInPrev 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  opacity: 1 !important;
 }
 
 

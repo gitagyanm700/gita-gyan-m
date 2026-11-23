@@ -186,6 +186,9 @@ const [sanskritFontSize, setSanskritFontSize] = useState(21);
   const lastScrollTimeRef = useRef(0);
   const audioModeActiveRef = useRef(false);
   const mainTimerIdRef = useRef(null);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0, isHorizontal: null });
+  const cardRef = useRef(null);
+  const [slideDirection, setSlideDirection] = useState(null);
 
   // =====================================================
   // API URL
@@ -2252,6 +2255,91 @@ if (
   };
 
   // =====================================================
+  // MOBILE TOUCH SWIPE GESTURE FOR SHLOKA NAVIGATION
+  // =====================================================
+  const handleTouchStart = (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+      isHorizontal: null,
+    };
+    if (cardRef.current) {
+      cardRef.current.style.transition = "none";
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchStartRef.current.x;
+    const diffY = touch.clientY - touchStartRef.current.y;
+
+    // Detect gesture direction after 7px
+    if (touchStartRef.current.isHorizontal === null) {
+      if (Math.abs(diffX) > 7 || Math.abs(diffY) > 7) {
+        touchStartRef.current.isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+      }
+    }
+
+    // Only apply horizontal drag if confirmed horizontal gesture
+    if (touchStartRef.current.isHorizontal) {
+      // Damped translation for natural tactile resistance (max ±65px)
+      const clampedOffset = Math.max(-65, Math.min(65, diffX * 0.45));
+      if (cardRef.current) {
+        cardRef.current.style.transform = `translateX(${clampedOffset}px)`;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    const isHorizontal = touchStartRef.current.isHorizontal;
+    const touch = e.changedTouches ? e.changedTouches[0] : null;
+    const diffX = touch ? touch.clientX - touchStartRef.current.x : 0;
+    const diffY = touch ? touch.clientY - touchStartRef.current.y : 0;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    if (cardRef.current) {
+      cardRef.current.style.transition = "transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1)";
+      cardRef.current.style.transform = "translateX(0px)";
+    }
+
+    touchStartRef.current.isHorizontal = null;
+
+    if (!isHorizontal) return;
+
+    // Swipe threshold: 40px or quick flick (> 25px in < 250ms)
+    const isFlick = Math.abs(diffX) > 25 && elapsed < 250;
+    const isDistance = Math.abs(diffX) >= 40 && Math.abs(diffX) > Math.abs(diffY) * 1.2;
+
+    if (isFlick || isDistance) {
+      if (diffX < 0) {
+        // Swiped Left -> Go to Next Shloka
+        if (currentShloka < shlokas.length - 1) {
+          setSlideDirection("next");
+          nextShloka();
+        }
+      } else {
+        // Swiped Right -> Go to Previous Shloka
+        if (currentShloka > 0) {
+          setSlideDirection("prev");
+          previousShloka();
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!slideDirection) return;
+    const t = setTimeout(() => {
+      setSlideDirection(null);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [slideDirection, currentShloka]);
+
+  // =====================================================
   // NEXT CHAPTER
   // =====================================================
 
@@ -2686,7 +2774,17 @@ const prepareSanskritLines = () => {
           CURRENT SHLOKA CARD
       ================================================= */}
 
-      <section className="shloka-card">
+      <div
+        className="shloka-card-swipe-container"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      >
+        <section
+          ref={cardRef}
+          className={`shloka-card ${slideDirection === "next" ? "slide-in-next" : slideDirection === "prev" ? "slide-in-prev" : ""}`}
+        >
 
         {/* MAIN CONTENT */}
 
@@ -2943,6 +3041,7 @@ const prepareSanskritLines = () => {
 
 
       </section>
+      </div>
 
       {/* =====================================================
           MILESTONE QUIZ BANNER (CELEBRATORY IN-PAGE CARD)
