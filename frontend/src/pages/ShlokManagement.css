@@ -2236,9 +2236,9 @@
 
 .shlok-actions {
   display: flex;
-
+  align-items: center;
   gap: 8px;
-
+  flex-wrap: wrap;
   flex-shrink: 0;
 }
 
@@ -2246,25 +2246,24 @@
 .edit-shlok-btn,
 .delete-shlok-btn {
   position: relative;
-
-  padding: 9px 13px;
-
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 13px;
+  min-height: 36px;
   border-radius: 9px;
-
   font-size: 12px;
-
   font-weight: 750;
-
   cursor: pointer;
-
   overflow: hidden;
-
+  white-space: nowrap;
+  box-sizing: border-box;
   box-shadow:
     0 4px 0
     rgba(0, 0, 0, 0.10),
     0 7px 15px
     rgba(13, 71, 161, 0.07);
-
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -2911,19 +2910,43 @@
 
   .shlok-detail-header {
     flex-direction: column;
-
+    align-items: stretch;
     gap: 12px;
   }
 
 
   .shlok-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
     width: 100%;
+    margin-top: 4px;
   }
 
+  .shlok-actions .audio-download-shlok-btn,
+  .shlok-actions .video-download-shlok-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 125px;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    min-height: 38px;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
 
-  .edit-shlok-btn,
-  .delete-shlok-btn {
-    flex: 1;
+  .shlok-actions .share-shlok-btn,
+  .shlok-actions .edit-shlok-btn,
+  .shlok-actions .delete-shlok-btn {
+    flex: 1 1 calc(33.333% - 6px);
+    min-width: 75px;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 0.80rem;
+    min-height: 38px;
+    box-sizing: border-box;
+    white-space: nowrap;
   }
 
 
@@ -2965,6 +2988,19 @@
    ========================================================= */
 
 @media (max-width: 380px) {
+
+  .shlok-actions .audio-download-shlok-btn,
+  .shlok-actions .video-download-shlok-btn {
+    flex: 1 1 100%;
+  }
+
+  .shlok-actions .share-shlok-btn,
+  .shlok-actions .edit-shlok-btn,
+  .shlok-actions .delete-shlok-btn {
+    flex: 1 1 calc(33.333% - 6px);
+    font-size: 0.76rem;
+    padding: 8px 4px;
+  }
 
   .shlok-number-grid {
     grid-template-columns:
@@ -4330,6 +4366,20 @@ html[data-theme="dark"] .refresh-btn,
    MOBILE TOOLBAR WRAP FIX (NO HORIZONTAL SCROLL)
 ===================================================== */
 @media (max-width: 768px) {
+  .shlok-detail-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .shlok-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
   .rich-toolbar {
     flex-wrap: wrap !important;
     overflow-x: visible !important;
@@ -4683,6 +4733,35 @@ html[data-theme="dark"] .field-ai-translate-btn.en-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+
+/* Individual Shlok Share Card Action Button */
+.share-shlok-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.30);
+  white-space: nowrap;
+}
+
+.share-shlok-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
+}
+
+.share-shlok-btn:active {
+  transform: translateY(1px);
 }
 
 /* Audio Modal Styles */

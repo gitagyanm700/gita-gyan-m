@@ -50,9 +50,11 @@ import {
   Volume2,
   X,
   CheckCircle2,
+  Share2,
 } from "lucide-react";
 import ShlokVideoGeneratorModal from "../components/ShlokVideoGeneratorModal.jsx";
 import CloudScenesManagerModal from "../components/CloudScenesManagerModal.jsx";
+import ShareShlokaModal from "../components/ShareShlokaModal.jsx";
 import "./ShlokManagement.css";
 
 
@@ -610,6 +612,7 @@ function ShlokManagement() {
   ===================================================== */
   const [audioModalShlok, setAudioModalShlok] = useState(null);
   const [videoModalShlok, setVideoModalShlok] = useState(null);
+  const [shareModalShlok, setShareModalShlok] = useState(null);
   const [showCloudScenesModal, setShowCloudScenesModal] = useState(false);
   const [audioModalLang, setAudioModalLang] = useState("gu");
   const [downloadingType, setDownloadingType] = useState(null);
@@ -3287,6 +3290,19 @@ function ShlokManagement() {
                                 </button>
                               )}
 
+                              {/* 📤 SHARE SHLOKA CARD MODAL */}
+                              <button
+                                type="button"
+                                className="share-shlok-btn"
+                                onClick={() => {
+                                  stopAudioPreview();
+                                  setShareModalShlok(shlok);
+                                }}
+                                title="આ શ્લોકનું કાર્ડ શેર કરો (WhatsApp / Social Media)"
+                              >
+                                <Share2 className="btn-icon" size={15} /> Share
+                              </button>
+
                               {canEditShloks && (
                                 <button
                                   type="button"
@@ -3996,6 +4012,28 @@ function ShlokManagement() {
           <CloudScenesManagerModal
             isOpen={showCloudScenesModal}
             onClose={() => setShowCloudScenesModal(false)}
+          />
+        )}
+
+        {/* =================================================
+            5. SHARE SHLOKA CARD MODAL
+        ================================================= */}
+        {shareModalShlok && (
+          <ShareShlokaModal
+            isOpen={Boolean(shareModalShlok)}
+            onClose={() => setShareModalShlok(null)}
+            shlokaData={{
+              chapterNumber: shareModalShlok.chapterNumber || selectedChapter,
+              chapterName:
+                shareModalShlok.chapterName ||
+                chapterNames[shareModalShlok.chapterNumber || selectedChapter] ||
+                `અધ્યાય ${shareModalShlok.chapterNumber || selectedChapter}`,
+              shlokNumber: shareModalShlok.shlokNumber,
+              sanskrit: shareModalShlok.sanskrit,
+              translation: shareModalShlok.translation,
+              speaker: shareModalShlok.speaker,
+              message: shareModalShlok.message,
+            }}
           />
         )}
 
