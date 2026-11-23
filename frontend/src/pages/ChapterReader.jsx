@@ -190,6 +190,14 @@ const [sanskritFontSize, setSanskritFontSize] = useState(21);
   const cardRef = useRef(null);
   const [slideDirection, setSlideDirection] = useState(null);
 
+  useEffect(() => {
+    if (!slideDirection) return;
+    const t = setTimeout(() => {
+      setSlideDirection(null);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [slideDirection, currentShloka]);
+
   // =====================================================
   // API URL
   // =====================================================
@@ -2330,14 +2338,6 @@ if (
       }
     }
   };
-
-  useEffect(() => {
-    if (!slideDirection) return;
-    const t = setTimeout(() => {
-      setSlideDirection(null);
-    }, 280);
-    return () => clearTimeout(t);
-  }, [slideDirection, currentShloka]);
 
   // =====================================================
   // NEXT CHAPTER
