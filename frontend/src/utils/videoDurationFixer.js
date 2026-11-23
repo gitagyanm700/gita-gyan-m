@@ -1,3 +1,5 @@
+import fixWebmDuration from 'fix-webm-duration';
+
 /**
  * videoDurationFixer.js
  *
@@ -235,7 +237,11 @@ WebmFile.prototype.fixDuration = function (durationMs) {
   return true;
 };
 WebmFile.prototype.toBlob = function (mimeType) {
-  return new Blob([this.source.buffer], { type: mimeType || 'video/webm' });
+  const buf = this.source.buffer.slice(
+    this.source.byteOffset,
+    this.source.byteOffset + this.source.byteLength
+  );
+  return new Blob([buf], { type: mimeType || 'video/webm' });
 };
 
 /**
@@ -390,8 +396,21 @@ export async function fixVideoDuration(blob, durationSeconds, mimeType = 'video/
           return file.toBlob(blob.type || mimeType || 'video/webm');
         }
       } catch (webmErr) {
-        console.warn('WebM duration patch failed, falling back to original blob:', webmErr);
+        console.warn('WebM duration patch failed, trying fix-webm-duration fallback:', webmErr);
       }
+
+      try {
+        if (typeof fixWebmDuration === 'function') {
+          return await new Promise((resolve) => {
+            fixWebmDuration(blob, Math.round(durationSeconds * 1000), (fixed) => {
+              resolve(fixed || blob);
+            });
+          });
+        }
+      } catch (fallbackErr) {
+        console.warn('fix-webm-duration fallback error:', fallbackErr);
+      }
+
       return blob;
     }
 

@@ -245,7 +245,7 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
     setExportMsg("વિડીયો રેન્ડરિંગ શરૂ થઈ રહ્યું છે...");
 
     try {
-      const { blob } = await exportShlokVideoMP4({
+      const { blob, ext } = await exportShlokVideoMP4({
         shlok,
         lang,
         width: 720,
@@ -256,9 +256,10 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
         },
       });
 
-      // Trigger instant MP4 download
+      // Trigger instant download with correct file extension matching container
+      const actualExt = ext || (blob?.type?.includes("mp4") ? "mp4" : "webm");
       const langLabel = lang === "gu" ? "Gujarati" : lang === "hi" ? "Hindi" : "English";
-      const filename = `Gita_Adhyay_${chNum}_Shlok_${sNum}_${langLabel}_9x16.mp4`;
+      const filename = `Gita_Adhyay_${chNum}_Shlok_${sNum}_${langLabel}_9x16.${actualExt}`;
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

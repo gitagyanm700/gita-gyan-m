@@ -848,8 +848,11 @@ export async function exportStoryVideo({
   // Hardware accelerated codec priority: MP4 (H.264 / AVC1) & VP8 encode 3x-4x faster than software VP9!
   const candidateTypes = [
     "video/mp4;codecs=avc1,mp4a.40.2",
+    "video/mp4;codecs=avc1,opus",
+    "video/mp4;codecs=avc1",
     "video/mp4",
     "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp8",
     "video/webm",
     "video/webm;codecs=vp9,opus",
   ];

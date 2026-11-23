@@ -14,6 +14,7 @@
  */
 
 import { getValidToken } from "./authHelper.js";
+import { fixVideoDuration } from "./videoDurationFixer.js";
 
 // Pure 9:16 Vertical 3D Mythological Master Scenes (10 Unique Proper Scenes - Zero Duplicates)
 export const SCENE_IMAGES = {
@@ -1718,6 +1719,14 @@ export async function exportShlokVideoMP4({
 
   const destNode = audioCtx.createMediaStreamDestination();
 
+  // Keep audio stream continuously active with inaudible zero-gain oscillator to prevent MediaRecorder starvation & timestamp desync
+  const silentOsc = audioCtx.createOscillator();
+  const silentGain = audioCtx.createGain();
+  silentGain.gain.value = 0;
+  silentOsc.connect(silentGain);
+  silentGain.connect(destNode);
+  silentOsc.start();
+
   const saSource = audioCtx.createBufferSource();
   saSource.buffer = saBuf;
   saSource.connect(destNode);
@@ -1742,21 +1751,49 @@ export async function exportShlokVideoMP4({
     ...destNode.stream.getAudioTracks(),
   ]);
 
-  let mimeType = "video/webm;codecs=vp9,opus";
-  if (MediaRecorder.isTypeSupported("video/mp4;codecs=avc1,mp4a.40.2")) {
-    mimeType = "video/mp4;codecs=avc1,mp4a.40.2";
-  } else if (MediaRecorder.isTypeSupported("video/mp4")) {
-    mimeType = "video/mp4";
-  } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
-    mimeType = "video/webm;codecs=vp8,opus";
-  } else if (MediaRecorder.isTypeSupported("video/webm")) {
-    mimeType = "video/webm";
+  // Codec priority: Prefer MP4 (H.264 / AVC1) for 100% YouTube Shorts & mobile compatibility, then WebM
+  const candidateTypes = [
+    "video/mp4;codecs=avc1,mp4a.40.2",
+    "video/mp4;codecs=avc1,opus",
+    "video/mp4;codecs=avc1",
+    "video/mp4",
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/webm;codecs=vp9,opus",
+  ];
+
+  let recorder = null;
+  let mimeType = "";
+
+  for (const type of candidateTypes) {
+    if (typeof MediaRecorder.isTypeSupported === "function" && !MediaRecorder.isTypeSupported(type)) {
+      continue;
+    }
+    try {
+      recorder = new MediaRecorder(combinedStream, {
+        mimeType: type,
+        videoBitsPerSecond: 2500000,
+      });
+      mimeType = type;
+      break;
+    } catch (e) {
+      console.warn(`MediaRecorder failed with type ${type}:`, e);
+    }
   }
 
-  const recorder = new MediaRecorder(combinedStream, {
-    mimeType,
-    videoBitsPerSecond: 3500000,
-  });
+  if (!recorder) {
+    try {
+      recorder = new MediaRecorder(combinedStream);
+      mimeType = recorder.mimeType || "video/webm";
+    } catch (err) {
+      try {
+        silentOsc.stop();
+      } catch (e) {}
+      close();
+      throw new Error(`બ્રાઉઝરમાં વિડિઓ રેકોર્ડિંગ સપોર્ટ ઉપલબ્ધ નથી: ${err?.message || err?.name || err}`);
+    }
+  }
 
   const recordedChunks = [];
   recorder.ondataavailable = (e) => {
@@ -1766,19 +1803,43 @@ export async function exportShlokVideoMP4({
   };
 
   return new Promise((resolve, reject) => {
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
+      try {
+        silentOsc.stop();
+      } catch (e) {}
       close();
-      const ext = "mp4";
-      const blob = new Blob(recordedChunks, { type: mimeType.split(";")[0] });
-      resolve({ blob, ext, mimeType });
+
+      onProgress({
+        stage: "finalizing",
+        percent: 99,
+        message: "વિડીયો મેટાડેટા (ડ્યુરેશન) તૈયાર થઈ રહ્યું છે...",
+      });
+
+      const isMp4 = mimeType.toLowerCase().includes("mp4");
+      const ext = isMp4 ? "mp4" : "webm";
+      const rawBlob = new Blob(recordedChunks, {
+        type: mimeType.split(";")[0] || (isMp4 ? "video/mp4" : "video/webm"),
+      });
+
+      let blob = rawBlob;
+      try {
+        blob = await fixVideoDuration(rawBlob, totalDuration, mimeType);
+      } catch (patchErr) {
+        console.warn("Could not patch video duration metadata:", patchErr);
+      }
+
+      resolve({ blob, ext, mimeType, duration: totalDuration });
     };
 
     recorder.onerror = (e) => {
+      try {
+        silentOsc.stop();
+      } catch (err) {}
       close();
       reject(e);
     };
 
-    recorder.start();
+    recorder.start(1000);
 
     const startPerfTime = performance.now();
 
@@ -1800,7 +1861,7 @@ export async function exportShlokVideoMP4({
           if (recorder.state === "recording") {
             recorder.stop();
           }
-        }, 300);
+        }, 400);
       }
     }
 
