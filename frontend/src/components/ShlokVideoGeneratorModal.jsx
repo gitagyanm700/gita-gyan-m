@@ -11,7 +11,6 @@ import {
   Check,
   Globe,
   Loader2,
-  Tv,
 } from "lucide-react";
 import {
   createShlokVideoRenderer,
@@ -362,12 +361,6 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
               </button>
             </div>
           </div>
-
-          <div className="option-group format-badge-box">
-            <span className="format-badge">
-              <Tv size={14} /> 9:16 (Reels / Shorts / Status)
-            </span>
-          </div>
         </div>
 
         {/* MODAL BODY: PREVIEW & ACTION */}
@@ -432,46 +425,8 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
             </div>
           </div>
 
-          {/* RIGHT: STORY SCRIPT INFO & DOWNLOAD BUTTON */}
+          {/* RIGHT: DOWNLOAD BUTTON & AI PROMPTS */}
           <div className="video-info-col">
-            <div className="story-script-card">
-              <h3>🎬 વિડીયો સ્ટોરી સીન (Script Flow)</h3>
-              <div className="scene-step-list">
-                <div className="scene-step-item">
-                  <span className="step-num">1</span>
-                  <div className="step-info">
-                    <strong>શ્લોક ગાન & વક્તા દર્શન</strong>
-                    <p>{detectedScenes.scene1Name}</p>
-                    <span className="step-sub">
-                      સંસ્કૃત શ્લોક બોલાતાની સાથે શબ્દો ચમકશે અને પૂર્ણ થતાં જ સ્ક્રીન પરથી હટી જશે.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="scene-step-item">
-                  <span className="step-num">2</span>
-                  <div className="step-info">
-                    <strong>અનુવાદ ({lang === "gu" ? "ગુજરાતી" : lang === "hi" ? "हिन्दी" : "English"})</strong>
-                    <p>{detectedScenes.scene2Name}</p>
-                    <span className="step-sub">
-                      અવાજ મુજબ અનુવાદ લખાશે અને પૂર્ણ થતાં જ સ્ક્રીન પરથી હટી જશે.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="scene-step-item">
-                  <span className="step-num">3</span>
-                  <div className="step-info">
-                    <strong>દિવ્ય ગીતા સંદેશ (Life Guidance)</strong>
-                    <p>{detectedScenes.scene3Name}</p>
-                    <span className="step-sub">
-                      જીવન સંદેશ દરમિયાન દર ૫-૭ સેકન્ડે 3D દ્રશ્યો આપોઆપ બદલાતા રહેશે (Multi-Shot Montage).
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* DOWNLOAD ACTION BOX */}
             <div className="download-action-card">
               <button
@@ -501,10 +456,6 @@ export default function ShlokVideoGeneratorModal({ shlok, onClose }) {
                   />
                 </div>
               )}
-
-              <p className="export-note">
-                ⚡ Instagram Reels, YouTube Shorts અને WhatsApp Status માટે ૧૦૦% તૈયાર 9:16 HD MP4 વિડીયો.
-              </p>
             </div>
 
             {/* BONUS: AI 3D PROMPT COPIER */}

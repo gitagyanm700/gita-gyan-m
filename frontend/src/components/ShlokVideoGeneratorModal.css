@@ -174,19 +174,6 @@
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
 }
 
-.format-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  color: #fbbf24;
-  font-size: 12px;
-  font-weight: 700;
-}
-
 /* MODAL BODY (TWO COLUMNS) */
 .shlok-video-modal-body {
   display: grid;
@@ -334,69 +321,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.story-script-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 14px;
-  padding: 16px;
-}
-
-.story-script-card h3 {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #fbbf24;
-}
-
-.scene-step-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.scene-step-item {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  background: rgba(8, 20, 52, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 10px 12px;
-  border-radius: 10px;
-}
-
-.step-num {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.step-info strong {
-  display: block;
-  font-size: 13.5px;
-  color: #f1f5f9;
-}
-
-.step-info p {
-  margin: 2px 0 3px;
-  font-size: 12.5px;
-  color: #fbbf24;
-}
-
-.step-sub {
-  display: block;
-  font-size: 11.5px;
-  color: #94a3b8;
-  line-height: 1.35;
 }
 
 /* DOWNLOAD CARD */
@@ -456,14 +381,6 @@
   height: 100%;
   background: linear-gradient(90deg, #fbbf24, #f59e0b, #10b981);
   transition: width 0.15s ease;
-}
-
-.export-note {
-  margin: 0;
-  font-size: 12px;
-  color: #cbd5e1;
-  text-align: center;
-  line-height: 1.4;
 }
 
 /* AI PROMPT ACCORDION */
