@@ -19,6 +19,38 @@
   animation: pageEntranceAnimation 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   position: relative;
   z-index: 1;
+  touch-action: pan-y;
+  overflow-x: hidden;
+}
+
+.page-transition-wrapper.tab-slide-next {
+  animation: tabSlideNext 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.page-transition-wrapper.tab-slide-prev {
+  animation: tabSlidePrev 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes tabSlideNext {
+  0% {
+    opacity: 0.25;
+    transform: translateX(45px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tabSlidePrev {
+  0% {
+    opacity: 0.25;
+    transform: translateX(-45px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* =====================================================

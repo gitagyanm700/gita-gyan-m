@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { hasPermission } from "./utils/permissionHelper.js";
 
@@ -322,15 +322,78 @@ function StartupAuthRedirector() {
   return null;
 }
 
+// =====================================================
+// MOBILE BOTTOM NAVIGATION TABS FOR HORIZONTAL SWIPE
+// =====================================================
+
+const MAIN_MOBILE_TABS = [
+  { path: "/", label: "home" },
+  { path: "/chapters", label: "chapters" },
+  {
+    path: "/quiz-category",
+    aliases: ["/quiz", "/quiz-category"],
+    label: "quiz",
+    requiresAuth: true,
+    authMessage: {
+      gu: "Quiz રમવા માટે Login કરવું જરૂરી છે.",
+      hi: "Quiz खेलने के लिए Login करना आवश्यक है।",
+      en: "Login is required to play the Quiz.",
+    },
+  },
+  {
+    path: "/favorites",
+    label: "favorites",
+    requiresAuth: true,
+    authMessage: {
+      gu: "મનપસંદ શ્લોક જોવા માટે Login કરવું જરૂરી છે.",
+      hi: "पसंदीदा श्लोक देखने के लिए Login करना आवश्यक है।",
+      en: "Login is required to view favorite shlokas.",
+    },
+  },
+  { path: "/more", label: "more" },
+];
+
+function getMobileTabIndex(pathname) {
+  if (
+    pathname.startsWith("/chapter/") ||
+    pathname.startsWith("/quiz/play") ||
+    pathname.startsWith("/admin") ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password"
+  ) {
+    return -1;
+  }
+
+  return MAIN_MOBILE_TABS.findIndex((tab) => {
+    if (tab.aliases) return tab.aliases.includes(pathname);
+    return tab.path === pathname;
+  });
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { isHindi, isEnglish } = useLanguage();
+  const [tabSlideDirection, setTabSlideDirection] = useState(null);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0, isHorizontal: null, tabIndex: -1 });
+  const wrapperRef = useRef(null);
+
   const isHome = location.pathname === "/";
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     trackVisit(location.pathname);
   }, [location.pathname, user]);
+
+  useEffect(() => {
+    if (!tabSlideDirection) return;
+    const timer = setTimeout(() => {
+      setTabSlideDirection(null);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [tabSlideDirection]);
 
   useEffect(() => {
     // Quietly pre-cache chapters in the background for 100% offline reliability
@@ -349,11 +412,172 @@ function AnimatedRoutes() {
     };
   }, [user]);
 
+  // =====================================================
+  // MOBILE TOUCH SWIPE NAVIGATION (MAIN BOTTOM NAV TABS)
+  // =====================================================
+  const navigateToTab = (targetIndex, direction) => {
+    const targetTab = MAIN_MOBILE_TABS[targetIndex];
+    if (!targetTab) return;
+
+    setTabSlideDirection(direction);
+
+    if (targetTab.requiresAuth && !user) {
+      const localizedMsg = isEnglish
+        ? targetTab.authMessage.en
+        : isHindi
+        ? targetTab.authMessage.hi
+        : targetTab.authMessage.gu;
+
+      sessionStorage.setItem(
+        "authRedirect",
+        JSON.stringify({
+          from: targetTab.path,
+          message: localizedMsg,
+        })
+      );
+
+      navigate("/login", {
+        state: {
+          from: targetTab.path,
+          message: localizedMsg,
+        },
+      });
+      return;
+    }
+
+    navigate(targetTab.path);
+  };
+
+  const handleTouchStart = (e) => {
+    if (typeof window !== "undefined" && window.innerWidth > 768) return;
+    if (!e.touches || e.touches.length !== 1) return;
+    const currentTabIndex = getMobileTabIndex(location.pathname);
+    if (currentTabIndex === -1) return;
+
+    // Ignore swipe on interactive widgets, inputs, audio players, etc.
+    if (
+      e.target.closest(
+        "input, select, textarea, audio, video, .audio-player, .shlok-card, .no-swipe, .gita-ai-btn, .modal-backdrop, .dialog"
+      )
+    ) {
+      return;
+    }
+
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+      isHorizontal: null,
+      tabIndex: currentTabIndex,
+    };
+
+    if (wrapperRef.current) {
+      wrapperRef.current.style.transition = "none";
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    if (touchStartRef.current.tabIndex === -1) return;
+
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchStartRef.current.x;
+    const diffY = touch.clientY - touchStartRef.current.y;
+
+    // Detect gesture direction after 9px
+    if (touchStartRef.current.isHorizontal === null) {
+      if (Math.abs(diffX) > 9 || Math.abs(diffY) > 9) {
+        touchStartRef.current.isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+      }
+    }
+
+    // If scrolling vertically, let native scroll happen freely
+    if (!touchStartRef.current.isHorizontal) {
+      return;
+    }
+
+    // Apply dampened horizontal drag for tactile feel
+    const currentIdx = touchStartRef.current.tabIndex;
+    let clampedOffset = diffX * 0.38;
+
+    if (currentIdx === 0 && diffX > 0) {
+      // Bounded bounce when swiping right on Home
+      clampedOffset = Math.min(25, diffX * 0.15);
+    } else if (currentIdx === MAIN_MOBILE_TABS.length - 1 && diffX < 0) {
+      // Bounded bounce when swiping left on More
+      clampedOffset = Math.max(-25, diffX * 0.15);
+    } else {
+      clampedOffset = Math.max(-65, Math.min(65, clampedOffset));
+    }
+
+    if (wrapperRef.current) {
+      wrapperRef.current.style.transform = `translateX(${clampedOffset}px)`;
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    const isHorizontal = touchStartRef.current.isHorizontal;
+    const currentIdx = touchStartRef.current.tabIndex;
+    const touch = e.changedTouches ? e.changedTouches[0] : null;
+    const diffX = touch ? touch.clientX - touchStartRef.current.x : 0;
+    const diffY = touch ? touch.clientY - touchStartRef.current.y : 0;
+    const elapsed = Date.now() - touchStartRef.current.time;
+
+    if (wrapperRef.current) {
+      wrapperRef.current.style.transition = "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)";
+      wrapperRef.current.style.transform = "translateX(0px)";
+    }
+
+    touchStartRef.current = {
+      x: 0,
+      y: 0,
+      time: 0,
+      isHorizontal: null,
+      tabIndex: -1,
+    };
+
+    if (!isHorizontal || currentIdx === -1) return;
+
+    // Threshold: 45px or quick flick (> 25px in < 260ms)
+    const isFlick = Math.abs(diffX) > 25 && elapsed < 260;
+    const isDistance = Math.abs(diffX) >= 45 && Math.abs(diffX) > Math.abs(diffY) * 1.2;
+
+    if (isFlick || isDistance) {
+      if (diffX < 0) {
+        // Swiped Left -> Go to Next Tab
+        if (currentIdx < MAIN_MOBILE_TABS.length - 1) {
+          navigateToTab(currentIdx + 1, "next");
+        }
+      } else {
+        // Swiped Right -> Go to Previous Tab
+        if (currentIdx > 0) {
+          navigateToTab(currentIdx - 1, "prev");
+        }
+      }
+    }
+  };
+
   return (
     <>
       {isHome && <div className="home-fixed-bg" aria-hidden="true" />}
       <div key={`glow-${location.pathname}`} className="page-transition-glow" />
-      <div key={location.pathname} className="page-transition-wrapper">
+      <div
+        key={location.pathname}
+        ref={wrapperRef}
+        className={`page-transition-wrapper ${
+          tabSlideDirection === "next"
+            ? "tab-slide-next"
+            : tabSlideDirection === "prev"
+            ? "tab-slide-prev"
+            : ""
+        }`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        onAnimationEnd={() => setTabSlideDirection(null)}
+      >
         <Routes location={location}>
 
             {/* =================================================
