@@ -74,7 +74,21 @@ const synthesizeBuffer = async (text, lang = "gu", customRate = null, { cacheInM
       return diskBuffer;
     }
   } catch (e) {
-    // Disk miss — continue to synthesis
+    // Disk miss for custom rate — fallback to canonical pre-cached audio if present
+    if (customRate !== null && customRate !== undefined) {
+      try {
+        const canonicalParams = getTtsSynthesisParams(text, lang, null, voice);
+        if (canonicalParams && canonicalParams.cacheKey !== cacheKey) {
+          const canonicalDiskPath = path.join(CACHE_DIR, `${canonicalParams.cacheKey}.mp3`);
+          const canonicalBuffer = await fs.promises.readFile(canonicalDiskPath);
+          if (canonicalBuffer && canonicalBuffer.length > 0) {
+            if (cacheInMemory) setMemoryCache(cacheKey, canonicalBuffer);
+            fs.promises.writeFile(diskPath, canonicalBuffer).catch(() => {});
+            return canonicalBuffer;
+          }
+        }
+      } catch (err) {}
+    }
   }
 
   // 3. Reuse in-flight synthesis promise if already running for the exact same cacheKey

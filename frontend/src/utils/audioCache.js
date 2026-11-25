@@ -566,7 +566,7 @@ export async function cacheSingleShlokaAudio(chapterNumber, shlokaObj, lang = "g
       fetchTasks.push(
         (async () => {
           try {
-            const saBlob = await fetchNeuralAudioBlob(saText, "sa", "-10%");
+            const saBlob = await fetchNeuralAudioBlob(saText, "sa", null);
             if (saBlob) {
               await saveAudioToCache(chapterNumber, sNum, "sanskrit", "sa", saBlob);
               if (cachedKeySet) cachedKeySet.add(saKey);
@@ -592,7 +592,7 @@ export async function cacheSingleShlokaAudio(chapterNumber, shlokaObj, lang = "g
       fetchTasks.push(
         (async () => {
           try {
-            const trBlob = await fetchNeuralAudioBlob(trText, lang, "-2%");
+            const trBlob = await fetchNeuralAudioBlob(trText, lang, null);
             if (trBlob) {
               await saveAudioToCache(chapterNumber, sNum, "translation", lang, trBlob);
               if (cachedKeySet) cachedKeySet.add(trKey);
@@ -614,7 +614,7 @@ export async function cacheSingleShlokaAudio(chapterNumber, shlokaObj, lang = "g
       fetchTasks.push(
         (async () => {
           try {
-            const msgBlob = await fetchNeuralAudioBlob(msgText, lang, "-2%");
+            const msgBlob = await fetchNeuralAudioBlob(msgText, lang, null);
             if (msgBlob) {
               await saveAudioToCache(chapterNumber, sNum, "message", lang, msgBlob);
               if (cachedKeySet) cachedKeySet.add(msgKey);
@@ -669,7 +669,7 @@ export function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startF
           type: "sanskrit",
           lang: "sa",
           text: saText,
-          rate: "-10%",
+          rate: null,
         });
       }
     }
@@ -689,7 +689,7 @@ export function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startF
           type: "translation",
           lang,
           text: trText,
-          rate: "-2%",
+          rate: null,
         });
       }
     }
@@ -708,7 +708,7 @@ export function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startF
           type: "message",
           lang,
           text: msgText,
-          rate: "-2%",
+          rate: null,
         });
       }
     }

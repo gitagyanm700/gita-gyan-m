@@ -1523,7 +1523,7 @@ if (
     }
 
     const langCode = type === "sanskrit" ? "sa" : (isEnglish ? "en" : isHindi ? "hi" : "gu");
-    const customRate = type === "sanskrit" ? "-10%" : "-2%";
+    const customRate = null;
     scrollToSection(type);
 
     try {
