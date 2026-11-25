@@ -743,8 +743,24 @@ async function syncChapterInternal(
     return;
   }
 
-  const cachedKeySet = await getChapterCachedKeys(chapterNumber);
-  const initialCompleted = await getChapterCachedAudioCount(chapterNumber, shlokas, lang, cachedKeySet);
+  // 1. Instant O(1) Pre-calculated Shloka Status Map (eliminates heavy regex parsing during sync)
+  const shlokaKeyMap = new Map();
+  const shlokaDoneMap = new Map();
+  let initialCompleted = 0;
+
+  for (const s of shlokas) {
+    const sNum = Number(s.shlokNumber);
+    const keys = [
+      buildAudioKey(chapterNumber, sNum, "sanskrit", "sa"),
+      buildAudioKey(chapterNumber, sNum, "translation", lang),
+      buildAudioKey(chapterNumber, sNum, "message", lang),
+    ];
+    shlokaKeyMap.set(sNum, keys);
+
+    const isDone = keys.every((k) => cachedKeySet.has(k));
+    shlokaDoneMap.set(sNum, isDone);
+    if (isDone) initialCompleted++;
+  }
 
   const missingClips = buildMissingClipsForChapter(
     chapterNumber,
@@ -777,15 +793,15 @@ async function syncChapterInternal(
     });
   }
 
-  // Group clips into compact binary batches (9 clips = 3 shlokas per batch)
-  const BATCH_SIZE = 9;
+  // Group clips into optimal high-throughput batches (15 clips per batch for rapid synthesis)
+  const BATCH_SIZE = 15;
   const chunks = [];
   for (let i = 0; i < missingClips.length; i += BATCH_SIZE) {
     chunks.push(missingClips.slice(i, i + BATCH_SIZE));
   }
 
-  // Execute 3 parallel batch requests (~27 clips in flight with minimal HTTP overhead)
-  const BATCH_CONCURRENCY = 3;
+  // 2 high-throughput parallel streams for maximum network/backend speed without connection starvation
+  const BATCH_CONCURRENCY = 2;
   let chunkIndex = 0;
 
   async function batchWorker() {
@@ -809,7 +825,7 @@ async function syncChapterInternal(
         }
       }
 
-      // Clean fallback for any clip omitted by batch (or when older server doesn't have /batch yet)
+      // Fast fallback for any individual clip omitted by batch
       if (fallbackItems.length > 0 && !signal?.aborted && navigator.onLine) {
         const FALLBACK_CONCURRENCY = 4;
         let fbIdx = 0;
@@ -840,16 +856,19 @@ async function syncChapterInternal(
         await saveAudioBatchToCache(recordsToSave);
         for (const rec of recordsToSave) {
           cachedKeySet.add(rec.id);
+          const sNum = rec.shlokNumber;
+          const reqKeys = shlokaKeyMap.get(sNum);
+          if (reqKeys && reqKeys.every((k) => cachedKeySet.has(k))) {
+            shlokaDoneMap.set(sNum, true);
+          }
         }
       }
 
       if (typeof onProgress === "function" && !signal?.aborted) {
-        const currentCompleted = await getChapterCachedAudioCount(
-          chapterNumber,
-          shlokas,
-          lang,
-          cachedKeySet
-        );
+        let currentCompleted = 0;
+        for (const done of shlokaDoneMap.values()) {
+          if (done) currentCompleted++;
+        }
         onProgress({
           current: currentCompleted,
           total: len,

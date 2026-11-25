@@ -1839,53 +1839,24 @@ if (
 
     if (!isRunningInStandaloneApp()) return;
     if (!shlokas || shlokas.length === 0) return;
+    if (!navigator.onLine) return;
 
     let active = true;
 
-    // Check if audios are already cached in IndexedDB
-    getChapterCachedKeys(currentChapterNumber).then((cachedKeySet) => {
-      if (!active) return;
-      const missingClips = buildMissingClipsForChapter(
-        currentChapterNumber,
-        shlokas,
-        currentLang,
-        0,
-        cachedKeySet
-      );
-
-      if (missingClips.length === 0) {
-        // All audio is already cached in IndexedDB! Mark as saved permanently and don't re-save!
-        markChapterAudioSaved(currentChapterNumber, currentLang);
+    autoSyncChapterAudios(
+      currentChapterNumber,
+      shlokas,
+      currentLang,
+      currentShloka,
+      (prog) => {
+        if (!active) return;
         setAudioSyncProgress({
-          current: shlokas.length,
-          total: shlokas.length,
-          done: true,
+          current: prog.current,
+          total: prog.total,
+          done: prog.done || prog.current >= prog.total,
         });
-        return;
       }
-
-      setAudioSyncProgress({
-        current: Math.max(0, shlokas.length - missingClips.length),
-        total: shlokas.length,
-        done: false,
-      });
-
-      if (!navigator.onLine) return;
-      autoSyncChapterAudios(
-        currentChapterNumber,
-        shlokas,
-        currentLang,
-        currentShloka,
-        (prog) => {
-          if (!active) return;
-          setAudioSyncProgress({
-            current: prog.current,
-            total: prog.total,
-            done: prog.done || prog.current >= prog.total,
-          });
-        }
-      );
-    });
+    );
 
     return () => {
       active = false;
