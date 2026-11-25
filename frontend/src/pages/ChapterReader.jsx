@@ -46,11 +46,16 @@ import {
   extractCleanTextForSpeech,
   formatSanskritForSpeech,
   fetchNeuralAudioBlob,
+  getChapterCachedKeys,
+  buildMissingClipsForChapter,
+  isChapterAudioSaved,
+  markChapterAudioSaved,
 } from "../utils/audioCache.js";
 import { isRunningInStandaloneApp } from "../utils/pwaManager.js";
 
 function ChapterReader() {
   const { chapterNumber } = useParams();
+  const currentChapterNumber = Number(chapterNumber);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -76,7 +81,11 @@ function ChapterReader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isOfflineMode, setIsOfflineMode] = useState(false);
-  const [audioSyncProgress, setAudioSyncProgress] = useState({ current: 0, total: 0, done: false });
+  const [audioSyncProgress, setAudioSyncProgress] = useState(() => {
+    const curLang = isEnglish ? "en" : isHindi ? "hi" : "gu";
+    const saved = isChapterAudioSaved(currentChapterNumber, curLang);
+    return { current: saved ? 1 : 0, total: saved ? 1 : 0, done: saved };
+  });
   const [audioToast, setAudioToast] = useState("");
 
   const showAudioToast = (msg) => {
@@ -222,13 +231,6 @@ const [sanskritFontSize, setSanskritFontSize] = useState(21);
   const QUIZ_API_URL = isLocal
     ? "http://localhost:5000/api/quiz"
     : "https://bhagavad-gita-backend-jy1a.onrender.com/api/quiz";
-
-  // =====================================================
-  // CHAPTER NUMBER
-  // =====================================================
-
-  const currentChapterNumber =
-    Number(chapterNumber);
 
   // =====================================================
   // REQUESTED SHLOK
@@ -1820,15 +1822,54 @@ if (
   }, [user]);
 
   // Quiet background auto-download of Neural TTS audios for this chapter into IndexedDB (In App Only!)
-  // Automatically saves audio in background so the user does NOT need to listen to it online!
+  // Once saved, it will NEVER save again and will immediately display "ઑડિયો ઑફલાઇન તૈયાર"!
   useEffect(() => {
-    setAudioSyncProgress({ current: 0, total: 0, done: false });
     if (typeof window === "undefined") return;
+    const currentLang = isEnglish ? "en" : isHindi ? "hi" : "gu";
+    const alreadySaved = isChapterAudioSaved(currentChapterNumber, currentLang);
+
+    if (alreadySaved) {
+      setAudioSyncProgress({
+        current: shlokas?.length || 1,
+        total: shlokas?.length || 1,
+        done: true,
+      });
+      return;
+    }
+
     if (!isRunningInStandaloneApp()) return;
     if (!shlokas || shlokas.length === 0) return;
 
-    const currentLang = isEnglish ? "en" : isHindi ? "hi" : "gu";
-    const startSync = () => {
+    let active = true;
+
+    // Check if audios are already cached in IndexedDB
+    getChapterCachedKeys(currentChapterNumber).then((cachedKeySet) => {
+      if (!active) return;
+      const missingClips = buildMissingClipsForChapter(
+        currentChapterNumber,
+        shlokas,
+        currentLang,
+        0,
+        cachedKeySet
+      );
+
+      if (missingClips.length === 0) {
+        // All audio is already cached in IndexedDB! Mark as saved permanently and don't re-save!
+        markChapterAudioSaved(currentChapterNumber, currentLang);
+        setAudioSyncProgress({
+          current: shlokas.length,
+          total: shlokas.length,
+          done: true,
+        });
+        return;
+      }
+
+      setAudioSyncProgress({
+        current: Math.max(0, shlokas.length - missingClips.length),
+        total: shlokas.length,
+        done: false,
+      });
+
       if (!navigator.onLine) return;
       autoSyncChapterAudios(
         currentChapterNumber,
@@ -1836,25 +1877,37 @@ if (
         currentLang,
         currentShloka,
         (prog) => {
+          if (!active) return;
           setAudioSyncProgress({
             current: prog.current,
             total: prog.total,
-            done: prog.current >= prog.total,
+            done: prog.done || prog.current >= prog.total,
           });
         }
       );
-    };
+    });
 
-    if (navigator.onLine) {
-      startSync();
-    }
-
-    window.addEventListener("online", startSync);
     return () => {
-      window.removeEventListener("online", startSync);
+      active = false;
       stopAudioSync();
     };
   }, [currentChapterNumber, shlokas.length, language]);
+
+  useEffect(() => {
+    const handleChapterAudioSaved = (e) => {
+      const curLang = isEnglish ? "en" : isHindi ? "hi" : "gu";
+      if (e.detail?.chapterNumber === currentChapterNumber && e.detail?.lang === curLang) {
+        setAudioSyncProgress((prev) => ({
+          ...prev,
+          done: true,
+        }));
+      }
+    };
+    window.addEventListener("gita-chapter-audio-saved", handleChapterAudioSaved);
+    return () => {
+      window.removeEventListener("gita-chapter-audio-saved", handleChapterAudioSaved);
+    };
+  }, [currentChapterNumber, isEnglish, isHindi]);
 
   const currentShlok = shlokas[currentShloka] || {};
   const currentLocalized = getLocalizedShlok(currentShlok);

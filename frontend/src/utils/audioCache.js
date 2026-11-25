@@ -222,9 +222,62 @@ export async function getChapterCachedKeys(chapterNumber) {
 }
 
 /**
+ * Check if all offline audios for a chapter have already been successfully saved
+ */
+export function isChapterAudioSaved(chapterNumber, lang = "gu") {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(`gita_chapter_audio_saved_${Number(chapterNumber)}_${lang}`) === "true";
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Mark a chapter's audios as completely saved for offline playback
+ */
+export function markChapterAudioSaved(chapterNumber, lang = "gu") {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`gita_chapter_audio_saved_${Number(chapterNumber)}_${lang}`, "true");
+    window.dispatchEvent(
+      new CustomEvent("gita-chapter-audio-saved", {
+        detail: { chapterNumber: Number(chapterNumber), lang },
+      })
+    );
+  } catch (e) {}
+}
+
+/**
+ * Clear the saved flag for a chapter (e.g. if cache cleared)
+ */
+export function clearChapterAudioSaved(chapterNumber, lang = "gu") {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(`gita_chapter_audio_saved_${Number(chapterNumber)}_${lang}`);
+  } catch (e) {}
+}
+
+/**
+ * Clear all chapter audio saved flags across all chapters and languages
+ */
+export function clearAllChapterAudioSavedFlags() {
+  if (typeof window === "undefined") return;
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("gita_chapter_audio_saved_")) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch (e) {}
+}
+
+/**
  * Clear all cached audio (called on logout)
  */
 export async function clearAudioCache() {
+  clearAllChapterAudioSavedFlags();
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -592,7 +645,7 @@ export function stopAudioSync() {
 /**
  * Collect ordered missing audio clip tasks for a chapter
  */
-function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startFromIndex, cachedKeySet) {
+export function buildMissingClipsForChapter(chapterNumber, shlokas, lang, startFromIndex, cachedKeySet) {
   const len = shlokas.length;
   const indices = [];
   for (let i = startFromIndex; i < len; i++) indices.push(i);
@@ -678,18 +731,20 @@ async function syncChapterInternal(
   if (!Array.isArray(shlokas) || shlokas.length === 0) return;
   const len = shlokas.length;
 
-  const cachedKeySet = await getChapterCachedKeys(chapterNumber);
-  const initialCompleted = await getChapterCachedAudioCount(chapterNumber, shlokas, lang, cachedKeySet);
-
-  if (typeof onProgress === "function") {
-    onProgress({
-      current: initialCompleted,
-      total: len,
-      percent: Math.round((initialCompleted / len) * 100),
-    });
+  if (isChapterAudioSaved(chapterNumber, lang)) {
+    if (typeof onProgress === "function") {
+      onProgress({
+        current: len,
+        total: len,
+        done: true,
+        percent: 100,
+      });
+    }
+    return;
   }
 
-  if (initialCompleted >= len) return;
+  const cachedKeySet = await getChapterCachedKeys(chapterNumber);
+  const initialCompleted = await getChapterCachedAudioCount(chapterNumber, shlokas, lang, cachedKeySet);
 
   const missingClips = buildMissingClipsForChapter(
     chapterNumber,
@@ -698,7 +753,29 @@ async function syncChapterInternal(
     startFromIndex,
     cachedKeySet
   );
-  if (missingClips.length === 0) return;
+
+  // If already fully cached or zero missing clips:
+  if (initialCompleted >= len || missingClips.length === 0) {
+    markChapterAudioSaved(chapterNumber, lang);
+    if (typeof onProgress === "function") {
+      onProgress({
+        current: len,
+        total: len,
+        done: true,
+        percent: 100,
+      });
+    }
+    return;
+  }
+
+  if (typeof onProgress === "function") {
+    onProgress({
+      current: initialCompleted,
+      total: len,
+      done: false,
+      percent: Math.round((initialCompleted / len) * 100),
+    });
+  }
 
   // Group clips into compact binary batches (9 clips = 3 shlokas per batch)
   const BATCH_SIZE = 9;
@@ -788,6 +865,18 @@ async function syncChapterInternal(
     workers.push(batchWorker());
   }
   await Promise.all(workers);
+
+  if (!signal?.aborted) {
+    markChapterAudioSaved(chapterNumber, lang);
+    if (typeof onProgress === "function") {
+      onProgress({
+        current: len,
+        total: len,
+        done: true,
+        percent: 100,
+      });
+    }
+  }
 }
 
 /**
