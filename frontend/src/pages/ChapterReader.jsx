@@ -1837,8 +1837,15 @@ if (
       return;
     }
 
-    if (!isRunningInStandaloneApp()) return;
     if (!shlokas || shlokas.length === 0) return;
+
+    // Immediately display the syncing patti with chapter shloka count!
+    setAudioSyncProgress((prev) => ({
+      current: prev.current || 0,
+      total: shlokas.length,
+      done: false,
+    }));
+
     if (!navigator.onLine) return;
 
     let active = true;
@@ -1852,8 +1859,8 @@ if (
         if (!active) return;
         setAudioSyncProgress({
           current: prog.current,
-          total: prog.total,
-          done: prog.done || prog.current >= prog.total,
+          total: prog.total || shlokas.length,
+          done: prog.done || prog.current >= (prog.total || shlokas.length),
         });
       }
     );
@@ -2770,7 +2777,7 @@ const prepareSanskritLines = () => {
             <span className="cr-offline-dot"></span>
             {txt("ઑફલાઇન વાંચન", "ऑफ़लाइन पठन", "Offline Reading")}
           </div>
-        ) : typeof window !== "undefined" && isRunningInStandaloneApp() && audioSyncProgress.total > 0 ? (
+        ) : typeof window !== "undefined" && (audioSyncProgress.total > 0 || audioSyncProgress.done) ? (
           <div
             className={`cr-audio-sync-pill ${audioSyncProgress.done ? "ready" : "syncing"}`}
             title={

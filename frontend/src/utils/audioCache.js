@@ -81,7 +81,7 @@ export function buildAudioKey(chapterNumber, shlokNumber, type, lang) {
  */
 export async function saveAudioToCache(chapterNumber, shlokNumber, type, lang, blob) {
   if (!chapterNumber || !shlokNumber || !type || !blob) return false;
-  if (typeof window === "undefined" || !isRunningInStandaloneApp()) return false;
+  if (typeof window === "undefined") return false;
   try {
     const db = await openDB();
     const id = buildAudioKey(chapterNumber, shlokNumber, type, lang);
@@ -118,7 +118,7 @@ export async function saveAudioToCache(chapterNumber, shlokNumber, type, lang, b
  */
 export async function saveAudioBatchToCache(records) {
   if (!Array.isArray(records) || records.length === 0) return false;
-  if (typeof window === "undefined" || !isRunningInStandaloneApp()) return false;
+  if (typeof window === "undefined") return false;
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -543,7 +543,6 @@ export async function getChapterCachedAudioCount(chapterNumber, shlokas, lang = 
  */
 export async function cacheSingleShlokaAudio(chapterNumber, shlokaObj, lang = "gu", cachedKeySet = null) {
   if (!chapterNumber || !shlokaObj || typeof window === "undefined" || !navigator.onLine) return false;
-  if (!isRunningInStandaloneApp()) return false;
   const sNum = Number(shlokaObj.shlokNumber);
   if (!sNum) return false;
 
@@ -910,7 +909,6 @@ export async function autoSyncChapterAudios(
   onProgress = null
 ) {
   if (typeof window === "undefined" || !navigator.onLine) return;
-  if (!isRunningInStandaloneApp()) return;
   if (!Array.isArray(shlokas) || shlokas.length === 0) return;
 
   if (activeSyncController) {
@@ -943,7 +941,6 @@ export async function autoSyncChapterAudios(
  */
 export async function autoSyncMultipleChaptersAudios(chapterEntries, lang = "gu") {
   if (typeof window === "undefined" || !navigator.onLine) return;
-  if (!isRunningInStandaloneApp()) return;
   if (!Array.isArray(chapterEntries) || chapterEntries.length === 0) return;
 
   if (activeSyncController) {
