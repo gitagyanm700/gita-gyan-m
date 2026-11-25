@@ -742,6 +742,8 @@ async function syncChapterInternal(
     return;
   }
 
+  const cachedKeySet = await getChapterCachedKeys(chapterNumber);
+
   // 1. Instant O(1) Pre-calculated Shloka Status Map (eliminates heavy regex parsing during sync)
   const shlokaKeyMap = new Map();
   const shlokaDoneMap = new Map();
@@ -792,15 +794,15 @@ async function syncChapterInternal(
     });
   }
 
-  // Group clips into optimal high-throughput batches (15 clips per batch for rapid synthesis)
-  const BATCH_SIZE = 15;
+  // Group clips into 3-by-3 shloka batches (9 clips = exactly 3 shlokas per batch)
+  const BATCH_SIZE = 9;
   const chunks = [];
   for (let i = 0; i < missingClips.length; i += BATCH_SIZE) {
     chunks.push(missingClips.slice(i, i + BATCH_SIZE));
   }
 
-  // 2 high-throughput parallel streams for maximum network/backend speed without connection starvation
-  const BATCH_CONCURRENCY = 2;
+  // Execute 3 parallel batch requests (3 streams in flight = 9 shlokas at once)
+  const BATCH_CONCURRENCY = 3;
   let chunkIndex = 0;
 
   async function batchWorker() {
