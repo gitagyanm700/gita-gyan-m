@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
 const Shlok = require("../models/Shlok");
-const { VOICE_MAP, buildShlokTtsTasks } = require("../utils/ttsTextUtils");
+const { VOICE_MAP, buildShlokTtsTasks, getTtsSynthesisParams } = require("../utils/ttsTextUtils");
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -19,12 +19,9 @@ async function synthesizeToFile(cleanText, lang, customRate, filePath) {
   if (fs.existsSync(filePath)) {
     return true; // Already cached
   }
-  const voiceLang = VOICE_MAP[lang] ? lang : "gu";
-  const selectedVoice = VOICE_MAP[voiceLang].male;
-  const prosodyOptions = {
-    rate: customRate !== null && customRate !== undefined ? customRate : lang === "sa" ? "+0%" : "+6%",
-    pitch: lang === "sa" ? "-2Hz" : "+0Hz",
-  };
+  const params = getTtsSynthesisParams(cleanText, lang, customRate);
+  if (!params) return false;
+  const { selectedVoice, prosodyOptions } = params;
 
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
