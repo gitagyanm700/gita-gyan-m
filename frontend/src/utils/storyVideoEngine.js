@@ -775,87 +775,100 @@ export async function createStoryVideoRenderer({
 }
 
 /**
- * Build a single continuous AudioBuffer covering the full story timeline
+ * Build a single continuous 48kHz AudioBuffer covering the full story timeline using OfflineAudioContext
  */
-function buildCompositeAudioBuffer(audioCtx, loadedScenes, totalDuration) {
-  const sampleRate = audioCtx.sampleRate || 44100;
-  const totalSamples = Math.ceil(totalDuration * sampleRate);
-  const compositeBuffer = audioCtx.createBuffer(1, totalSamples, sampleRate);
-  const outData = compositeBuffer.getChannelData(0);
+async function buildCompositeAudioBuffer(loadedScenes, totalDuration, targetSampleRate = 48000) {
+  const totalSamples = Math.max(1, Math.ceil(totalDuration * targetSampleRate));
+  const offlineCtx = new OfflineAudioContext(1, totalSamples, targetSampleRate);
 
   loadedScenes.forEach((sc) => {
     if (sc.audioBuffer) {
-      const srcData = sc.audioBuffer.getChannelData(0);
-      const startSample = Math.floor(sc.startTime * sampleRate);
-      const len = Math.min(srcData.length, totalSamples - startSample);
-      if (len > 0 && startSample >= 0) {
-        for (let i = 0; i < len; i++) {
-          outData[startSample + i] = srcData[i];
-        }
-      }
+      const src = offlineCtx.createBufferSource();
+      src.buffer = sc.audioBuffer;
+      src.connect(offlineCtx.destination);
+      src.start(Math.max(0, sc.startTime));
     }
   });
 
-  return compositeBuffer;
+  return await offlineCtx.startRendering();
 }
 
 /**
- * Check hardware supported video codec for WebCodecs
+ * Select a matched hardware-accelerated (Video + Audio + Container) codec pair for WebCodecs
  */
-async function getSupportedVideoCodec(width, height) {
-  if (typeof VideoEncoder === "undefined") return null;
+async function selectSupportedStoryMuxerCodecs(width, height) {
+  if (typeof VideoEncoder === "undefined" || typeof AudioEncoder === "undefined") {
+    return null;
+  }
 
-  const candidates = [
-    { format: "mp4", codec: "avc1.4d0028", muxerCodec: "avc" }, // AVC Main Level 4.0
-    { format: "mp4", codec: "avc1.42001f", muxerCodec: "avc" }, // AVC Baseline
-    { format: "mp4", codec: "avc1.640028", muxerCodec: "avc" }, // AVC High
-    { format: "webm", codec: "vp8", muxerCodec: "V_VP8" },
-    { format: "webm", codec: "vp09.00.10.08", muxerCodec: "V_VP9" },
-  ];
-
-  for (const c of candidates) {
+  // 1. Try MP4 (H.264 + AAC @ 48kHz)
+  const mp4VideoCandidates = ["avc1.4d0028", "avc1.42001f", "avc1.640028"];
+  for (const vCodec of mp4VideoCandidates) {
     try {
-      const config = {
-        codec: c.codec,
+      const vSup = await VideoEncoder.isConfigSupported({
+        codec: vCodec,
         width,
         height,
         bitrate: 2_500_000,
         framerate: 25,
-      };
-      const support = await VideoEncoder.isConfigSupported(config);
-      if (support && support.supported) {
-        return c;
+      });
+      if (vSup?.supported) {
+        const aSup = await AudioEncoder.isConfigSupported({
+          codec: "mp4a.40.2",
+          numberOfChannels: 1,
+          sampleRate: 48000,
+          bitrate: 128_000,
+        });
+        if (aSup?.supported) {
+          return {
+            format: "mp4",
+            videoCodec: vCodec,
+            videoMuxerCodec: "avc",
+            audioCodec: "mp4a.40.2",
+            audioMuxerCodec: "aac",
+            sampleRate: 48000,
+          };
+        }
+        break;
       }
     } catch (e) {}
   }
-  return null;
-}
 
-/**
- * Check hardware supported audio codec for WebCodecs
- */
-async function getSupportedAudioCodec(sampleRate) {
-  if (typeof AudioEncoder === "undefined") return null;
-
-  const candidates = [
-    { format: "mp4", codec: "mp4a.40.2", muxerCodec: "aac" },
-    { format: "webm", codec: "opus", muxerCodec: "A_OPUS" },
+  // 2. Fallback to WebM (VP8/VP9 + Opus @ 48kHz)
+  const webmVideoCandidates = [
+    { codec: "vp8", muxerCodec: "V_VP8" },
+    { codec: "vp09.00.10.08", muxerCodec: "V_VP9" },
   ];
-
-  for (const c of candidates) {
+  for (const vc of webmVideoCandidates) {
     try {
-      const config = {
-        codec: c.codec,
-        numberOfChannels: 1,
-        sampleRate,
-        bitrate: 128_000,
-      };
-      const support = await AudioEncoder.isConfigSupported(config);
-      if (support && support.supported) {
-        return c;
+      const vSup = await VideoEncoder.isConfigSupported({
+        codec: vc.codec,
+        width,
+        height,
+        bitrate: 2_500_000,
+        framerate: 25,
+      });
+      if (vSup?.supported) {
+        const aSup = await AudioEncoder.isConfigSupported({
+          codec: "opus",
+          numberOfChannels: 1,
+          sampleRate: 48000,
+          bitrate: 128_000,
+        });
+        if (aSup?.supported) {
+          return {
+            format: "webm",
+            videoCodec: vc.codec,
+            videoMuxerCodec: vc.muxerCodec,
+            audioCodec: "opus",
+            audioMuxerCodec: "A_OPUS",
+            sampleRate: 48000,
+          };
+        }
       }
     } catch (e) {}
   }
+
   return null;
 }
 
@@ -867,22 +880,16 @@ async function exportStoryVideoFastWebCodecs(options) {
   const { onProgress = () => {} } = options;
 
   const renderer = await createStoryVideoRenderer(options);
-  const { canvas, audioCtx, loadedScenes, totalDuration, renderFrame, close } = renderer;
+  const { canvas, loadedScenes, totalDuration, renderFrame, close } = renderer;
 
-  const videoChoice = await getSupportedVideoCodec(canvas.width, canvas.height);
-  if (!videoChoice) {
+  const codecs = await selectSupportedStoryMuxerCodecs(canvas.width, canvas.height);
+  if (!codecs) {
     close();
-    throw new Error("WebCodecs વિડિઓ એન્કોડર સમર્થિત નથી");
+    throw new Error("WebCodecs વિડિઓ/ઓડિયો એન્કોડર સમર્થિત નથી");
   }
 
-  const audioChoice = await getSupportedAudioCodec(audioCtx.sampleRate || 44100);
-  if (!audioChoice) {
-    close();
-    throw new Error("WebCodecs ઓડિયો એન્કોડર સમર્થિત નથી");
-  }
-
-  const useMp4 = videoChoice.format === "mp4" && audioChoice.format === "mp4";
-  const targetFormat = useMp4 ? "mp4" : "webm";
+  const useMp4 = codecs.format === "mp4";
+  const targetFormat = codecs.format;
 
   let muxer;
   let target;
@@ -900,7 +907,7 @@ async function exportStoryVideoFastWebCodecs(options) {
       audio: {
         codec: "aac",
         numberOfChannels: 1,
-        sampleRate: audioCtx.sampleRate || 44100,
+        sampleRate: codecs.sampleRate,
       },
       fastStart: "in-memory",
       firstTimestampBehavior: "offset",
@@ -910,7 +917,7 @@ async function exportStoryVideoFastWebCodecs(options) {
     muxer = new WebmMuxer({
       target,
       video: {
-        codec: videoChoice.muxerCodec,
+        codec: codecs.videoMuxerCodec,
         width: canvas.width,
         height: canvas.height,
         frameRate: 25,
@@ -918,7 +925,7 @@ async function exportStoryVideoFastWebCodecs(options) {
       audio: {
         codec: "A_OPUS",
         numberOfChannels: 1,
-        sampleRate: audioCtx.sampleRate || 44100,
+        sampleRate: codecs.sampleRate,
       },
       firstTimestampBehavior: "offset",
     });
@@ -940,7 +947,7 @@ async function exportStoryVideoFastWebCodecs(options) {
   });
 
   videoEncoder.configure({
-    codec: videoChoice.codec,
+    codec: codecs.videoCodec,
     width: canvas.width,
     height: canvas.height,
     bitrate: 2_500_000,
@@ -961,9 +968,9 @@ async function exportStoryVideoFastWebCodecs(options) {
   });
 
   audioEncoder.configure({
-    codec: audioChoice.codec,
+    codec: codecs.audioCodec,
     numberOfChannels: 1,
-    sampleRate: audioCtx.sampleRate || 44100,
+    sampleRate: codecs.sampleRate,
     bitrate: 128_000,
   });
 
@@ -974,7 +981,7 @@ async function exportStoryVideoFastWebCodecs(options) {
     message: "ઓડિયો સુપર-સ્પીડ પ્રોસેસ થઈ રહ્યો છે...",
   });
 
-  const compositeAudio = buildCompositeAudioBuffer(audioCtx, loadedScenes, totalDuration);
+  const compositeAudio = await buildCompositeAudioBuffer(loadedScenes, totalDuration, codecs.sampleRate);
   const audioRate = compositeAudio.sampleRate;
   const channelData = compositeAudio.getChannelData(0);
   const totalAudioSamples = channelData.length;
