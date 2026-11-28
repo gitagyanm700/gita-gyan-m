@@ -535,8 +535,8 @@ export async function createStoryVideoRenderer({
     })
   );
 
-  // Fast, crisp timings (no long idle pauses)
-  const SCENE_PAUSE = 0.05; // Minimal natural breath between scenes
+  // Natural sentence-like pause (~0.4s total with trimmed audio margins) between scenes
+  const SCENE_PAUSE = 0.32;
   const INTRO_DUR = 0.15;   // Fast start
   const OUTRO_DUR = 0.45;   // Clean outro
 
