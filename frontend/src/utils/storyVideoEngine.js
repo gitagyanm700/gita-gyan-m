@@ -174,48 +174,53 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
   );
 
   for (const base of endpoints) {
-    try {
-      const isLocal = base.includes("localhost:5000");
-      const effectiveTimeout = isLocal ? 1500 : 15000;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), effectiveTimeout);
+    const isLocal = base.includes("localhost:5000");
+    const maxAttempts = isLocal ? 1 : 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const effectiveTimeout = isLocal ? 1500 : 30000;
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), effectiveTimeout);
 
-      const res = await fetch(`${base}/api/tts/speak`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: cleanSpeechText,
-          lang: lang || "gu",
-          voice: voice === "female" ? "female" : "male",
-          rate: customRate || (lang === "sa" ? "+0%" : "+14%"),
-        }),
-        signal: ctrl.signal,
-      });
+        const res = await fetch(`${base}/api/tts/speak`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: cleanSpeechText,
+            lang: lang || "gu",
+            voice: voice === "female" ? "female" : "male",
+            rate: customRate || (lang === "sa" ? "+0%" : "+14%"),
+          }),
+          signal: ctrl.signal,
+        });
 
-      clearTimeout(tid);
+        clearTimeout(tid);
 
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        if (arrayBuffer && arrayBuffer.byteLength > 200) {
-          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-          ttsAudioMemoryCache.set(cacheKey, audioBuffer);
-          return audioBuffer;
+        if (res.ok) {
+          const arrayBuffer = await res.arrayBuffer();
+          if (arrayBuffer && arrayBuffer.byteLength > 200) {
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            ttsAudioMemoryCache.set(cacheKey, audioBuffer);
+            return audioBuffer;
+          }
+        }
+      } catch (err) {
+        if (isLocal) {
+          isTtsLocalDead = true;
+          break;
+        }
+        console.warn(`TTS fetch attempt ${attempt} failed on ${base}:`, err.message);
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 800));
         }
       }
-    } catch (err) {
-      if (base.includes("localhost:5000")) {
-        isTtsLocalDead = true;
-      }
-      console.warn(`TTS fetch failed on ${base}:`, err.message);
     }
   }
 
-  console.warn("Could not fetch TTS audio from any backend, using silent fallback");
+  console.warn("Could not fetch TTS audio from any backend, using silent fallback (not cached)");
   const wordCount = text.trim().split(/\s+/).length;
   const estDuration = Math.max(3, Math.round(wordCount / 2.5));
-  const fallbackBuf = createSilentBuffer(audioCtx, estDuration);
-  ttsAudioMemoryCache.set(cacheKey, fallbackBuf);
-  return fallbackBuf;
+  return createSilentBuffer(audioCtx, estDuration);
 }
 
 /**
@@ -811,10 +816,10 @@ async function exportStoryVideoMediaRecorder({
 
   const destNode = audioCtx.createMediaStreamDestination();
 
-  // Keep audio stream continuously active with inaudible zero-gain oscillator to prevent MediaRecorder starvation
+  // Keep audio stream continuously active with sub-audible oscillator (-80dB) so MediaRecorder never drops initial audio
   const silentOsc = audioCtx.createOscillator();
   const silentGain = audioCtx.createGain();
-  silentGain.gain.value = 0;
+  silentGain.gain.value = 0.0001;
   silentOsc.connect(silentGain);
   silentGain.connect(destNode);
   try {
@@ -822,18 +827,6 @@ async function exportStoryVideoMediaRecorder({
   } catch (e) {
     // ignore
   }
-
-  const startTime = audioCtx.currentTime + 0.1;
-
-  // Schedule all scene audio tracks
-  loadedScenes.forEach((sc) => {
-    if (sc.audioBuffer) {
-      const source = audioCtx.createBufferSource();
-      source.buffer = sc.audioBuffer;
-      source.connect(destNode);
-      source.start(startTime + sc.startTime);
-    }
-  });
 
   // Pre-render frame 0 so the canvas stream has an active bitmap
   renderFrame(0);
@@ -938,7 +931,7 @@ async function exportStoryVideoMediaRecorder({
     };
 
     try {
-      recorder.start(2000); // 2-second chunks reduces I/O interrupts by 50%
+      recorder.start(1000);
     } catch (startErr) {
       try {
         silentOsc.stop();
@@ -948,49 +941,64 @@ async function exportStoryVideoMediaRecorder({
       return;
     }
 
-    const startPerfTime = performance.now();
-    const TARGET_FPS = 25;
-    const FRAME_MS = 1000 / TARGET_FPS;
-    let lastRenderPerf = 0;
-
-    function recordLoop() {
+    // Wait 150ms for MediaRecorder audio/video pipeline to warm up BEFORE starting Scene 1 audio
+    setTimeout(() => {
       if (stopped || recorder.state !== "recording") return;
 
-      const perfNow = performance.now();
-      const elapsedSinceRender = perfNow - lastRenderPerf;
-
-      // Stable 25 FPS frame interval eliminates GPU overload and frame drops
-      if (elapsedSinceRender >= FRAME_MS) {
-        lastRenderPerf = perfNow - (elapsedSinceRender % FRAME_MS);
-        const now = (perfNow - startPerfTime) / 1000;
-        renderFrame(now);
-
-        const remainingSec = Math.max(0, Math.ceil(totalDuration - now));
-        const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
-        onProgress({
-          stage: "recording",
-          percent,
-          message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}% (અંદાજે ${remainingSec} સેકન્ડ બાકી)...`,
-        });
-
-        if (now >= totalDuration) {
-          setTimeout(() => {
-            try {
-              if (recorder.state === "recording") {
-                recorder.stop();
-              }
-            } catch (stopErr) {
-              console.warn("Error stopping recorder:", stopErr);
-            }
-          }, 80);
-          return;
+      const startTime = audioCtx.currentTime + 0.05;
+      loadedScenes.forEach((sc) => {
+        if (sc.audioBuffer) {
+          const source = audioCtx.createBufferSource();
+          source.buffer = sc.audioBuffer;
+          source.connect(destNode);
+          source.start(startTime + sc.startTime);
         }
+      });
+
+      const startPerfTime = performance.now() + 50;
+      const TARGET_FPS = 25;
+      const FRAME_MS = 1000 / TARGET_FPS;
+      let lastRenderPerf = 0;
+
+      function recordLoop() {
+        if (stopped || recorder.state !== "recording") return;
+
+        const perfNow = performance.now();
+        const elapsedSinceRender = perfNow - lastRenderPerf;
+
+        // Stable 25 FPS frame interval eliminates GPU overload and frame drops
+        if (elapsedSinceRender >= FRAME_MS) {
+          lastRenderPerf = perfNow - (elapsedSinceRender % FRAME_MS);
+          const now = Math.max(0, (perfNow - startPerfTime) / 1000);
+          renderFrame(now);
+
+          const remainingSec = Math.max(0, Math.ceil(totalDuration - now));
+          const percent = Math.min(99, Math.floor((now / totalDuration) * 100));
+          onProgress({
+            stage: "recording",
+            percent,
+            message: `વિડીયો એન્કોડ થઈ રહ્યો છે: ${percent}% (અંદાજે ${remainingSec} સેકન્ડ બાકી)...`,
+          });
+
+          if (now >= totalDuration) {
+            setTimeout(() => {
+              try {
+                if (recorder.state === "recording") {
+                  recorder.stop();
+                }
+              } catch (stopErr) {
+                console.warn("Error stopping recorder:", stopErr);
+              }
+            }, 80);
+            return;
+          }
+        }
+
+        requestAnimationFrame(recordLoop);
       }
 
       requestAnimationFrame(recordLoop);
-    }
-
-    requestAnimationFrame(recordLoop);
+    }, 150);
   });
 }
 
