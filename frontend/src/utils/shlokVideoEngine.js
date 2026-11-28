@@ -1358,9 +1358,9 @@ export async function createShlokVideoRenderer({
 
           // Only render if word has been reached by audio (pure typewriter reveal, NO highlight)
           if (globalWordOffset <= wordsCount1) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+            ctx.fillText(word, currentX + 1.5, lineY + 2);
             ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
           // Future words: NOT drawn!
@@ -1468,9 +1468,9 @@ export async function createShlokVideoRenderer({
 
           // Pure typewriter reveal: words appear as spoken in pure high-contrast white (NO yellow/green highlight)
           if (globalWIdx <= wordsCount2) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+            ctx.fillText(word, currentX + 1.5, lineY + 2);
             ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
 
@@ -1606,9 +1606,9 @@ export async function createShlokVideoRenderer({
 
           // Pure typewriter reveal: words appear as spoken in pure high-contrast white (NO yellow/green highlight)
           if (wordIndexInSec <= secWordCount) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+            ctx.fillText(word, currentX + 1.5, lineY + 2);
             ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
-            ctx.shadowBlur = 8;
             ctx.fillText(word, currentX, lineY);
           }
 
@@ -1693,8 +1693,13 @@ async function selectSupportedMuxerCodecs(width, height) {
     return null;
   }
 
-  // 1. Try MP4 (H.264 + AAC @ 48kHz)
+  // 1. Try MP4 (Hardware H.264 + AAC or Opus @ 48kHz)
   const mp4VideoCandidates = ["avc1.4d0028", "avc1.42001f", "avc1.640028"];
+  const mp4AudioCandidates = [
+    { codec: "mp4a.40.2", muxerCodec: "aac" },
+    { codec: "opus", muxerCodec: "opus" },
+  ];
+
   for (const vCodec of mp4VideoCandidates) {
     try {
       const vSup = await VideoEncoder.isConfigSupported({
@@ -1702,31 +1707,37 @@ async function selectSupportedMuxerCodecs(width, height) {
         width,
         height,
         bitrate: 2_500_000,
-        framerate: 25,
+        framerate: 20,
+        hardwareAcceleration: "prefer-hardware",
+        latencyMode: "realtime",
       });
       if (vSup?.supported) {
-        const aSup = await AudioEncoder.isConfigSupported({
-          codec: "mp4a.40.2",
-          numberOfChannels: 1,
-          sampleRate: 48000,
-          bitrate: 128_000,
-        });
-        if (aSup?.supported) {
-          return {
-            format: "mp4",
-            videoCodec: vCodec,
-            videoMuxerCodec: "avc",
-            audioCodec: "mp4a.40.2",
-            audioMuxerCodec: "aac",
-            sampleRate: 48000,
-          };
+        for (const ac of mp4AudioCandidates) {
+          try {
+            const aSup = await AudioEncoder.isConfigSupported({
+              codec: ac.codec,
+              numberOfChannels: 1,
+              sampleRate: 48000,
+              bitrate: 128_000,
+            });
+            if (aSup?.supported) {
+              return {
+                format: "mp4",
+                videoCodec: vCodec,
+                videoMuxerCodec: "avc",
+                audioCodec: ac.codec,
+                audioMuxerCodec: ac.muxerCodec,
+                sampleRate: 48000,
+              };
+            }
+          } catch (e) {}
         }
-        break; // H.264 is supported, but AAC AudioEncoder is unavailable -> use WebM pair
+        break;
       }
     } catch (e) {}
   }
 
-  // 2. Fallback to WebM (VP8/VP9 + Opus @ 48kHz — supported on Chrome, Edge & Android!)
+  // 2. Fallback to WebM (VP8/VP9 + Opus @ 48kHz)
   const webmVideoCandidates = [
     { codec: "vp8", muxerCodec: "V_VP8" },
     { codec: "vp09.00.10.08", muxerCodec: "V_VP9" },
@@ -1738,7 +1749,9 @@ async function selectSupportedMuxerCodecs(width, height) {
         width,
         height,
         bitrate: 2_500_000,
-        framerate: 25,
+        framerate: 20,
+        hardwareAcceleration: "prefer-hardware",
+        latencyMode: "realtime",
       });
       if (vSup?.supported) {
         const aSup = await AudioEncoder.isConfigSupported({
@@ -1807,10 +1820,10 @@ async function exportShlokVideoFastWebCodecs(renderer, codecs, onProgress = () =
         codec: "avc",
         width: canvas.width,
         height: canvas.height,
-        frameRate: 25,
+        frameRate: 20,
       },
       audio: {
-        codec: "aac",
+        codec: codecs.audioMuxerCodec,
         numberOfChannels: 1,
         sampleRate: codecs.sampleRate,
       },
@@ -1825,7 +1838,7 @@ async function exportShlokVideoFastWebCodecs(renderer, codecs, onProgress = () =
         codec: codecs.videoMuxerCodec,
         width: canvas.width,
         height: canvas.height,
-        frameRate: 25,
+        frameRate: 20,
       },
       audio: {
         codec: "A_OPUS",
@@ -1856,7 +1869,9 @@ async function exportShlokVideoFastWebCodecs(renderer, codecs, onProgress = () =
     width: canvas.width,
     height: canvas.height,
     bitrate: 2_500_000,
-    framerate: 25,
+    framerate: 20,
+    hardwareAcceleration: "prefer-hardware",
+    latencyMode: "realtime",
   });
 
   const audioEncoder = new AudioEncoder({
@@ -1926,7 +1941,7 @@ async function exportShlokVideoFastWebCodecs(renderer, codecs, onProgress = () =
   await audioEncoder.flush();
 
   // 2. High-Speed Frame-by-Frame GPU Video Encoding
-  const TARGET_FPS = 25;
+  const TARGET_FPS = 20;
   const totalFrames = Math.ceil(totalDuration * TARGET_FPS);
   const startPerf = performance.now();
 
@@ -1950,17 +1965,17 @@ async function exportShlokVideoFastWebCodecs(renderer, codecs, onProgress = () =
     videoFrame.close();
 
     // Prevent encoder queue overflow
-    if (videoEncoder.encodeQueueSize > 5) {
+    if (videoEncoder.encodeQueueSize > 12) {
       await new Promise((resolve) => {
         videoEncoder.ondequeue = resolve;
       });
     }
 
-    // Update progress and micro-yield every 6 frames for smooth UI
-    if (i % 6 === 0 || i === totalFrames - 1) {
+    // Update progress and micro-yield every 20 frames for maximum throughput
+    if (i % 20 === 0 || i === totalFrames - 1) {
       const percent = Math.min(99, Math.floor((i / totalFrames) * 100));
       const elapsedSec = (performance.now() - startPerf) / 1000;
-      const currentFps = i > 0 && elapsedSec > 0 ? i / elapsedSec : 25;
+      const currentFps = i > 0 && elapsedSec > 0 ? i / elapsedSec : 20;
       const remainingFrames = totalFrames - i;
       const estRemainingSec = Math.max(0, Math.ceil(remainingFrames / currentFps));
 

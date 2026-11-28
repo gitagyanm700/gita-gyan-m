@@ -801,8 +801,13 @@ async function selectSupportedStoryMuxerCodecs(width, height) {
     return null;
   }
 
-  // 1. Try MP4 (H.264 + AAC @ 48kHz)
+  // 1. Try MP4 (Hardware H.264 + AAC or Opus @ 48kHz)
   const mp4VideoCandidates = ["avc1.4d0028", "avc1.42001f", "avc1.640028"];
+  const mp4AudioCandidates = [
+    { codec: "mp4a.40.2", muxerCodec: "aac" },
+    { codec: "opus", muxerCodec: "opus" },
+  ];
+
   for (const vCodec of mp4VideoCandidates) {
     try {
       const vSup = await VideoEncoder.isConfigSupported({
@@ -810,24 +815,30 @@ async function selectSupportedStoryMuxerCodecs(width, height) {
         width,
         height,
         bitrate: 2_500_000,
-        framerate: 25,
+        framerate: 20,
+        hardwareAcceleration: "prefer-hardware",
+        latencyMode: "realtime",
       });
       if (vSup?.supported) {
-        const aSup = await AudioEncoder.isConfigSupported({
-          codec: "mp4a.40.2",
-          numberOfChannels: 1,
-          sampleRate: 48000,
-          bitrate: 128_000,
-        });
-        if (aSup?.supported) {
-          return {
-            format: "mp4",
-            videoCodec: vCodec,
-            videoMuxerCodec: "avc",
-            audioCodec: "mp4a.40.2",
-            audioMuxerCodec: "aac",
-            sampleRate: 48000,
-          };
+        for (const ac of mp4AudioCandidates) {
+          try {
+            const aSup = await AudioEncoder.isConfigSupported({
+              codec: ac.codec,
+              numberOfChannels: 1,
+              sampleRate: 48000,
+              bitrate: 128_000,
+            });
+            if (aSup?.supported) {
+              return {
+                format: "mp4",
+                videoCodec: vCodec,
+                videoMuxerCodec: "avc",
+                audioCodec: ac.codec,
+                audioMuxerCodec: ac.muxerCodec,
+                sampleRate: 48000,
+              };
+            }
+          } catch (e) {}
         }
         break;
       }
@@ -846,7 +857,9 @@ async function selectSupportedStoryMuxerCodecs(width, height) {
         width,
         height,
         bitrate: 2_500_000,
-        framerate: 25,
+        framerate: 20,
+        hardwareAcceleration: "prefer-hardware",
+        latencyMode: "realtime",
       });
       if (vSup?.supported) {
         const aSup = await AudioEncoder.isConfigSupported({
@@ -902,10 +915,10 @@ async function exportStoryVideoFastWebCodecs(options) {
         codec: "avc",
         width: canvas.width,
         height: canvas.height,
-        frameRate: 25,
+        frameRate: 20,
       },
       audio: {
-        codec: "aac",
+        codec: codecs.audioMuxerCodec,
         numberOfChannels: 1,
         sampleRate: codecs.sampleRate,
       },
@@ -920,7 +933,7 @@ async function exportStoryVideoFastWebCodecs(options) {
         codec: codecs.videoMuxerCodec,
         width: canvas.width,
         height: canvas.height,
-        frameRate: 25,
+        frameRate: 20,
       },
       audio: {
         codec: "A_OPUS",
@@ -951,7 +964,9 @@ async function exportStoryVideoFastWebCodecs(options) {
     width: canvas.width,
     height: canvas.height,
     bitrate: 2_500_000,
-    framerate: 25,
+    framerate: 20,
+    hardwareAcceleration: "prefer-hardware",
+    latencyMode: "realtime",
   });
 
   const audioEncoder = new AudioEncoder({
@@ -1021,7 +1036,7 @@ async function exportStoryVideoFastWebCodecs(options) {
   await audioEncoder.flush();
 
   // 2. High-Speed Frame-by-Frame GPU Video Encoding
-  const TARGET_FPS = 25;
+  const TARGET_FPS = 20;
   const totalFrames = Math.ceil(totalDuration * TARGET_FPS);
   const startPerf = performance.now();
 
@@ -1045,17 +1060,17 @@ async function exportStoryVideoFastWebCodecs(options) {
     videoFrame.close();
 
     // Prevent encoder queue overflow
-    if (videoEncoder.encodeQueueSize > 5) {
+    if (videoEncoder.encodeQueueSize > 12) {
       await new Promise((resolve) => {
         videoEncoder.ondequeue = resolve;
       });
     }
 
-    // Update progress and micro-yield every 8 frames for smooth UI
-    if (i % 8 === 0 || i === totalFrames - 1) {
+    // Update progress and micro-yield every 20 frames for maximum throughput
+    if (i % 20 === 0 || i === totalFrames - 1) {
       const percent = Math.min(99, Math.floor((i / totalFrames) * 100));
       const elapsedSec = (performance.now() - startPerf) / 1000;
-      const currentFps = i > 0 && elapsedSec > 0 ? i / elapsedSec : 25;
+      const currentFps = i > 0 && elapsedSec > 0 ? i / elapsedSec : 20;
       const remainingFrames = totalFrames - i;
       const estRemainingSec = Math.max(0, Math.ceil(remainingFrames / currentFps));
 
