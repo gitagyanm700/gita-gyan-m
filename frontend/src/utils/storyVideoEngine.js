@@ -224,6 +224,49 @@ export async function fetchSceneAudio(audioCtx, text, lang = "gu", voice = "male
 }
 
 /**
+ * Trim dead leading/trailing silence from Edge TTS AudioBuffers so scene transitions have zero awkward gaps
+ */
+function trimAudioSilence(audioCtx, buffer) {
+  if (!buffer || buffer.duration <= 0.5) return buffer;
+  try {
+    const sampleRate = buffer.sampleRate;
+    const data = buffer.getChannelData(0);
+    const len = data.length;
+    const threshold = 0.008;
+
+    let startSample = 0;
+    while (startSample < len && Math.abs(data[startSample]) < threshold) {
+      startSample++;
+    }
+
+    let endSample = len - 1;
+    while (endSample > startSample && Math.abs(data[endSample]) < threshold) {
+      endSample--;
+    }
+
+    if (startSample >= endSample) return buffer;
+
+    const padStart = Math.round(0.04 * sampleRate);
+    const padEnd = Math.round(0.06 * sampleRate);
+    startSample = Math.max(0, startSample - padStart);
+    endSample = Math.min(len - 1, endSample + padEnd);
+
+    const newLen = endSample - startSample + 1;
+    if (newLen >= len - Math.round(0.1 * sampleRate)) {
+      return buffer;
+    }
+
+    const trimmed = audioCtx.createBuffer(buffer.numberOfChannels, newLen, sampleRate);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(startSample, endSample + 1));
+    }
+    return trimmed;
+  } catch (e) {
+    return buffer;
+  }
+}
+
+/**
  * Create a silent buffer
  */
 export function createSilentBuffer(audioCtx, durationSec = 3) {
@@ -474,6 +517,7 @@ export async function createStoryVideoRenderer({
       } else if (!audioBuf) {
         audioBuf = createSilentBuffer(audioCtx, 3);
       }
+      audioBuf = trimAudioSilence(audioCtx, audioBuf);
       loadedCount++;
       const pct = Math.min(65, Math.round(15 + (loadedCount / scenes.length) * 50));
       onProgress({
@@ -492,7 +536,7 @@ export async function createStoryVideoRenderer({
   );
 
   // Fast, crisp timings (no long idle pauses)
-  const SCENE_PAUSE = 0.12; // Snappy breathing pause between scenes
+  const SCENE_PAUSE = 0.05; // Minimal natural breath between scenes
   const INTRO_DUR = 0.15;   // Fast start
   const OUTRO_DUR = 0.45;   // Clean outro
 
